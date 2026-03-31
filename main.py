@@ -12,12 +12,11 @@ st.markdown("""
     .stApp { background-color: #313338; color: #dbdee1; }
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
     .stAppDeployButton {display:none;}
-    [data-testid="bundle-viewer-container"] {display: none !important;}
 
-    /* 余白を 150px → 80px へ。これで「広すぎず、隠れず」のラインを狙います */
+    /* 余白をガッツリ削って 50px に。これで入力欄のすぐ上までメッセージが来ます */
     .block-container { 
         padding-top: 1rem; 
-        padding-bottom: 80px !important; 
+        padding-bottom: 50px !important; 
         max-width: 100% !important; 
     }
 
@@ -31,8 +30,8 @@ st.markdown("""
     .timestamp { color: #949ba4; font-size: 0.75rem; }
     .text-content { color: #e6edf3; }
     
-    /* 入力欄の下の隙間を最小限に */
-    div[data-testid="stChatInput"] { padding-bottom: 10px; }
+    /* 入力欄の下の余計な隙間もカット */
+    div[data-testid="stChatInput"] { padding-bottom: 0px !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -69,7 +68,7 @@ try:
         
         st.markdown(f"""
             <div class="chat-row {align}">
-                <div class="chat-header" style="{h_style}">
+                <div class="chat-header" style="{header_style}">
                     <span class="{n_class}">{sender}</span>
                     <span class="timestamp">{m['created_at'][11:16]}</span>
                 </div>
@@ -89,6 +88,6 @@ if prompt:
 components.html(
     """<script>
     const f = () => { window.parent.document.querySelector(".main").scrollTo(0, 99999); };
-    setTimeout(f, 500); setTimeout(f, 1500);
+    setTimeout(f, 500); 
     </script>""", height=0
 )
