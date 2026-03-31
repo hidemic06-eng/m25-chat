@@ -30,16 +30,67 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.set_page_config(page_title="M25-Chat", page_icon="💬")
 
-# --- 3. LINE風デザイン (CSS) ---
+# --- 3. アップロード画像風・ダークモードデザイン (CSS) ---
 st.markdown("""
     <style>
-    .chat-row { display: flex; margin-bottom: 10px; width: 100%; }
-    .chat-bubble { padding: 10px 15px; border-radius: 20px; max-width: 70%; font-size: 16px; line-height: 1.4; position: relative; }
-    .user-hide { justify-content: flex-end; } /* HIDEを右寄せ */
-    .user-maki { justify-content: flex-start; } /* MAKIを左寄せ */
-    .bubble-hide { background-color: #DCF8C6; color: black; border-top-right-radius: 2px; } /* 薄緑（LINE風） */
-    .bubble-maki { background-color: #FFFFFF; color: black; border-top-left-radius: 2px; border: 1px solid #ddd; } /* 白 */
-    .chat-info { font-size: 10px; color: gray; margin-top: 4px; }
+    /* 全体の背景色を少し明るいダークグレーに（画像風） */
+    .stApp {
+        background-color: #1a1c23 !important;
+        color: #e0e6ed !important;
+    }
+
+    /* 入力欄（テキスト入力、テキストエリア）のスタイル */
+    /* 背景を濃いグレー (#2d333b)、文字を白 (#ffffff) に */
+    .stTextInput>div>div>input, .stTextArea>div>div>textarea {
+        background-color: #2d333b !important;
+        color: #ffffff !important;
+        border: 1px solid #444c56 !important; /* 枠線を少し明るく */
+        border-radius: 8px !important;
+        font-size: 16px !important;
+    }
+
+    /* 入力欄にフォーカスが当たった時の枠線の色（少し青っぽく） */
+    .stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus {
+        border-color: #539bf5 !important;
+        box-shadow: 0 0 0 1px #539bf5 !important;
+    }
+
+    /* 入力欄のラベル（"名前"、"メッセージ入力"など）の文字色 */
+    .stTextInput>label, .stTextArea>label {
+        color: #e0e6ed !important;
+        font-weight: 600 !important;
+    }
+
+    /* 送信ボタンのスタイル（画像のような濃いグレー） */
+    .stButton>button {
+        background-color: #3e4451 !important;
+        color: #ffffff !important;
+        border: 1px solid #444c56 !important;
+        border-radius: 8px !important;
+        padding: 8px 20px !important;
+    }
+    /* ボタンホバー時 */
+    .stButton>button:hover {
+        background-color: #4c5361 !important;
+        border-color: #539bf5 !important;
+    }
+
+    /* 履歴表示の吹き出し（LINE風を維持しつつ、ダークモードに対応） */
+    .chat-row { display: flex; margin-bottom: 15px; width: 100%; }
+    .chat-bubble { 
+        padding: 12px 18px; 
+        border-radius: 18px; 
+        max-width: 80%; 
+        font-size: 16px; 
+        line-height: 1.5; 
+        box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+    /* 自分の吹き出し（ダークグリーン） */
+    .bubble-hide { background-color: #2e6b3b !important; color: #ffffff !important; border-top-right-radius: 2px; }
+    /* 相手の吹き出し（濃いグレー） */
+    .bubble-maki { background-color: #3e4451 !important; color: #ffffff !important; border: 1px solid #444c56; border-top-left-radius: 2px; }
+    
+    .chat-info { font-size: 11px; color: #888888; margin-top: 5px; }
     </style>
 """, unsafe_allow_html=True)
 
