@@ -22,7 +22,7 @@ if not check_password():
 
 # --- 2. 設定と接続 ---
 query_params = st.query_params
-current_user = query_params.get("user", "HIDE") # 今ログインしている人
+current_user = query_params.get("user", "Hide") 
 
 SUPABASE_URL = "https://kvqbwknrsdasoipttkpr.supabase.co"
 SUPABASE_KEY = "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT"
@@ -30,89 +30,33 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.set_page_config(page_title="M25-Chat", page_icon="💬")
 
-# --- 3. 吹き出しワイド & ビビッドカラー (CSS) ---
+# --- 3. ダークモード & ワイド吹き出しデザイン (CSS) ---
 st.markdown("""
     <style>
-    /* 全体の背景設定 */
+    /* 背景と入力欄のデザイン */
     .stApp { background-color: #1a1c23 !important; color: #e0e6ed !important; }
-
-    /* 入力欄のダーク化 */
     .stTextInput>div>div>input, .stTextArea>div>div>textarea {
-        background-color: #2d333b !important;
-        color: #ffffff !important;
-        border: 1px solid #444c56 !important;
-        border-radius: 8px !important;
+        background-color: #2d333b !important; color: #ffffff !important;
+        border: 1px solid #444c56 !important; border-radius: 8px !important;
     }
-
-    /* 吹き出しのレイアウト設定 */
-    .chat-row { display: flex; margin-bottom: 20px; width: 100%; }
     
-    /* 吹き出し本体：max-widthを90%に広げ、文字を白に固定 */
+    /* 吹き出しの共通設定 */
+    .chat-row { display: flex; margin-bottom: 20px; width: 100%; align-items: flex-end; }
     .chat-bubble { 
-        padding: 14px 20px; 
-        border-radius: 18px; 
-        max-width: 90%;  /* 横幅を広く設定 */
-        font-size: 16px; 
-        line-height: 1.5; 
-        color: #ffffff !important; 
-        font-weight: 500;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        padding: 12px 18px; border-radius: 18px; max-width: 85%; 
+        font-size: 16px; line-height: 1.5; color: #ffffff !important; 
+        font-weight: 500; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     }
     
-    /* 自分（HIDEなど）：右寄せ & 青色 */
-    .bubble-right { 
-        background-color: #007bff !important; 
-        border-top-right-radius: 2px; 
-    }
+    /* Hide用（右・青） */
+    .bubble-hide { background-color: #007bff !important; border-bottom-right-radius: 2px; }
+    /* Maki用（左・オレンジ） */
+    .bubble-maki { background-color: #fd7e14 !important; border-bottom-left-radius: 2px; }
     
-    /* 相手（MAKIなど）：左寄せ & オレンジ色 */
-    .bubble-left { 
-        background-color: #fd7e14 !important; 
-        border-top-left-radius: 2px; 
-    }
-    
-    .chat-info { font-size: 11px; color: #aaaaaa; margin-top: 5px; }
+    .chat-info { font-size: 10px; color: #aaaaaa; margin: 0 5px; }
+    .sender-name { font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #fd7e14; }
     </style>
 """, unsafe_allow_html=True)
-
-# --- (中略：送信フォームなどはそのまま) ---
-
-# --- 5. 履歴表示 (修正版) ---
-st.write("---")
-try:
-    res = supabase.table("messages").select("*").order("created_at", desc=True).execute()
-    for m in res.data:
-        sender = m['sender_name']
-        text = m['message_body']
-        time = m['created_at'][11:16]
-
-        if sender == current_user:
-            # 自分側（右・青）
-            st.markdown(f"""
-                <div class="chat-row" style="justify-content: flex-end;">
-                    <div style="text-align: right; width: 90%;">
-                        <div style="display: flex; justify-content: flex-end;">
-                            <div class="chat-bubble bubble-right">{text}</div>
-                        </div>
-                        <div class="chat-info">{time} ✅</div>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
-        else:
-            # 相手側（左・オレンジ）
-            st.markdown(f"""
-                <div class="chat-row" style="justify-content: flex-start;">
-                    <div style="text-align: left; width: 90%;">
-                        <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #fd7e14;">{sender}</div>
-                        <div style="display: flex; justify-content: flex-start;">
-                            <div class="chat-bubble bubble-left">{text}</div>
-                        </div>
-                        <div class="chat-info">{time}</div>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
-except Exception as e:
-    st.write("履歴を読み込み中...")
 
 st.title("💬 M25-Chat")
 
@@ -128,34 +72,33 @@ with st.form("send_message", clear_on_submit=True):
         except Exception as e:
             st.error(f"Error: {e}")
 
-# --- 5. 履歴表示 (吹き出しスタイル) ---
+# --- 5. 履歴表示 (これひとつにまとめました) ---
 st.write("---")
 try:
     res = supabase.table("messages").select("*").order("created_at", desc=True).execute()
     for m in res.data:
         sender = m['sender_name']
         text = m['message_body']
-        time = m['created_at'][11:16] # 時刻だけ抽出
+        time = m['created_at'][11:16]
 
-        # 自分のメッセージか相手のかでクラスを切り替え
-        if sender == current_user:
-            # 自分（右側）
+        if sender == "Hide" or sender == "HIDE":
+            # Hideさんは右側（青）
             st.markdown(f"""
                 <div class="chat-row" style="justify-content: flex-end;">
-                    <div style="text-align: right; margin-right: 10px;">
-                        <div class="chat-bubble" style="background-color: #DCF8C6; border-radius: 15px 15px 2px 15px;">{text}</div>
-                        <div class="chat-info">{time} ✅</div>
-                    </div>
+                    <div class="chat-info">{time} ✅</div>
+                    <div class="chat-bubble bubble-hide">{text}</div>
                 </div>
             """, unsafe_allow_html=True)
         else:
-            # 相手（左側）
+            # それ以外（Makiさん等）は左側（オレンジ）
             st.markdown(f"""
                 <div class="chat-row" style="justify-content: flex-start;">
-                    <div style="text-align: left; margin-left: 10px;">
-                        <div style="font-size: 12px; font-weight: bold; margin-bottom: 2px;">{sender}</div>
-                        <div class="chat-bubble" style="background-color: #FFFFFF; border: 1px solid #ddd; border-radius: 15px 15px 15px 2px;">{text}</div>
-                        <div class="chat-info">{time}</div>
+                    <div style="width: 100%;">
+                        <div class="sender-name" style="margin-left: 10px;">{sender}</div>
+                        <div style="display: flex; align-items: flex-end;">
+                            <div class="chat-bubble bubble-maki" style="margin-left: 10px;">{text}</div>
+                            <div class="chat-info">{time}</div>
+                        </div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
