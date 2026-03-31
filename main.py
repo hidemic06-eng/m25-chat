@@ -41,20 +41,21 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 認証 (テンキー ＆ 確定ボタン復活版) ---
+# --- 3. 認証 (Enter不要の自動ログイン版) ---
 if "password_correct" not in st.session_state:
     st.write("🔒 Enter Password")
+    # type="default" でJS制御
     pw = st.text_input("Password", type="default", key="pw_input")
     
+    # 1. テンキーを出しつつ、伏せ字にするJS
     components.html(
         """
         <script>
         const inputs = window.parent.document.querySelectorAll('input');
         inputs.forEach(input => {
             if (input.getAttribute('aria-label') === 'Password') {
-                // inputmodeを decimal に変更することで「確定」キーを呼び出します
-                input.setAttribute('inputmode', 'decimal');
-                // 伏せ字の設定
+                // tel は「確定」や「完了」が出やすいのでこれに戻し、JSで補強します
+                input.setAttribute('type', 'tel');
                 input.style.webkitTextSecurity = 'disc';
             }
         });
@@ -63,13 +64,14 @@ if "password_correct" not in st.session_state:
         height=0,
     )
 
+    # 2. 自動チェック（Enterを押さなくても、合致した瞬間にログイン）
     if pw == "05250206":
         st.session_state["password_correct"] = True
         st.rerun()
-    elif pw:
+    elif len(pw) >= 8: # パスワードの桁数に達して間違っていたらエラー
         st.error("❌")
+    
     st.stop()
-
 # --- 4. ページ管理（オフセット） ---
 if "page_offset" not in st.session_state:
     st.session_state["page_offset"] = 0
