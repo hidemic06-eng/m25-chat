@@ -127,21 +127,28 @@ if prompt:
     except Exception as e:
         st.error(f"Error")
 
-# --- 8. 【強化版】強制スクロールJavaScript (末尾に追加) ---
+# --- 8. 【最終強化版】トリプル・スクロールJavaScript ---
 components.html(
     """
     <script>
-    window.parent.document.querySelector(".main").scrollTo({
-        top: 99999, 
-        behavior: 'instant'
-    });
-    // スマホの微妙な描画遅延対策で0.1秒後にもう一度実行
-    setTimeout(function() {
-        window.parent.document.querySelector(".main").scrollTo({
-            top: 99999,
-            behavior: 'instant'
-        });
-    }, 100);
+    const scrollToEnd = () => {
+        const mainContent = window.parent.document.querySelector(".main");
+        if (mainContent) {
+            mainContent.scrollTo({
+                top: mainContent.scrollHeight + 10000,
+                behavior: 'instant'
+            });
+        }
+    };
+
+    // 1. 即時実行
+    scrollToEnd();
+
+    // 2. 0.1秒後（描画の初期待ち）
+    setTimeout(scrollToEnd, 100);
+
+    // 3. 0.5秒後（スマホのキーボードや画像読み込み待ちの念押し）
+    setTimeout(scrollToEnd, 500);
     </script>
     """,
     height=0,
