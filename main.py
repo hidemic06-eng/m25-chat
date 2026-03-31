@@ -127,15 +127,21 @@ if prompt:
     except Exception as e:
         st.error(f"Error")
 
-# --- 8. 【追加】強制スクロールJavaScript ---
-# 画面の末尾に、一番下までスクロールさせるJSを埋め込みます
+# --- 8. 【強化版】強制スクロールJavaScript (末尾に追加) ---
 components.html(
     """
     <script>
-    var main = window.parent.document.querySelector(".main");
-    if (main) {
-        main.scrollTo(0, main.scrollHeight);
-    }
+    window.parent.document.querySelector(".main").scrollTo({
+        top: 99999, 
+        behavior: 'instant'
+    });
+    // スマホの微妙な描画遅延対策で0.1秒後にもう一度実行
+    setTimeout(function() {
+        window.parent.document.querySelector(".main").scrollTo({
+            top: 99999,
+            behavior: 'instant'
+        });
+    }, 100);
     </script>
     """,
     height=0,
