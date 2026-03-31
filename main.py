@@ -28,53 +28,48 @@ SUPABASE_URL = "https://kvqbwknrsdasoipttkpr.supabase.co"
 SUPABASE_KEY = "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT"
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# ページ全体の余白を最小化
-st.set_page_config(page_title="M25", page_icon="💬", layout="centered")
+# スマホで横幅を広く使うための設定
+st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
-# --- 3. スマホ特化・超省スペースデザイン (CSS) ---
+# --- 3. デザイン調整 (CSS) ---
 st.markdown("""
     <style>
-    /* 画面全体の余白を削る */
-    .block-container { padding-top: 1rem !important; padding-bottom: 0rem !important; padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
+    /* 画面端の余白を極限まで削る */
+    .block-container { padding: 1rem 0.5rem !important; max-width: 100% !important; }
     .stApp { background-color: #1a1c23 !important; color: #e0e6ed !important; }
     
-    /* 入力欄のコンパクト化 */
-    .stTextInput>div>div>input { padding: 5px !important; }
-    .stTextArea>div>div>textarea { height: 70px !important; }
-    
-    /* 吹き出しの設定 */
-    .chat-row { display: flex; margin-bottom: 8px; width: 100%; align-items: flex-end; }
+    /* 入力エリアの調整 */
+    [data-testid="stForm"] { border: none !important; padding: 0 !important; }
+    .stTextArea>div>div>textarea { height: 80px !important; background-color: #2d333b !important; color: #fff !important; }
+    .stTextInput>div>div>input { background-color: #2d333b !important; color: #fff !important; }
+
+    /* 吹き出しの設定：最大幅をしっかり80%確保 */
+    .chat-row { display: flex; margin-bottom: 12px; width: 100%; align-items: flex-end; }
     .chat-bubble { 
-        padding: 8px 12px; border-radius: 15px; max-width: 80%; 
-        width: auto; display: inline-block; font-size: 15px; line-height: 1.4; 
-        color: #ffffff !important; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        padding: 10px 14px; border-radius: 18px; 
+        max-width: 80%; /* ここで8割を確保 */
+        width: auto; display: inline-block; font-size: 16px; line-height: 1.4; 
+        color: #ffffff !important; box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         word-wrap: break-word;
     }
     
+    /* カラー設定（くすみ系） */
     .bubble-hide { background-color: #4682b4 !important; border-bottom-right-radius: 2px; }
     .bubble-maki { background-color: #d2691e !important; border-bottom-left-radius: 2px; }
     
-    .chat-info { font-size: 9px; color: #888888; margin: 0 4px; min-width: fit-content; line-height: 1; }
-    .sender-name { font-size: 11px; font-weight: bold; margin-bottom: 2px; color: #d2691e; }
-    
-    /* フォームの枠線を消してスッキリさせる */
-    [data-testid="stForm"] { border: none !important; padding: 0 !important; }
+    .chat-info { font-size: 10px; color: #888888; margin: 0 5px; min-width: fit-content; }
+    .sender-name { font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #d2691e; margin-left: 10px; }
     </style>
 """, unsafe_allow_html=True)
 
-# タイトルも小さく
 st.markdown("### 💬 M25-Chat")
 
-# --- 4. 送信フォーム（省スペース版） ---
+# --- 4. 送信フォーム ---
 with st.form("send_message", clear_on_submit=True):
-    # 名前とボタンを横に並べるためのカラム
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        name = st.text_input("Name", value=current_user, label_visibility="collapsed")
-    with col2:
-        submit = st.form_submit_button("送信", use_container_width=True)
-    
+    # 横並びを一旦やめて、縦に並べることで横幅の干渉を防ぐ（ただしラベルは隠す）
+    name = st.text_input("Name", value=current_user, label_visibility="collapsed")
     msg = st.text_area("Message", placeholder="メッセージを入力...", label_visibility="collapsed")
+    submit = st.form_submit_button("送信", use_container_width=True)
     
     if submit and msg:
         try:
@@ -95,7 +90,7 @@ try:
         if sender.upper() == "HIDE":
             st.markdown(f"""
                 <div class="chat-row" style="justify-content: flex-end;">
-                    <div class="chat-info" style="text-align: right;">{time}<br>✅</div>
+                    <div class="chat-info" style="text-align: right;">{time} ✅</div>
                     <div class="chat-bubble bubble-hide">{text}</div>
                 </div>
             """, unsafe_allow_html=True)
@@ -103,9 +98,9 @@ try:
             st.markdown(f"""
                 <div class="chat-row" style="justify-content: flex-start;">
                     <div style="display: flex; flex-direction: column; align-items: flex-start; max-width: 100%;">
-                        <div class="sender-name" style="margin-left: 8px;">{sender}</div>
+                        <div class="sender-name">{sender}</div>
                         <div style="display: flex; align-items: flex-end;">
-                            <div class="chat-bubble bubble-maki" style="margin-left: 8px;">{text}</div>
+                            <div class="chat-bubble bubble-maki" style="margin-left: 10px;">{text}</div>
                             <div class="chat-info">{time}</div>
                         </div>
                     </div>
