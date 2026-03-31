@@ -1,8 +1,9 @@
 import streamlit as st
 from supabase import create_client
 from streamlit_autorefresh import st_autorefresh
+import streamlit.components.v1 as components # JavaScript実行用に追加
 
-# --- 1. 設定 (必ず最初に実行) ---
+# --- 1. 設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
 # --- 2. デザイン (CSS) ---
@@ -11,20 +12,23 @@ st.markdown("""
     .stApp { background-color: #313338; color: #dbdee1; }
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
     .stAppDeployButton {display:none;}
-    .block-container { padding-top: 1rem; padding-bottom: 6rem; max-width: 100% !important; }
-
-    /* 操作パネル用の枠（少しDiscordのツールバー風に） */
-    .control-panel {
-        background-color: #2b2d31;
-        padding: 10px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-        border: 1px solid #404249;
+    
+    /* 下部の余白を確保 */
+    .block-container { 
+        padding-top: 1rem; 
+        padding-bottom: 10rem !important; 
+        max-width: 100% !important; 
     }
 
     .chat-row { display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }
     .chat-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }
-    .message-text { font-size: 1.05rem; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; max-width: 85%; }
+    .message-text { 
+        font-size: 1.05rem; 
+        line-height: 1.6; 
+        white-space: pre-wrap; 
+        word-wrap: break-word; 
+        max-width: 85%; 
+    }
 
     .align-right { align-items: flex-end; text-align: right; }
     .align-left { align-items: flex-start; text-align: left; }
@@ -64,23 +68,19 @@ SUPABASE_URL = "https://kvqbwknrsdasoipttkpr.supabase.co"
 SUPABASE_KEY = "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT"
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# --- 5. メイン画面の操作パネル ---
+# --- 5. 操作パネル ---
 st.title("💬 M25-Chat")
-
-# カラムを分けて横並びにする（スマホでも横に並びやすいよう比率を調整）
 col1, col2 = st.columns([2, 1])
-
 with col1:
     auto_update = st.toggle("自動更新(5s)", value=False)
 with col2:
     if st.button("🔄更新", use_container_width=True):
         st.rerun()
 
-# 自動更新ロジック
 if auto_update:
     st_autorefresh(interval=5000, key="chat_update")
 
-st.divider() # 区切り線
+st.divider()
 
 # --- 6. 履歴の表示 ---
 try:
@@ -94,13 +94,7 @@ try:
 
         align_class = "align-right" if sender_upper == current_user else "align-left"
         header_style = "flex-direction: row-reverse;" if sender_upper == current_user else ""
-
-        if "MAKI" in sender_upper:
-            name_class = "name-maki"
-        elif "HIDE" in sender_upper:
-            name_class = "name-hide"
-        else:
-            name_class = "name-default"
+        name_class = "name-maki" if "MAKI" in sender_upper else "name-hide" if "HIDE" in sender_upper else "name-default"
 
         st.markdown(f"""
             <div class="chat-row {align_class}">
@@ -111,6 +105,7 @@ try:
                 <div class="message-text text-content">{text}</div>
             </div>
         """, unsafe_allow_html=True)
+
 except Exception as e:
     st.empty()
 
@@ -123,3 +118,17 @@ if prompt:
         st.rerun()
     except Exception as e:
         st.error(f"Error")
+
+# --- 8. 【追加】強制スクロールJavaScript ---
+# 画面の末尾に、一番下までスクロールさせるJSを埋め込みます
+components.html(
+    """
+    <script>
+    var main = window.parent.document.querySelector(".main");
+    if (main) {
+        main.scrollTo(0, main.scrollHeight);
+    }
+    </script>
+    """,
+    height=0,
+)
