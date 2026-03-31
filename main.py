@@ -10,17 +10,10 @@ st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 st.markdown("""
     <style>
     .stApp { background-color: #313338; color: #dbdee1; }
-    
-    /* 開発者メニュー、デプロイボタン、ヘッダー、フッターを隠す */
-    #MainMenu {visibility: hidden;} 
-    footer {visibility: hidden;} 
-    header {visibility: hidden;}
+    #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
     .stAppDeployButton {display:none;}
-    
-    /* 右下の「Manage app」ボタンを完全に非表示にする */
     [data-testid="bundle-viewer-container"] {display: none !important;}
     
-    /* 下部余白を 3.5rem に設定（スクロールの遊びを確保） */
     .block-container { 
         padding-top: 1rem; 
         padding-bottom: 3.5rem !important; 
@@ -29,42 +22,27 @@ st.markdown("""
 
     .chat-row { display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }
     .chat-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }
-    .message-text { 
-        font-size: 1.05rem; 
-        line-height: 1.6; 
-        white-space: pre-wrap; 
-        word-wrap: break-word; 
-        max-width: 85%; 
-    }
-
+    .message-text { font-size: 1.05rem; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; max-width: 85%; }
     .align-right { align-items: flex-end; text-align: right; }
     .align-left { align-items: flex-start; text-align: left; }
-
     .name-maki { color: #ffa657 !important; font-weight: bold; }
     .name-hide { color: #58a6ff !important; font-weight: bold; }
-    
     .timestamp { color: #949ba4; font-size: 0.75rem; }
     .text-content { color: #e6edf3; }
-
-    div[data-testid="stChatInput"] {
-        padding-bottom: 15px;
-    }
+    div[data-testid="stChatInput"] { padding-bottom: 15px; }
     </style>
 """, unsafe_allow_html=True)
 
 # --- 3. パスワード認証 ---
 def check_password():
-    def password_entered():
-        if st.session_state["password"] == "05250206":
-            st.session_state["password_correct"] = True
-            del st.session_state["password"]
-        else:
-            st.session_state["password_correct"] = False
     if "password_correct" not in st.session_state:
-        st.text_input("PW", type="password", on_change=password_entered, key="password")
-        return False
-    elif not st.session_state["password_correct"]:
-        st.error("❌")
+        # 初回はパスワード入力を求める
+        pw = st.text_input("PW", type="password")
+        if pw == "05250206":
+            st.session_state["password_correct"] = True
+            st.rerun()
+        elif pw:
+            st.error("❌")
         return False
     return True
 
@@ -83,25 +61,21 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 st.title("💬 M25-Chat")
 col1, col2 = st.columns([2, 1])
 with col1:
-    # value=True にすることで、初期状態を「自動更新ON」に変更
+    # 確実に1回だけ実行されるように設定
     auto_update = st.toggle("自動更新(5s)", value=True)
 with col2:
     if st.button("🔄更新", use_container_width=True):
         st.rerun()
 
+# 5秒おきに更新。スマホの負荷を考え、短すぎない設定に
 if auto_update:
-    st_autorefresh(interval=5000, key="chat_update")
+    st_autorefresh(interval=5000, key="chat_update_timer")
 
 st.divider()
 
-# --- 6. 履歴の表示 (最新20件) ---
+# --- 6. 履歴の表示 ---
 try:
-    res = supabase.table("messages") \
-        .select("*") \
-        .order("created_at", desc=True) \
-        .limit(20) \
-        .execute()
-    
+    res = supabase.table("messages").select("*").order("created_at", desc=True).limit(20).execute()
     messages = res.data[::-1]
     
     for m in messages:
@@ -123,45 +97,37 @@ try:
                 <div class="message-text text-content">{text}</div>
             </div>
         """, unsafe_allow_html=True)
-
-except Exception as e:
+except Exception:
     st.empty()
 
 # --- 7. 入力欄 ---
 prompt = st.chat_input("メッセージを入力...")
-
 if prompt:
     try:
         supabase.table("messages").insert({"sender_name": current_user, "message_body": prompt}).execute()
         st.rerun()
-    except Exception as e:
-        st.error(f"Error")
+    except Exception:
+        pass
 
 # --- 8. 強制スクロールJavaScript ---
+# スマホで真っ白になるのを防ぐため、実行条件を絞ります
 components.html(
     """
     <script>
     const scrollToEnd = () => {
-        const targets = [
-            window.parent.document.querySelector(".main"),
-            window.parent.document.querySelector(".stApp"),
-            window.parent.document.documentElement
-        ];
-        targets.forEach(el => {
-            if (el) {
-                el.scrollTo({
-                    top: el.scrollHeight + 10000,
-                    behavior: 'auto'
-                });
-            }
-        });
+        const win = window.parent.document;
+        const main = win.querySelector(".main");
+        if (main) {
+            main.scrollTo({ top: main.scrollHeight + 1000, behavior: 'auto' });
+        }
     };
-
-    scrollToEnd();
-    setTimeout(scrollToEnd, 300);
-    setTimeout(scrollToEnd, 1000);
-
-    window.parent.addEventListener('resize', scrollToEnd);
+    // 描画完了を待ってから実行
+    if (window.parent.document.readyState === 'complete') {
+        scrollToEnd();
+    } else {
+        window.parent.addEventListener('load', scrollToEnd);
+    }
+    setTimeout(scrollToEnd, 500);
     </script>
     """,
     height=0,
