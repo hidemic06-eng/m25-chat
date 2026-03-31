@@ -40,34 +40,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 認証 (PC安定 ＆ スマホテンキー挑戦版) ---
+# --- 3. 認証 (エラーの原因となるJSを全廃) ---
 if "password_correct" not in st.session_state:
     st.write("🔒 Enter Password")
     
-    # keyを固定することで、PCでの「ログインできない」問題を回避
-    pw = st.text_input("Password", type="password", key="login_input")
-
-    # JavaScriptでスマホのみ「数字入力モード」を後付けする
-    components.html(
-        """
-        <script>
-        // 親ウィンドウ（Streamlit本体）の入力欄を探す
-        const interval = setInterval(() => {
-            const inputs = window.parent.document.querySelectorAll('input[type="password"]');
-            if (inputs.length > 0) {
-                inputs.forEach(input => {
-                    // inputmode="numeric" を付けることで、伏せ字のままテンキーを誘発する
-                    input.setAttribute('inputmode', 'numeric');
-                    // 履歴（吉岡さん等）が出ないように念押し
-                    input.setAttribute('autocomplete', 'new-password');
-                });
-                clearInterval(interval);
-            }
-        }, 500);
-        </script>
-        """,
-        height=0,
-    )
+    # type="password" にすることで：
+    # 1. 伏せ字（●●●）になる
+    # 2. ブラウザが「パスワード」と認識し、変な名前リスト（吉岡さん等）が出なくなる
+    # 3. PC/スマホ問わず100%ログインできる
+    pw = st.text_input("Password", type="password", key="final_stable_login")
 
     if pw == "05250206":
         st.session_state["password_correct"] = True
