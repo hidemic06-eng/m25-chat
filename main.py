@@ -10,13 +10,20 @@ st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 st.markdown("""
     <style>
     .stApp { background-color: #313338; color: #dbdee1; }
-    #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
+    
+    /* 開発者メニュー、デプロイボタン、ヘッダー、フッターを隠す */
+    #MainMenu {visibility: hidden;} 
+    footer {visibility: hidden;} 
+    header {visibility: hidden;}
     .stAppDeployButton {display:none;}
     
-    /* スクロールを確実にするため、余白を 2rem → 2.5rem へ微増（この0.5remがスクロールの呼び水になります） */
+    /* 右下の「Manage app」ボタンを完全に非表示にする */
+    [data-testid="bundle-viewer-container"] {display: none !important;}
+    
+    /* スマホで「一番下まで行かない」のを防ぐため、下部余白を 3.5rem に広げてスクロールの遊びを作ります */
     .block-container { 
         padding-top: 1rem; 
-        padding-bottom: 2.5rem !important; 
+        padding-bottom: 3.5rem !important; 
         max-width: 100% !important; 
     }
 
@@ -86,16 +93,14 @@ if auto_update:
 
 st.divider()
 
-# --- 6. 履歴の表示 (最新20件に絞り込み) ---
+# --- 6. 履歴の表示 (最新20件) ---
 try:
-    # 昇順(False)だと全件取得になるため、降順(True)で最新20件を取得してから、表示用に並び替えます
     res = supabase.table("messages") \
         .select("*") \
         .order("created_at", desc=True) \
         .limit(20) \
         .execute()
     
-    # 表示は古いもの→新しいものの順にする
     messages = res.data[::-1]
     
     for m in messages:
@@ -131,33 +136,33 @@ if prompt:
     except Exception as e:
         st.error(f"Error")
 
-# --- 8. 【スマホ特化型】強制スクロールJavaScript ---
+# --- 8. 強制スクロールJavaScript ---
 components.html(
     """
     <script>
     const scrollToEnd = () => {
-        // スマホブラウザで確実にスクロール対象を特定するための指定
-        const scrolls = window.parent.document.querySelectorAll(".main, .stApp");
-        scrolls.forEach(el => {
+        // スマホで効きやすいように複数の要素にスクロール命令を出す
+        const targets = [
+            window.parent.document.querySelector(".main"),
+            window.parent.document.querySelector(".stApp"),
+            window.parent.document.documentElement
+        ];
+        targets.forEach(el => {
             if (el) {
                 el.scrollTo({
-                    top: el.scrollHeight + 5000,
-                    behavior: 'auto' // instantよりスマホでの互換性が高いautoを使用
+                    top: el.scrollHeight + 10000,
+                    behavior: 'auto'
                 });
             }
         });
     };
 
-    // 1. 即時
+    // スマホの描画タイミングに合わせて3回実行
     scrollToEnd();
-
-    // 2. 0.3秒後（スマホのレンダリング待機）
     setTimeout(scrollToEnd, 300);
+    setTimeout(scrollToEnd, 1000); // 1秒後にもう一度念押し
 
-    // 3. 0.8秒後（念のための最終調整）
-    setTimeout(scrollToEnd, 800);
-
-    // スマホのウィンドウサイズ変更（キーボード表示など）を検知して追従
+    // キーボード表示などでサイズが変わった時に追従
     window.parent.addEventListener('resize', scrollToEnd);
     </script>
     """,
