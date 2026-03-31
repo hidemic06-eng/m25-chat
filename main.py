@@ -41,13 +41,36 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 認証 ---
+# --- 3. 認証 (スマホでテンキーを出す仕掛け付き) ---
 if "password_correct" not in st.session_state:
-    pw = st.text_input("PW", type="password")
-    if pw == "0525":
+    st.write("🔒 Enter Password")
+    # type="password" のままだと文字キーボードになるため、
+    # 一時的にテキストとして受け、JSで挙動を制御します
+    pw = st.text_input("Password", type="default", key="pw_input")
+    
+    # JavaScriptで入力欄を「数値入力モード」に強制変更
+    components.html(
+        """
+        <script>
+        const inputs = window.parent.document.querySelectorAll('input');
+        inputs.forEach(input => {
+            if (input.getAttribute('aria-label') === 'Password') {
+                input.type = 'tel'; // type="tel" はスマホでテンキーが出やすい設定
+                input.style.webkitTextSecurity = 'disc'; // 伏せ字にする設定
+            }
+        });
+        </script>
+        """,
+        height=0,
+    )
+
+    if pw == "05250206":
         st.session_state["password_correct"] = True
         st.rerun()
+    elif pw:
+        st.error("❌")
     st.stop()
+
 
 # --- 4. ページ管理（オフセット） ---
 if "page_offset" not in st.session_state:
