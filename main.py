@@ -1,12 +1,26 @@
 import streamlit as st
 from supabase import create_client
-from streamlit_autorefresh import st_autorefresh # 追加
+from streamlit_autorefresh import st_autorefresh
 
 # --- 1. 設定 (必ず最初に実行) ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
-# 5秒ごとに自動更新する設定を追加（これで新着メッセージに気づけます）
-st_autorefresh(interval=5000, key="chat_update")
+# --- サイドバーで更新設定を管理 ---
+with st.sidebar:
+    st.title("⚙️ 設定")
+    # 自動更新のON/OFF切り替え
+    auto_update = st.toggle("自動更新 (5秒)", value=False)
+    
+    if auto_update:
+        # ONのときだけ実行
+        st_autorefresh(interval=5000, key="chat_update")
+        st.caption("✅ 5秒ごとにチェック中")
+    else:
+        st.caption("⏸️ 自動更新停止中")
+    
+    # 手動更新ボタン（クリックすると再読み込み）
+    if st.button("🔄 手動更新", use_container_width=True):
+        st.rerun()
 
 # --- 2. デザイン (CSS) ---
 st.markdown("""
@@ -18,23 +32,13 @@ st.markdown("""
 
     .chat-row { display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }
     .chat-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }
-    
-    /* 本文のサイズを少しだけ大きく(1.05rem)、行間をゆったり(1.6)に調整 */
-    .message-text { 
-        font-size: 1.05rem; 
-        line-height: 1.6; 
-        white-space: pre-wrap; 
-        word-wrap: break-word; 
-        max-width: 85%; 
-    }
+    .message-text { font-size: 1.05rem; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; max-width: 85%; }
 
-    /* 配置用のクラス */
     .align-right { align-items: flex-end; text-align: right; }
     .align-left { align-items: flex-start; text-align: left; }
 
-    /* 名前ごとの固定色設定 */
-    .name-maki { color: #ffa657 !important; font-weight: bold; } /* オレンジ */
-    .name-hide { color: #58a6ff !important; font-weight: bold; } /* 青 */
+    .name-maki { color: #ffa657 !important; font-weight: bold; }
+    .name-hide { color: #58a6ff !important; font-weight: bold; }
     .name-default { color: #dbdee1; font-weight: bold; }
 
     .timestamp { color: #949ba4; font-size: 0.75rem; }
