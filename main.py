@@ -13,14 +13,17 @@ st.markdown("""
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
     .stAppDeployButton {display:none;}
     
-    /* 下部の余白を確保 */
+    /* 下部の余白を「5rem」からさらに絞って「3rem」へ */
+    /* これで入力欄のすぐ上に最新メッセージが配置されるはずです */
     .block-container { 
         padding-top: 1rem; 
-        padding-bottom: 10rem !important; 
+        padding-bottom: 3rem !important; 
         max-width: 100% !important; 
     }
 
+    /* メッセージの間隔は広げず、現状を維持（16px） */
     .chat-row { display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }
+    
     .chat-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }
     .message-text { 
         font-size: 1.05rem; 
@@ -40,6 +43,7 @@ st.markdown("""
     .text-content { color: #e6edf3; }
     </style>
 """, unsafe_allow_html=True)
+
 
 # --- 3. パスワード認証 ---
 def check_password():
