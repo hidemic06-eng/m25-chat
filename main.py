@@ -30,69 +30,89 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.set_page_config(page_title="M25-Chat", page_icon="💬")
 
-# --- 3. アップロード画像風・ダークモードデザイン (CSS) ---
+# --- 3. 吹き出しワイド & ビビッドカラー (CSS) ---
 st.markdown("""
     <style>
-    /* 全体の背景色を少し明るいダークグレーに（画像風） */
-    .stApp {
-        background-color: #1a1c23 !important;
-        color: #e0e6ed !important;
-    }
+    /* 全体の背景設定 */
+    .stApp { background-color: #1a1c23 !important; color: #e0e6ed !important; }
 
-    /* 入力欄（テキスト入力、テキストエリア）のスタイル */
-    /* 背景を濃いグレー (#2d333b)、文字を白 (#ffffff) に */
+    /* 入力欄のダーク化 */
     .stTextInput>div>div>input, .stTextArea>div>div>textarea {
         background-color: #2d333b !important;
         color: #ffffff !important;
-        border: 1px solid #444c56 !important; /* 枠線を少し明るく */
-        border-radius: 8px !important;
-        font-size: 16px !important;
-    }
-
-    /* 入力欄にフォーカスが当たった時の枠線の色（少し青っぽく） */
-    .stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus {
-        border-color: #539bf5 !important;
-        box-shadow: 0 0 0 1px #539bf5 !important;
-    }
-
-    /* 入力欄のラベル（"名前"、"メッセージ入力"など）の文字色 */
-    .stTextInput>label, .stTextArea>label {
-        color: #e0e6ed !important;
-        font-weight: 600 !important;
-    }
-
-    /* 送信ボタンのスタイル（画像のような濃いグレー） */
-    .stButton>button {
-        background-color: #3e4451 !important;
-        color: #ffffff !important;
         border: 1px solid #444c56 !important;
         border-radius: 8px !important;
-        padding: 8px 20px !important;
-    }
-    /* ボタンホバー時 */
-    .stButton>button:hover {
-        background-color: #4c5361 !important;
-        border-color: #539bf5 !important;
     }
 
-    /* 履歴表示の吹き出し（LINE風を維持しつつ、ダークモードに対応） */
-    .chat-row { display: flex; margin-bottom: 15px; width: 100%; }
+    /* 吹き出しのレイアウト設定 */
+    .chat-row { display: flex; margin-bottom: 20px; width: 100%; }
+    
+    /* 吹き出し本体：max-widthを90%に広げ、文字を白に固定 */
     .chat-bubble { 
-        padding: 12px 18px; 
+        padding: 14px 20px; 
         border-radius: 18px; 
-        max-width: 80%; 
+        max-width: 90%;  /* 横幅を広く設定 */
         font-size: 16px; 
         line-height: 1.5; 
-        box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        color: #ffffff !important; 
+        font-weight: 500;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     }
-    /* 自分の吹き出し（ダークグリーン） */
-    .bubble-hide { background-color: #2e6b3b !important; color: #ffffff !important; border-top-right-radius: 2px; }
-    /* 相手の吹き出し（濃いグレー） */
-    .bubble-maki { background-color: #3e4451 !important; color: #ffffff !important; border: 1px solid #444c56; border-top-left-radius: 2px; }
     
-    .chat-info { font-size: 11px; color: #888888; margin-top: 5px; }
+    /* 自分（HIDEなど）：右寄せ & 青色 */
+    .bubble-right { 
+        background-color: #007bff !important; 
+        border-top-right-radius: 2px; 
+    }
+    
+    /* 相手（MAKIなど）：左寄せ & オレンジ色 */
+    .bubble-left { 
+        background-color: #fd7e14 !important; 
+        border-top-left-radius: 2px; 
+    }
+    
+    .chat-info { font-size: 11px; color: #aaaaaa; margin-top: 5px; }
     </style>
 """, unsafe_allow_html=True)
+
+# --- (中略：送信フォームなどはそのまま) ---
+
+# --- 5. 履歴表示 (修正版) ---
+st.write("---")
+try:
+    res = supabase.table("messages").select("*").order("created_at", desc=True).execute()
+    for m in res.data:
+        sender = m['sender_name']
+        text = m['message_body']
+        time = m['created_at'][11:16]
+
+        if sender == current_user:
+            # 自分側（右・青）
+            st.markdown(f"""
+                <div class="chat-row" style="justify-content: flex-end;">
+                    <div style="text-align: right; width: 90%;">
+                        <div style="display: flex; justify-content: flex-end;">
+                            <div class="chat-bubble bubble-right">{text}</div>
+                        </div>
+                        <div class="chat-info">{time} ✅</div>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+        else:
+            # 相手側（左・オレンジ）
+            st.markdown(f"""
+                <div class="chat-row" style="justify-content: flex-start;">
+                    <div style="text-align: left; width: 90%;">
+                        <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #fd7e14;">{sender}</div>
+                        <div style="display: flex; justify-content: flex-start;">
+                            <div class="chat-bubble bubble-left">{text}</div>
+                        </div>
+                        <div class="chat-info">{time}</div>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+except Exception as e:
+    st.write("履歴を読み込み中...")
 
 st.title("💬 M25-Chat")
 
