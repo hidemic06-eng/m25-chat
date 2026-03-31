@@ -1,6 +1,18 @@
 import streamlit as st
 from supabase import create_client
 
+# --- メニューと猫アイコンを非表示にする設定 ---
+st.markdown("""
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    /* GitHubアイコンなどを消す */
+    .stAppDeployButton {display:none;}
+    #stDecoration {display:none;}
+    </style>
+""", unsafe_allow_html=True)
+
 # --- 1. パスワード認証機能 ---
 def check_password():
     def password_entered():
