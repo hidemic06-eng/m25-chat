@@ -1,6 +1,36 @@
 import streamlit as st
 from supabase import create_client
 
+# --- パスワード認証機能 ---
+def check_password():
+    """正しいパスワードが入力されたら True を返す"""
+    def password_entered():
+        if st.session_state["password"] == "05250206":  # ← ここに好きなパスワードを設定！
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]  # セッションから削除して安全に
+        else:
+            st.session_state["password_correct"] = False
+
+    if "password_correct" not in st.session_state:
+        # 初回表示：パスワード入力欄
+        st.text_input("パスワードを入力してください", type="password", on_change=password_entered, key="password")
+        return False
+    elif not st.session_state["password_correct"]:
+        # 間違った場合：再入力
+        st.text_input("パスワードが違います。再入力してください", type="password", on_change=password_entered, key="password")
+        st.error("😕 パスワードが正しくありません")
+        return False
+    else:
+        # 正解
+        return True
+
+# パスワードチェックが通らない限り、これ以降のコードは実行されない
+if not check_password():
+    st.stop()
+
+# --- ここから下の既存コードはそのまま ---
+# 1. Supabaseの接続情報...
+
 # 1. Supabaseの接続情報（HIDEさんの専用キーを設定済み）
 SUPABASE_URL = "https://kvqbwknrsdasoipttkpr.supabase.co"
 SUPABASE_KEY = "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT"
