@@ -32,7 +32,6 @@ st.markdown("""
     
     div[data-testid="stChatInput"] { padding-bottom: 0px !important; }
 
-    /* ページ切り替えボタンのデザイン */
     .stButton > button {
         height: 30px !important;
         padding: 0 10px !important;
@@ -41,37 +40,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 認証 (履歴ブロック ＆ 自動ログイン) ---
+# --- 3. 認証 (最も確実な標準方式) ---
 if "password_correct" not in st.session_state:
     st.write("🔒 Enter Password")
     
-    # name属性を毎回変えることで、ブラウザに「初めて見る入力欄だ」と誤認させ、履歴を封じます
-    import time
-    random_id = str(int(time.time())) 
-    
-    pw = st.text_input("Password", type="default", key=f"pw_{random_id}")
-    
-    components.html(
-        f"""
-        <script>
-        const inputs = window.parent.document.querySelectorAll('input');
-        inputs.forEach(input => {{
-            if (input.getAttribute('aria-label') === 'Password') {{
-                // 1. 履歴を強力に拒否する3点セット
-                input.setAttribute('autocomplete', 'new-password');
-                input.setAttribute('name', 'pw_{random_id}');
-                input.setAttribute('spellcheck', 'false');
-                
-                // 2. テンキー ＆ 伏せ字
-                input.setAttribute('type', 'tel');
-                input.style.webkitTextSecurity = 'disc';
-            }}
-        }});
-        </script>
-        """,
-        height=0,
-    )
+    # 履歴を出さない、伏せ字にする、を標準機能だけで実行
+    # type="password" にすれば、スマホでも「数字のみ」の設定にしていればテンキーが出やすくなります
+    pw = st.text_input("Password", type="password", key="standard_pw")
 
+    # Enterキーまたは入力後の確定で判定
     if pw == "05250206":
         st.session_state["password_correct"] = True
         st.rerun()
@@ -80,7 +57,7 @@ if "password_correct" not in st.session_state:
     
     st.stop()
 
-# --- 4. ページ管理（オフセット） ---
+# --- 4. ページ管理 ---
 if "page_offset" not in st.session_state:
     st.session_state["page_offset"] = 0
 
@@ -99,7 +76,7 @@ if auto_update and st.session_state["page_offset"] == 0:
 
 st.divider()
 
-# --- 7. ページ切り替えナビゲーション ---
+# --- 7. ページ切り替え ---
 col_prev, col_page, col_next = st.columns([1, 2, 1])
 with col_prev:
     if st.button("⬅️ 前の20件"):
@@ -116,7 +93,7 @@ with col_next:
     else:
         st.button("最新です", disabled=True)
 
-# --- 8. 表示 (現在のオフセットから20件取得) ---
+# --- 8. 表示 ---
 try:
     res = supabase.table("messages") \
         .select("*") \
