@@ -20,7 +20,7 @@ st.markdown("""
     /* 右下の「Manage app」ボタンを完全に非表示にする */
     [data-testid="bundle-viewer-container"] {display: none !important;}
     
-    /* スマホで「一番下まで行かない」のを防ぐため、下部余白を 3.5rem に広げてスクロールの遊びを作ります */
+    /* 下部余白を 3.5rem に設定（スクロールの遊びを確保） */
     .block-container { 
         padding-top: 1rem; 
         padding-bottom: 3.5rem !important; 
@@ -83,7 +83,8 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 st.title("💬 M25-Chat")
 col1, col2 = st.columns([2, 1])
 with col1:
-    auto_update = st.toggle("自動更新(5s)", value=False)
+    # value=True にすることで、初期状態を「自動更新ON」に変更
+    auto_update = st.toggle("自動更新(5s)", value=True)
 with col2:
     if st.button("🔄更新", use_container_width=True):
         st.rerun()
@@ -141,7 +142,6 @@ components.html(
     """
     <script>
     const scrollToEnd = () => {
-        // スマホで効きやすいように複数の要素にスクロール命令を出す
         const targets = [
             window.parent.document.querySelector(".main"),
             window.parent.document.querySelector(".stApp"),
@@ -157,12 +157,10 @@ components.html(
         });
     };
 
-    // スマホの描画タイミングに合わせて3回実行
     scrollToEnd();
     setTimeout(scrollToEnd, 300);
-    setTimeout(scrollToEnd, 1000); // 1秒後にもう一度念押し
+    setTimeout(scrollToEnd, 1000);
 
-    // キーボード表示などでサイズが変わった時に追従
     window.parent.addEventListener('resize', scrollToEnd);
     </script>
     """,
