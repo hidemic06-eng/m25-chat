@@ -131,23 +131,34 @@ if prompt:
     except Exception as e:
         st.error(f"Error")
 
-# --- 8. スクロールJavaScript ---
+# --- 8. 【スマホ特化型】強制スクロールJavaScript ---
 components.html(
     """
     <script>
     const scrollToEnd = () => {
-        const mainContent = window.parent.document.querySelector(".main");
-        if (mainContent) {
-            mainContent.scrollTo({
-                top: mainContent.scrollHeight + 500,
-                behavior: 'instant'
-            });
-        }
+        // スマホブラウザで確実にスクロール対象を特定するための指定
+        const scrolls = window.parent.document.querySelectorAll(".main, .stApp");
+        scrolls.forEach(el => {
+            if (el) {
+                el.scrollTo({
+                    top: el.scrollHeight + 5000,
+                    behavior: 'auto' // instantよりスマホでの互換性が高いautoを使用
+                });
+            }
+        });
     };
-    // 3段階でしつこく実行して確実に下へ
+
+    // 1. 即時
     scrollToEnd();
-    setTimeout(scrollToEnd, 100);
-    setTimeout(scrollToEnd, 500);
+
+    // 2. 0.3秒後（スマホのレンダリング待機）
+    setTimeout(scrollToEnd, 300);
+
+    // 3. 0.8秒後（念のための最終調整）
+    setTimeout(scrollToEnd, 800);
+
+    // スマホのウィンドウサイズ変更（キーボード表示など）を検知して追従
+    window.parent.addEventListener('resize', scrollToEnd);
     </script>
     """,
     height=0,
