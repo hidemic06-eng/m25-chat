@@ -30,7 +30,7 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.set_page_config(page_title="M25-Chat", page_icon="💬")
 
-# --- 3. ダークモード & カスタムデザイン (CSS) ---
+# --- 3. ダークモード & フレキシブル吹き出しデザイン (CSS) ---
 st.markdown("""
     <style>
     /* 背景と入力欄のデザイン */
@@ -43,22 +43,28 @@ st.markdown("""
     /* 吹き出しの共通設定 */
     .chat-row { display: flex; margin-bottom: 20px; width: 100%; align-items: flex-end; }
     
-    /* 横幅を80%に設定 */
+    /* 修正ポイント：widthを削除し、max-widthを指定 */
     .chat-bubble { 
-        padding: 14px 20px; border-radius: 18px; width: 80%; 
-        font-size: 16px; line-height: 1.5; color: #ffffff !important; 
-        font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        padding: 12px 18px; 
+        border-radius: 18px; 
+        max-width: 80%; /* 最大で画面の8割 */
+        width: auto;    /* 内容に合わせて縮む */
+        display: inline-block;
+        font-size: 16px; 
+        line-height: 1.5; 
+        color: #ffffff !important; 
+        font-weight: 500; 
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         word-wrap: break-word;
     }
     
-    /* Hide用（右・落ち着いた深みのある青：スレートブルー系） */
+    /* Hide用（右・落ち着いた青） */
     .bubble-hide { background-color: #4682b4 !important; border-bottom-right-radius: 2px; }
-    
-    /* Maki用（左・落ち着いた深みのあるオレンジ：テラコッタ系） */
+    /* Maki用（左・落ち着いたオレンジ） */
     .bubble-maki { background-color: #d2691e !important; border-bottom-left-radius: 2px; }
     
     .chat-info { font-size: 10px; color: #888888; margin: 0 8px; min-width: fit-content; }
-    .sender-name { font-size: 12px; font-weight: bold; margin-bottom: 6px; color: #d2691e; }
+    .sender-name { font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #d2691e; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -86,18 +92,18 @@ try:
         time = m['created_at'][11:16]
 
         if sender.upper() == "HIDE":
-            # Hideさんは右側（青・幅8割）
+            # Hideさんは右側（青）
             st.markdown(f"""
                 <div class="chat-row" style="justify-content: flex-end;">
-                    <div class="chat-info" style="text-align: right;">{time}<br>✅</div>
+                    <div class="chat-info" style="text-align: right;">{time} ✅</div>
                     <div class="chat-bubble bubble-hide">{text}</div>
                 </div>
             """, unsafe_allow_html=True)
         else:
-            # Makiさんは左側（オレンジ・幅8割）
+            # Makiさんは左側（オレンジ）
             st.markdown(f"""
                 <div class="chat-row" style="justify-content: flex-start;">
-                    <div style="width: 100%;">
+                    <div style="display: flex; flex-direction: column; align-items: flex-start; max-width: 100%;">
                         <div class="sender-name" style="margin-left: 10px;">{sender}</div>
                         <div style="display: flex; align-items: flex-end;">
                             <div class="chat-bubble bubble-maki" style="margin-left: 10px;">{text}</div>
