@@ -13,15 +13,14 @@ st.markdown("""
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
     .stAppDeployButton {display:none;}
     
-    /* 下部の余白を「5rem」からさらに絞って「3rem」へ */
-    /* これで入力欄のすぐ上に最新メッセージが配置されるはずです */
+    /* 下部の余白を「2rem」に。これで入力欄との隙間が最小限になります */
     .block-container { 
         padding-top: 1rem; 
-        padding-bottom: 3rem !important; 
+        padding-bottom: 2rem !important; 
         max-width: 100% !important; 
     }
 
-    /* メッセージの間隔は広げず、現状を維持（16px） */
+    /* メッセージの間隔はタイトなまま維持 */
     .chat-row { display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }
     
     .chat-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }
@@ -41,6 +40,11 @@ st.markdown("""
     
     .timestamp { color: #949ba4; font-size: 0.75rem; }
     .text-content { color: #e6edf3; }
+
+    /* 入力欄の背景が透過して文字が重ならないように、入力エリアの重なりを微調整 */
+    div[data-testid="stChatInput"] {
+        padding-bottom: 15px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
