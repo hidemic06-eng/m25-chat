@@ -12,38 +12,38 @@ st.markdown("""
     /* 全体の背景 */
     .stApp { background-color: #313338; color: #dbdee1; }
     
-    /* 1. 標準要素の非表示 */
+    /* 標準メニューの非表示 */
     #MainMenu {visibility: hidden;} 
     footer {visibility: hidden;} 
     header {visibility: hidden;}
     .stAppDeployButton {display:none;}
 
-    /* 2. 【最強版】右下アイコン・メニューを根こそぎ消す */
-    /* id, class, data-testid すべての角度から非表示を叩き込みます */
+    /* 【修正版】アイコンのみをピンポイントで消す設定 */
+    /* メインコンテンツを巻き込まないよう、セレクタを限定的にしました */
     [data-testid="bundle-viewer-container"],
     [data-testid="stStatusWidget"],
-    [data-testid="stAppViewBlockContainer"] > div:last-child,
-    .st-emotion-cache-1wbqy5l,
-    .st-emotion-cache-k7vsyb,
-    .st-emotion-cache-6q9sum,
     button[title="Manage app"],
-    #viewer-container {
+    .st-emotion-cache-1wbqy5l,
+    .st-emotion-cache-k7vsyb {
         display: none !important;
-        visibility: hidden !important;
         opacity: 0 !important;
-        height: 0 !important;
-        width: 0 !important;
         pointer-events: none !important;
     }
 
-    /* 3. 余白調整（3.5remでスクロールの遊びを確保） */
+    /* メインの表示エリアを「絶対に消さない」ための上書き */
+    [data-testid="stAppViewBlockContainer"] {
+        display: block !important;
+        opacity: 1 !important;
+    }
+
+    /* 下部余白（スマホのスクロール遊び用） */
     .block-container { 
         padding-top: 1rem; 
         padding-bottom: 3.5rem !important; 
         max-width: 100% !important; 
     }
 
-    /* チャット行のデザイン */
+    /* チャットのデザイン */
     .chat-row { display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }
     .chat-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }
     .message-text { font-size: 1.05rem; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; max-width: 85%; }
@@ -57,7 +57,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. パスワード認証 (スマホでも確実に動く版) ---
+# --- 3. パスワード認証 ---
 if "password_correct" not in st.session_state:
     st.title("🔒 Authentication")
     pw = st.text_input("Password", type="password")
@@ -86,7 +86,7 @@ with col2:
         st.rerun()
 
 if auto_update:
-    st_autorefresh(interval=5000, key="chat_update_fixed")
+    st_autorefresh(interval=5000, key="chat_update_stable")
 
 st.divider()
 
@@ -124,7 +124,6 @@ if prompt:
         pass
 
 # --- 8. スクロールJavaScript ---
-# スマホで「動かなくなる」のを防ぐため、より確実に親ウィンドウを叩きます
 components.html(
     """
     <script>
@@ -134,7 +133,6 @@ components.html(
             main.scrollTo({ top: main.scrollHeight + 5000, behavior: 'auto' });
         }
     };
-    // 描画後、少し落ち着いてから実行
     setTimeout(scrollToBottom, 500);
     setTimeout(scrollToBottom, 1500);
     </script>
