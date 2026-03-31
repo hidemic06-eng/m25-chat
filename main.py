@@ -41,21 +41,23 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 認証 (Enter不要の自動ログイン版) ---
+# --- 3. 認証 (Enter不要/テンキー/履歴表示なし) ---
 if "password_correct" not in st.session_state:
     st.write("🔒 Enter Password")
-    # type="default" でJS制御
     pw = st.text_input("Password", type="default", key="pw_input")
     
-    # 1. テンキーを出しつつ、伏せ字にするJS
+    # JavaScriptで「履歴オフ」「テンキー」「伏せ字」をまとめて強制
     components.html(
         """
         <script>
         const inputs = window.parent.document.querySelectorAll('input');
         inputs.forEach(input => {
             if (input.getAttribute('aria-label') === 'Password') {
-                // tel は「確定」や「完了」が出やすいのでこれに戻し、JSで補強します
+                // 自動補完をオフにする（履歴を出させない）
+                input.setAttribute('autocomplete', 'new-password');
+                // テンキーを出す
                 input.setAttribute('type', 'tel');
+                // 伏せ字にする
                 input.style.webkitTextSecurity = 'disc';
             }
         });
@@ -64,14 +66,14 @@ if "password_correct" not in st.session_state:
         height=0,
     )
 
-    # 2. 自動チェック（Enterを押さなくても、合致した瞬間にログイン）
     if pw == "05250206":
         st.session_state["password_correct"] = True
         st.rerun()
-    elif len(pw) >= 8: # パスワードの桁数に達して間違っていたらエラー
+    elif len(pw) >= 8:
         st.error("❌")
     
     st.stop()
+
 # --- 4. ページ管理（オフセット） ---
 if "page_offset" not in st.session_state:
     st.session_state["page_offset"] = 0
@@ -86,7 +88,6 @@ supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publish
 st.title("💬 M25-Chat")
 auto_update = st.toggle("自動更新(5s)", value=True)
 
-# 最新ページ（offset=0）の時だけ自動更新を有効にする（過去ログ閲覧中の誤爆防止）
 if auto_update and st.session_state["page_offset"] == 0:
     st_autorefresh(interval=5000, key="chat_ref")
 
@@ -95,16 +96,13 @@ st.divider()
 # --- 7. ページ切り替えナビゲーション ---
 col_prev, col_page, col_next = st.columns([1, 2, 1])
 with col_prev:
-    # より古いメッセージへ（offsetを増やす）
     if st.button("⬅️ 前の20件"):
         st.session_state["page_offset"] += 20
         st.rerun()
 with col_page:
-    # 今どのあたりにいるか表示
     current_range = f"{st.session_state['page_offset'] + 1}〜{st.session_state['page_offset'] + 20}件目"
     st.write(f"<div style='text-align:center; font-size:0.8rem; color:#949ba4;'>{current_range}</div>", unsafe_allow_html=True)
 with col_next:
-    # 最新の方へ（offsetを減らす）
     if st.session_state["page_offset"] >= 20:
         if st.button("次の20件 ➡️"):
             st.session_state["page_offset"] -= 20
@@ -120,7 +118,7 @@ try:
         .range(st.session_state["page_offset"], st.session_state["page_offset"] + 19) \
         .execute()
     
-    messages = res.data[::-1] # 表示は古い順に
+    messages = res.data[::-1]
 
     for m in messages:
         sender_name = m['sender_name']
@@ -144,13 +142,11 @@ except:
 # --- 9. 入力 ---
 prompt = st.chat_input("メッセージを入力...")
 if prompt:
-    # メッセージを送ったら強制的に最新ページ(offset=0)に戻す
     supabase.table("messages").insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
     st.session_state["page_offset"] = 0
     st.rerun()
 
 # --- 10. スクロール ---
-# 最新表示の時だけ下に飛ばす
 if st.session_state["page_offset"] == 0:
     components.html(
         """<script>
