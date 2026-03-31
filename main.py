@@ -12,38 +12,41 @@ st.markdown("""
     /* 全体の背景 */
     .stApp { background-color: #313338; color: #dbdee1; }
     
-    /* 標準メニューの非表示 */
-    #MainMenu {visibility: hidden;} 
-    footer {visibility: hidden;} 
-    header {visibility: hidden;}
-    .stAppDeployButton {display:none;}
+    /* 1. 標準メニュー・ヘッダー・フッターをすべて消去 */
+    #MainMenu {visibility: hidden !important;} 
+    footer {visibility: hidden !important;} 
+    header {visibility: hidden !important;}
+    .stAppDeployButton {display:none !important;}
 
-    /* 【修正版】アイコンのみをピンポイントで消す設定 */
-    /* メインコンテンツを巻き込まないよう、セレクタを限定的にしました */
+    /* 2. 【最凶版】右下のアイコン、ツールバー、ポップアップを根こそぎ隠す */
+    /* Streamlitが動的に生成するクラス名や、親要素のツールバーをすべて標的にします */
     [data-testid="bundle-viewer-container"],
     [data-testid="stStatusWidget"],
-    button[title="Manage app"],
     .st-emotion-cache-1wbqy5l,
-    .st-emotion-cache-k7vsyb {
+    .st-emotion-cache-k7vsyb,
+    .st-emotion-cache-6q9sum,
+    .st-emotion-cache-zt5igj,
+    div[class^="st-emotion-cache-"] > button[title="Manage app"],
+    iframe[title="managed-browser"],
+    #viewer-container,
+    .viewerBadge_container__17n96 {
         display: none !important;
+        visibility: hidden !important;
+        width: 0 !important;
+        height: 0 !important;
         opacity: 0 !important;
         pointer-events: none !important;
     }
 
-    /* メインの表示エリアを「絶対に消さない」ための上書き */
-    [data-testid="stAppViewBlockContainer"] {
-        display: block !important;
-        opacity: 1 !important;
-    }
-
-    /* 下部余白（スマホのスクロール遊び用） */
+    /* 3. スマホで一番下まで届かせるための「魔法の余白」 */
+    /* これを 4rem まで広げることで、スクロール命令が最後まで走りきります */
     .block-container { 
         padding-top: 1rem; 
-        padding-bottom: 3.5rem !important; 
+        padding-bottom: 4rem !important; 
         max-width: 100% !important; 
     }
 
-    /* チャットのデザイン */
+    /* チャットのデザイン（維持） */
     .chat-row { display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }
     .chat-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }
     .message-text { font-size: 1.05rem; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; max-width: 85%; }
@@ -56,6 +59,7 @@ st.markdown("""
     div[data-testid="stChatInput"] { padding-bottom: 15px; }
     </style>
 """, unsafe_allow_html=True)
+
 
 # --- 3. パスワード認証 ---
 if "password_correct" not in st.session_state:
