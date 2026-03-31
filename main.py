@@ -1,8 +1,12 @@
 import streamlit as st
 from supabase import create_client
+from streamlit_autorefresh import st_autorefresh # 追加
 
 # --- 1. 設定 (必ず最初に実行) ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
+
+# 5秒ごとに自動更新する設定を追加（これで新着メッセージに気づけます）
+st_autorefresh(interval=5000, key="chat_update")
 
 # --- 2. デザイン (CSS) ---
 st.markdown("""
@@ -14,7 +18,15 @@ st.markdown("""
 
     .chat-row { display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }
     .chat-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }
-    .message-text { font-size: 1rem; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; max-width: 85%; }
+    
+    /* 本文のサイズを少しだけ大きく(1.05rem)、行間をゆったり(1.6)に調整 */
+    .message-text { 
+        font-size: 1.05rem; 
+        line-height: 1.6; 
+        white-space: pre-wrap; 
+        word-wrap: break-word; 
+        max-width: 85%; 
+    }
 
     /* 配置用のクラス */
     .align-right { align-items: flex-end; text-align: right; }
@@ -51,7 +63,6 @@ if not check_password():
 
 # --- 4. 接続 & URLからユーザー判定 ---
 query_params = st.query_params
-# 現在のログインユーザー（自分）を特定
 current_user = query_params.get("user", "HIDE").upper()
 
 SUPABASE_URL = "https://kvqbwknrsdasoipttkpr.supabase.co"
@@ -70,11 +81,9 @@ try:
         text = m['message_body']
         time = m['created_at'][11:16]
 
-        # 1. 配置の判定 (自分が右、相手が左)
         align_class = "align-right" if sender_upper == current_user else "align-left"
         header_style = "flex-direction: row-reverse;" if sender_upper == current_user else ""
 
-        # 2. 名前の色判定 (名前そのもので判定)
         if "MAKI" in sender_upper:
             name_class = "name-maki"
         elif "HIDE" in sender_upper:
