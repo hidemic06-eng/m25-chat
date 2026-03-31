@@ -30,7 +30,7 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.set_page_config(page_title="M25-Chat", page_icon="💬")
 
-# --- 3. ダークモード & ワイド吹き出しデザイン (CSS) ---
+# --- 3. ダークモード & カスタムデザイン (CSS) ---
 st.markdown("""
     <style>
     /* 背景と入力欄のデザイン */
@@ -42,19 +42,23 @@ st.markdown("""
     
     /* 吹き出しの共通設定 */
     .chat-row { display: flex; margin-bottom: 20px; width: 100%; align-items: flex-end; }
+    
+    /* 横幅を80%に設定 */
     .chat-bubble { 
-        padding: 12px 18px; border-radius: 18px; max-width: 85%; 
+        padding: 14px 20px; border-radius: 18px; width: 80%; 
         font-size: 16px; line-height: 1.5; color: #ffffff !important; 
-        font-weight: 500; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        word-wrap: break-word;
     }
     
-    /* Hide用（右・青） */
-    .bubble-hide { background-color: #007bff !important; border-bottom-right-radius: 2px; }
-    /* Maki用（左・オレンジ） */
-    .bubble-maki { background-color: #fd7e14 !important; border-bottom-left-radius: 2px; }
+    /* Hide用（右・落ち着いた深みのある青：スレートブルー系） */
+    .bubble-hide { background-color: #4682b4 !important; border-bottom-right-radius: 2px; }
     
-    .chat-info { font-size: 10px; color: #aaaaaa; margin: 0 5px; }
-    .sender-name { font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #fd7e14; }
+    /* Maki用（左・落ち着いた深みのあるオレンジ：テラコッタ系） */
+    .bubble-maki { background-color: #d2691e !important; border-bottom-left-radius: 2px; }
+    
+    .chat-info { font-size: 10px; color: #888888; margin: 0 8px; min-width: fit-content; }
+    .sender-name { font-size: 12px; font-weight: bold; margin-bottom: 6px; color: #d2691e; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -72,7 +76,7 @@ with st.form("send_message", clear_on_submit=True):
         except Exception as e:
             st.error(f"Error: {e}")
 
-# --- 5. 履歴表示 (これひとつにまとめました) ---
+# --- 5. 履歴表示 ---
 st.write("---")
 try:
     res = supabase.table("messages").select("*").order("created_at", desc=True).execute()
@@ -81,16 +85,16 @@ try:
         text = m['message_body']
         time = m['created_at'][11:16]
 
-        if sender == "Hide" or sender == "HIDE":
-            # Hideさんは右側（青）
+        if sender.upper() == "HIDE":
+            # Hideさんは右側（青・幅8割）
             st.markdown(f"""
                 <div class="chat-row" style="justify-content: flex-end;">
-                    <div class="chat-info">{time} ✅</div>
+                    <div class="chat-info" style="text-align: right;">{time}<br>✅</div>
                     <div class="chat-bubble bubble-hide">{text}</div>
                 </div>
             """, unsafe_allow_html=True)
         else:
-            # それ以外（Makiさん等）は左側（オレンジ）
+            # Makiさんは左側（オレンジ・幅8割）
             st.markdown(f"""
                 <div class="chat-row" style="justify-content: flex-start;">
                     <div style="width: 100%;">
