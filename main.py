@@ -12,10 +12,11 @@ st.markdown("""
     .stApp { background-color: #313338; color: #dbdee1; }
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
     .stAppDeployButton {display:none;}
+    [data-testid="bundle-viewer-container"] {display: none !important;}
 
     .block-container { 
         padding-top: 1rem; 
-        padding-bottom: 50px !important; 
+        padding-bottom: 80px !important; 
         max-width: 100% !important; 
     }
 
@@ -24,14 +25,22 @@ st.markdown("""
     .message-text { font-size: 1.05rem; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; max-width: 85%; }
     .align-right { align-items: flex-end; text-align: right; }
     .align-left { align-items: flex-start; text-align: left; }
-    
-    /* 名前の色設定（判定は大文字で行いますが、表示は元の文字を維持します） */
     .name-maki { color: #ffa657 !important; font-weight: bold; }
     .name-hide { color: #58a6ff !important; font-weight: bold; }
-    
     .timestamp { color: #949ba4; font-size: 0.75rem; }
     .text-content { color: #e6edf3; }
+    
     div[data-testid="stChatInput"] { padding-bottom: 0px !important; }
+    
+    /* 「もっと見る」ボタンのデザイン調整 */
+    .stButton > button {
+        background-color: transparent !important;
+        color: #949ba4 !important;
+        border: 1px solid #4f545c !important;
+        font-size: 0.8rem !important;
+        margin: 0 auto !important;
+        display: block !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -43,17 +52,17 @@ if "password_correct" not in st.session_state:
         st.rerun()
     st.stop()
 
-# --- 4. 接続 ---
+# --- 4. 状態管理（表示件数） ---
+if "display_limit" not in st.session_state:
+    st.session_state["display_limit"] = 20
+
+# --- 5. 接続 ---
 query_params = st.query_params
-# 判定用には大文字を使いますが、変数としては元の値を保持
 current_user_raw = query_params.get("user", "Hide")
 current_user_upper = current_user_raw.upper()
+supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 
-SUPABASE_URL = "https://kvqbwknrsdasoipttkpr.supabase.co"
-SUPABASE_KEY = "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT"
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-# --- 5. 操作 ---
+# --- 6. 操作パネル ---
 st.title("💬 M25-Chat")
 auto_update = st.toggle("自動更新(5s)", value=True)
 if auto_update:
@@ -61,57 +70,48 @@ if auto_update:
 
 st.divider()
 
-# --- 6. 表示 (20件) ---
+# --- 7. 表示 (過去分読み込みボタン + メッセージ) ---
 try:
-    res = supabase.table("messages").select("*").order("created_at", desc=True).limit(20).execute()
+    # 履歴取得
+    res = supabase.table("messages").select("*").order("created_at", desc=True).limit(st.session_state["display_limit"]).execute()
     messages = res.data[::-1]
-    
+
+    # 「もっと見る」ボタンを表示（一番上に配置）
+    if len(messages) >= st.session_state["display_limit"]:
+        if st.button("もっと見る (過去のメッセージを読み込む)"):
+            st.session_state["display_limit"] += 20
+            st.rerun()
+
     for m in messages:
-        sender_name = m['sender_name'] # DBから取得した名前（Hide や Maki）
-        s_up = sender_name.upper()     # 判定用
-        
-        # 右寄せ・左寄せの判定
+        sender_name = m['sender_name']
+        s_up = sender_name.upper()
         align = "align-right" if s_up == current_user_upper else "align-left"
         h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
-        
-        # 色分けのクラス判定
-        n_class = ""
-        if "MAKI" in s_up:
-            n_class = "name-maki"
-        elif "HIDE" in s_up:
-            n_class = "name-hide"
-            
-        t_str = m['created_at'][11:16]
+        n_class = "name-maki" if "MAKI" in s_up else "name-hide" if "HIDE" in s_up else ""
         
         st.markdown(f"""
             <div class="chat-row {align}">
-                <div class="chat-header" style="{header_style if 'header_style' in locals() else h_style}">
+                <div class="chat-header" style="{h_style}">
                     <span class="{n_class}">{sender_name}</span>
-                    <span class="timestamp">{t_str}</span>
+                    <span class="timestamp">{m['created_at'][11:16]}</span>
                 </div>
                 <div class="message-text text-content">{m['message_body']}</div>
             </div>
         """, unsafe_allow_html=True)
-except Exception as e:
+except:
     st.empty()
 
-# --- 7. 入力 ---
+# --- 8. 入力 ---
 prompt = st.chat_input("メッセージを入力...")
 if prompt:
-    try:
-        # 送信時は元の表記(Hide/Maki)で送るように設定
-        supabase.table("messages").insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
-        st.rerun()
-    except:
-        pass
+    supabase.table("messages").insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
+    st.rerun()
 
-# --- 8. スクロール ---
-components.html(
-    """<script>
-    const f = () => { 
-        const main = window.parent.document.querySelector(".main");
-        if (main) main.scrollTo(0, 99999); 
-    };
-    setTimeout(f, 500); 
-    </script>""", height=0
-)
+# --- 9. スクロール ---
+# 「もっと見る」を押した時はスクロールさせない工夫（最新投稿時のみスクロール）
+if prompt:
+    components.html(
+        """<script>
+        window.parent.document.querySelector(".main").scrollTo(0, 99999);
+        </script>""", height=0
+    )
