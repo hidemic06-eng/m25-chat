@@ -31,15 +31,12 @@ st.markdown("""
     .text-content { color: #e6edf3; }
     
     div[data-testid="stChatInput"] { padding-bottom: 0px !important; }
-    
-    /* 「もっと見る」ボタンのデザイン調整 */
+
+    /* ページ切り替えボタンのデザイン */
     .stButton > button {
-        background-color: transparent !important;
-        color: #949ba4 !important;
-        border: 1px solid #4f545c !important;
+        height: 30px !important;
+        padding: 0 10px !important;
         font-size: 0.8rem !important;
-        margin: 0 auto !important;
-        display: block !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -52,9 +49,9 @@ if "password_correct" not in st.session_state:
         st.rerun()
     st.stop()
 
-# --- 4. 状態管理（表示件数） ---
-if "display_limit" not in st.session_state:
-    st.session_state["display_limit"] = 20
+# --- 4. ページ管理（オフセット） ---
+if "page_offset" not in st.session_state:
+    st.session_state["page_offset"] = 0
 
 # --- 5. 接続 ---
 query_params = st.query_params
@@ -65,22 +62,42 @@ supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publish
 # --- 6. 操作パネル ---
 st.title("💬 M25-Chat")
 auto_update = st.toggle("自動更新(5s)", value=True)
-if auto_update:
+
+# 最新ページ（offset=0）の時だけ自動更新を有効にする（過去ログ閲覧中の誤爆防止）
+if auto_update and st.session_state["page_offset"] == 0:
     st_autorefresh(interval=5000, key="chat_ref")
 
 st.divider()
 
-# --- 7. 表示 (過去分読み込みボタン + メッセージ) ---
-try:
-    # 履歴取得
-    res = supabase.table("messages").select("*").order("created_at", desc=True).limit(st.session_state["display_limit"]).execute()
-    messages = res.data[::-1]
-
-    # 「もっと見る」ボタンを表示（一番上に配置）
-    if len(messages) >= st.session_state["display_limit"]:
-        if st.button("もっと見る (過去のメッセージを読み込む)"):
-            st.session_state["display_limit"] += 20
+# --- 7. ページ切り替えナビゲーション ---
+col_prev, col_page, col_next = st.columns([1, 2, 1])
+with col_prev:
+    # より古いメッセージへ（offsetを増やす）
+    if st.button("⬅️ 前の20件"):
+        st.session_state["page_offset"] += 20
+        st.rerun()
+with col_page:
+    # 今どのあたりにいるか表示
+    current_range = f"{st.session_state['page_offset'] + 1}〜{st.session_state['page_offset'] + 20}件目"
+    st.write(f"<div style='text-align:center; font-size:0.8rem; color:#949ba4;'>{current_range}</div>", unsafe_allow_html=True)
+with col_next:
+    # 最新の方へ（offsetを減らす）
+    if st.session_state["page_offset"] >= 20:
+        if st.button("次の20件 ➡️"):
+            st.session_state["page_offset"] -= 20
             st.rerun()
+    else:
+        st.button("最新です", disabled=True)
+
+# --- 8. 表示 (現在のオフセットから20件取得) ---
+try:
+    res = supabase.table("messages") \
+        .select("*") \
+        .order("created_at", desc=True) \
+        .range(st.session_state["page_offset"], st.session_state["page_offset"] + 19) \
+        .execute()
+    
+    messages = res.data[::-1] # 表示は古い順に
 
     for m in messages:
         sender_name = m['sender_name']
@@ -101,15 +118,17 @@ try:
 except:
     st.empty()
 
-# --- 8. 入力 ---
+# --- 9. 入力 ---
 prompt = st.chat_input("メッセージを入力...")
 if prompt:
+    # メッセージを送ったら強制的に最新ページ(offset=0)に戻す
     supabase.table("messages").insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
+    st.session_state["page_offset"] = 0
     st.rerun()
 
-# --- 9. スクロール ---
-# 「もっと見る」を押した時はスクロールさせない工夫（最新投稿時のみスクロール）
-if prompt:
+# --- 10. スクロール ---
+# 最新表示の時だけ下に飛ばす
+if st.session_state["page_offset"] == 0:
     components.html(
         """<script>
         window.parent.document.querySelector(".main").scrollTo(0, 99999);
