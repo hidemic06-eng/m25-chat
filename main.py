@@ -41,22 +41,24 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 認証 (スマホでテンキーを出す仕掛け付き) ---
+# --- 3. 認証 (数字テンキー強制版) ---
 if "password_correct" not in st.session_state:
     st.write("🔒 Enter Password")
-    # type="password" のままだと文字キーボードになるため、
-    # 一時的にテキストとして受け、JSで挙動を制御します
+    # ここは標準のままでOK
     pw = st.text_input("Password", type="default", key="pw_input")
     
-    # JavaScriptで入力欄を「数値入力モード」に強制変更
+    # JavaScriptで「数字モード」と「伏せ字」を強制
     components.html(
         """
         <script>
         const inputs = window.parent.document.querySelectorAll('input');
         inputs.forEach(input => {
             if (input.getAttribute('aria-label') === 'Password') {
-                input.type = 'tel'; // type="tel" はスマホでテンキーが出やすい設定
-                input.style.webkitTextSecurity = 'disc'; // 伏せ字にする設定
+                // 数字入力モードを強制（これで数字だけのキーボードが出ます）
+                input.setAttribute('inputmode', 'numeric');
+                input.setAttribute('pattern', '[0-9]*');
+                // 伏せ字にする
+                input.style.webkitTextSecurity = 'disc';
             }
         });
         </script>
@@ -70,7 +72,6 @@ if "password_correct" not in st.session_state:
     elif pw:
         st.error("❌")
     st.stop()
-
 
 # --- 4. ページ管理（オフセット） ---
 if "page_offset" not in st.session_state:
