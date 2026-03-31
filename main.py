@@ -1,7 +1,7 @@
 import streamlit as st
 from supabase import create_client
 from streamlit_autorefresh import st_autorefresh
-import streamlit.components.v1 as components # JavaScript実行用に追加
+import streamlit.components.v1 as components
 
 # --- 1. 設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
@@ -13,16 +13,14 @@ st.markdown("""
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
     .stAppDeployButton {display:none;}
     
-    /* 下部の余白を「2rem」に。これで入力欄との隙間が最小限になります */
+    /* スクロールを確実にするため、余白を 2rem → 2.5rem へ微増（この0.5remがスクロールの呼び水になります） */
     .block-container { 
         padding-top: 1rem; 
-        padding-bottom: 2rem !important; 
+        padding-bottom: 2.5rem !important; 
         max-width: 100% !important; 
     }
 
-    /* メッセージの間隔はタイトなまま維持 */
     .chat-row { display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }
-    
     .chat-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }
     .message-text { 
         font-size: 1.05rem; 
@@ -41,13 +39,11 @@ st.markdown("""
     .timestamp { color: #949ba4; font-size: 0.75rem; }
     .text-content { color: #e6edf3; }
 
-    /* 入力欄の背景が透過して文字が重ならないように、入力エリアの重なりを微調整 */
     div[data-testid="stChatInput"] {
         padding-bottom: 15px;
     }
     </style>
 """, unsafe_allow_html=True)
-
 
 # --- 3. パスワード認証 ---
 def check_password():
@@ -68,7 +64,7 @@ def check_password():
 if not check_password():
     st.stop()
 
-# --- 4. 接続 & URL判定 ---
+# --- 4. 接続 & ユーザー判定 ---
 query_params = st.query_params
 current_user = query_params.get("user", "HIDE").upper()
 
@@ -90,11 +86,19 @@ if auto_update:
 
 st.divider()
 
-# --- 6. 履歴の表示 ---
+# --- 6. 履歴の表示 (最新20件に絞り込み) ---
 try:
-    res = supabase.table("messages").select("*").order("created_at", desc=False).execute()
+    # 昇順(False)だと全件取得になるため、降順(True)で最新20件を取得してから、表示用に並び替えます
+    res = supabase.table("messages") \
+        .select("*") \
+        .order("created_at", desc=True) \
+        .limit(20) \
+        .execute()
     
-    for m in res.data:
+    # 表示は古いもの→新しいものの順にする
+    messages = res.data[::-1]
+    
+    for m in messages:
         sender = m['sender_name']
         sender_upper = sender.upper()
         text = m['message_body']
@@ -117,7 +121,7 @@ try:
 except Exception as e:
     st.empty()
 
-# --- 7. 入力欄の固定 ---
+# --- 7. 入力欄 ---
 prompt = st.chat_input("メッセージを入力...")
 
 if prompt:
@@ -127,7 +131,7 @@ if prompt:
     except Exception as e:
         st.error(f"Error")
 
-# --- 8. 【最終強化版】トリプル・スクロールJavaScript ---
+# --- 8. スクロールJavaScript ---
 components.html(
     """
     <script>
@@ -135,19 +139,14 @@ components.html(
         const mainContent = window.parent.document.querySelector(".main");
         if (mainContent) {
             mainContent.scrollTo({
-                top: mainContent.scrollHeight + 10000,
+                top: mainContent.scrollHeight + 500,
                 behavior: 'instant'
             });
         }
     };
-
-    // 1. 即時実行
+    // 3段階でしつこく実行して確実に下へ
     scrollToEnd();
-
-    // 2. 0.1秒後（描画の初期待ち）
     setTimeout(scrollToEnd, 100);
-
-    // 3. 0.5秒後（スマホのキーボードや画像読み込み待ちの念押し）
     setTimeout(scrollToEnd, 500);
     </script>
     """,
