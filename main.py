@@ -18,12 +18,14 @@ st.markdown("""
 
     /* 右側 (自分/URL変数側) */
     .align-right { align-items: flex-end; text-align: right; }
-    .name-self { color: #58a6ff; font-weight: bold; }
+    /* ★名前の色をオレンジに */
+    .name-self { color: #ffa657; font-weight: bold; }
     .text-self { color: #e6edf3; }
 
     /* 左側 (相手) */
     .align-left { align-items: flex-start; text-align: left; }
-    .name-other { color: #ffa657; font-weight: bold; }
+    /* ★名前の色を青に */
+    .name-other { color: #58a6ff; font-weight: bold; }
     .text-other { color: #dbdee1; }
 
     .timestamp { color: #949ba4; font-size: 0.75rem; }
@@ -70,7 +72,7 @@ try:
         text = m['message_body']
         time = m['created_at'][11:16]
 
-        # ★ 判定ロジック：送信者が「今開いているURLのユーザー」と同じなら右側
+        # ★判定ロジック：送信者が「今開いているURLのユーザー」と同じなら右側
         if sender_upper == current_user:
             st.markdown(f"""
                 <div class="chat-row align-right">
