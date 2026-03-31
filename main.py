@@ -9,44 +9,18 @@ st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 # --- 2. デザイン (CSS) ---
 st.markdown("""
     <style>
-    /* 全体の背景 */
     .stApp { background-color: #313338; color: #dbdee1; }
-    
-    /* 1. 標準メニュー・ヘッダー・フッターをすべて消去 */
-    #MainMenu {visibility: hidden !important;} 
-    footer {visibility: hidden !important;} 
-    header {visibility: hidden !important;}
-    .stAppDeployButton {display:none !important;}
+    #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
+    .stAppDeployButton {display:none;}
 
-    /* 2. 【最凶版】右下のアイコン、ツールバー、ポップアップを根こそぎ隠す */
-    /* Streamlitが動的に生成するクラス名や、親要素のツールバーをすべて標的にします */
-    [data-testid="bundle-viewer-container"],
-    [data-testid="stStatusWidget"],
-    .st-emotion-cache-1wbqy5l,
-    .st-emotion-cache-k7vsyb,
-    .st-emotion-cache-6q9sum,
-    .st-emotion-cache-zt5igj,
-    div[class^="st-emotion-cache-"] > button[title="Manage app"],
-    iframe[title="managed-browser"],
-    #viewer-container,
-    .viewerBadge_container__17n96 {
-        display: none !important;
-        visibility: hidden !important;
-        width: 0 !important;
-        height: 0 !important;
-        opacity: 0 !important;
-        pointer-events: none !important;
-    }
-
-    /* 3. スマホで一番下まで届かせるための「魔法の余白」 */
-    /* これを 4rem まで広げることで、スクロール命令が最後まで走りきります */
+    /* 下部の余白を「150px」と大きく取ることで、アイコンや入力欄に最後のメッセージが絶対被らないようにします */
     .block-container { 
         padding-top: 1rem; 
-        padding-bottom: 4rem !important; 
+        padding-bottom: 150px !important; 
         max-width: 100% !important; 
     }
 
-    /* チャットのデザイン（維持） */
+    /* チャットのデザイン */
     .chat-row { display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }
     .chat-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }
     .message-text { font-size: 1.05rem; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; max-width: 85%; }
@@ -56,15 +30,15 @@ st.markdown("""
     .name-hide { color: #58a6ff !important; font-weight: bold; }
     .timestamp { color: #949ba4; font-size: 0.75rem; }
     .text-content { color: #e6edf3; }
-    div[data-testid="stChatInput"] { padding-bottom: 15px; }
+
+    /* 入力欄の微調整 */
+    div[data-testid="stChatInput"] { padding-bottom: 20px; }
     </style>
 """, unsafe_allow_html=True)
 
-
 # --- 3. パスワード認証 ---
 if "password_correct" not in st.session_state:
-    st.title("🔒 Authentication")
-    pw = st.text_input("Password", type="password")
+    pw = st.text_input("PW", type="password")
     if pw == "05250206":
         st.session_state["password_correct"] = True
         st.rerun()
@@ -82,12 +56,7 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # --- 5. 操作パネル ---
 st.title("💬 M25-Chat")
-col1, col2 = st.columns([2, 1])
-with col1:
-    auto_update = st.toggle("自動更新(5s)", value=True)
-with col2:
-    if st.button("🔄更新", use_container_width=True):
-        st.rerun()
+auto_update = st.toggle("自動更新(5s)", value=True)
 
 if auto_update:
     st_autorefresh(interval=5000, key="chat_update_stable")
@@ -115,7 +84,7 @@ try:
                 <div class="message-text text-content">{text}</div>
             </div>
         """, unsafe_allow_html=True)
-except Exception:
+except:
     st.empty()
 
 # --- 7. 入力欄 ---
@@ -124,10 +93,10 @@ if prompt:
     try:
         supabase.table("messages").insert({"sender_name": current_user, "message_body": prompt}).execute()
         st.rerun()
-    except Exception:
+    except:
         pass
 
-# --- 8. スクロールJavaScript ---
+# --- 8. シンプルな強制スクロール ---
 components.html(
     """
     <script>
