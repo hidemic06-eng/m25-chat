@@ -1,89 +1,97 @@
 import streamlit as st
 from supabase import create_client
 
-# --- 2. 設定と接続 (set_page_configは最初に行う必要があります) ---
+# --- 1. 設定と接続 (set_page_configは最初に行う必要があります) ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
-# --- メニューと猫アイコンを非表示にする設定 ---
-st.markdown("""
-    <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    .stAppDeployButton {display:none;}
-    #stDecoration {display:none;}
-    </style>
-""", unsafe_allow_html=True)
-
-
-# --- 1. パスワード認証機能 ---
+# --- 2. パスワード認証 ---
 def check_password():
-    """正しいパスワードが入力されたら True を返す"""
     def password_entered():
-        # パスワード設定
         if st.session_state["password"] == "05250206":
             st.session_state["password_correct"] = True
             del st.session_state["password"]
         else:
             st.session_state["password_correct"] = False
-
     if "password_correct" not in st.session_state:
-        st.text_input("パスワードを入力してください", type="password", on_change=password_entered, key="password")
+        st.text_input("PW", type="password", on_change=password_entered, key="password")
         return False
     elif not st.session_state["password_correct"]:
-        st.text_input("パスワードが違います。再入力してください", type="password", on_change=password_entered, key="password")
-        st.error("😕 パスワードが正しくありません")
+        st.error("❌")
         return False
     return True
 
 if not check_password():
     st.stop()
 
-# --- 2. URLパラメータから名前を取得 ---
-# URLの末尾に ?user=HIDE や ?user=MAKI があればそれを読み込む
+# --- 3. Supabase接続 & ユーザー設定 ---
 query_params = st.query_params
-user_param = query_params.get("user", "HIDE") # 指定がない場合はデフォルトでHIDE
+user_param = query_params.get("user", "HIDE")
 
-# --- 3. Supabaseの接続情報 ---
 SUPABASE_URL = "https://kvqbwknrsdasoipttkpr.supabase.co"
 SUPABASE_KEY = "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT"
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# 画面のタイトル設定
-st.set_page_config(page_title="M25-Chat", page_icon="💬")
+# --- 4. Discord風デザイン (CSS) ---
+st.markdown("""
+    <style>
+    /* 全体をDiscord風のダークカラーに */
+    .stApp { background-color: #313338; color: #dbdee1; }
+    
+    /* ヘッダー周りをスッキリ */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .stAppDeployButton {display:none;}
+    
+    /* 履歴エリアの余白調整 */
+    .block-container { padding-top: 2rem; padding-bottom: 6rem; }
+    
+    /* メッセージの枠線を取り、背景色で区切る */
+    .message-container {
+        padding: 8px 16px;
+        margin-bottom: 2px;
+        border-radius: 4px;
+    }
+    .message-container:hover { background-color: #2e3035; }
+    
+    .sender-name { font-weight: bold; color: #ffffff; margin-right: 8px; font-size: 0.95rem; }
+    .timestamp { color: #949ba4; font-size: 0.75rem; }
+    .message-body { color: #dbdee1; margin-top: 2px; white-space: pre-wrap; font-size: 1rem; }
+
+    /* 入力欄（st.chat_input）のカスタマイズは標準機能に任せるのが一番安定します */
+    </style>
+""", unsafe_allow_html=True)
+
 st.title("💬 M25-Chat")
-st.caption("HIDE-Lab プロジェクト第2弾: クラウドチャット")
 
-# --- 4. メッセージの送信フォーム ---
-with st.form("send_message", clear_on_submit=True):
-    st.write("新しいメッセージを投稿")
-    # URLパラメータから取得した名前を初期値に設定
-    name = st.text_input("名前", value=user_param)
-    msg = st.text_area("内容を入力してください...")
-    submit = st.form_submit_button("送信する")
-
-    if submit and msg:
-        data = {"sender_name": name, "message_body": msg}
-        try:
-            supabase.table("messages").insert(data).execute()
-            st.success("送信完了！")
-            # 送信後、即座に画面を更新して履歴を反映させる
-            st.rerun()
-        except Exception as e:
-            st.error(f"エラーが発生しました: {e}")
-
-# --- 5. 履歴の表示機能 ---
-st.write("---")
-st.subheader("📝 メッセージ履歴")
-
+# --- 5. 履歴の表示機能（上に配置） ---
 try:
-    res = supabase.table("messages").select("*").order("created_at", desc=True).execute()
+    res = supabase.table("messages").select("*").order("created_at", desc=False).execute()
     
     for m in res.data:
-        with st.container():
-            # 名前と時間を表示
-            st.write(f"**{m['sender_name']}** <small style='color:gray;'>({m['created_at'][:16]})</small>", unsafe_allow_html=True)
-            # メッセージ本文を枠付き（info）で表示
-            st.info(m['message_body'])
+        # 時刻の整形 (2026-03-31T12:34:56 -> 12:34)
+        time_str = m['created_at'][11:16]
+        
+        # Discord風のフラットな表示
+        st.markdown(f"""
+            <div class="message-container">
+                <span class="sender-name">{m['sender_name']}</span>
+                <span class="timestamp">{time_str}</span>
+                <div class="message-body">{m['message_body']}</div>
+            </div>
+        """, unsafe_allow_html=True)
 except Exception as e:
-    st.write("履歴の読み込み中...")
+    st.write("履歴を読み込み中...")
+
+# --- 6. 入力欄の固定（最下部に表示） ---
+# st.chat_input を使うと、自動的に画面下部に固定されます
+prompt = st.chat_input("メッセージを入力...")
+
+if prompt:
+    # 送信処理
+    data = {"sender_name": user_param, "message_body": prompt}
+    try:
+        supabase.table("messages").insert(data).execute()
+        st.rerun()
+    except Exception as e:
+        st.error(f"エラー: {e}")
