@@ -9,33 +9,41 @@ st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 # --- 2. デザイン (CSS) ---
 st.markdown("""
     <style>
-    /* 全体の背景と文字色 */
+    /* 全体の背景 */
     .stApp { background-color: #313338; color: #dbdee1; }
     
-    /* 1. 標準メニュー系を非表示 */
+    /* 1. 標準要素の非表示 */
     #MainMenu {visibility: hidden;} 
     footer {visibility: hidden;} 
     header {visibility: hidden;}
     .stAppDeployButton {display:none;}
 
-    /* 2. 【最重要】右下の「Manage app」アイコンを消すための強力なセレクタ群 */
-    /* これら複数の指定で、現行のStreamlit Cloudのメニューを封じ込めます */
+    /* 2. 【最強版】右下アイコン・メニューを根こそぎ消す */
+    /* id, class, data-testid すべての角度から非表示を叩き込みます */
     [data-testid="bundle-viewer-container"],
     [data-testid="stStatusWidget"],
-    .st-emotion-cache-1wbqy5l, 
+    [data-testid="stAppViewBlockContainer"] > div:last-child,
+    .st-emotion-cache-1wbqy5l,
     .st-emotion-cache-k7vsyb,
-    iframe[title="managed-browser"] {
+    .st-emotion-cache-6q9sum,
+    button[title="Manage app"],
+    #viewer-container {
         display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        height: 0 !important;
+        width: 0 !important;
+        pointer-events: none !important;
     }
 
-    /* 3. 余白調整（スマホのスクロール遊び用） */
+    /* 3. 余白調整（3.5remでスクロールの遊びを確保） */
     .block-container { 
         padding-top: 1rem; 
         padding-bottom: 3.5rem !important; 
         max-width: 100% !important; 
     }
 
-    /* チャットのデザイン（維持） */
+    /* チャット行のデザイン */
     .chat-row { display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }
     .chat-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }
     .message-text { font-size: 1.05rem; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; max-width: 85%; }
@@ -49,7 +57,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. パスワード認証 (スマホの安定性重視版) ---
+# --- 3. パスワード認証 (スマホでも確実に動く版) ---
 if "password_correct" not in st.session_state:
     st.title("🔒 Authentication")
     pw = st.text_input("Password", type="password")
@@ -78,7 +86,7 @@ with col2:
         st.rerun()
 
 if auto_update:
-    st_autorefresh(interval=5000, key="chat_update_timer")
+    st_autorefresh(interval=5000, key="chat_update_fixed")
 
 st.divider()
 
@@ -116,18 +124,19 @@ if prompt:
         pass
 
 # --- 8. スクロールJavaScript ---
+# スマホで「動かなくなる」のを防ぐため、より確実に親ウィンドウを叩きます
 components.html(
     """
     <script>
-    const scrollToEnd = () => {
-        const win = window.parent.document;
-        const main = win.querySelector(".main");
+    const scrollToBottom = () => {
+        const main = window.parent.document.querySelector(".main");
         if (main) {
             main.scrollTo({ top: main.scrollHeight + 5000, behavior: 'auto' });
         }
     };
-    setTimeout(scrollToEnd, 500);
-    setTimeout(scrollToEnd, 1500);
+    // 描画後、少し落ち着いてから実行
+    setTimeout(scrollToBottom, 500);
+    setTimeout(scrollToBottom, 1500);
     </script>
     """,
     height=0,
