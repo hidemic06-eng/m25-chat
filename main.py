@@ -42,47 +42,47 @@ SUPABASE_URL = "https://kvqbwknrsdasoipttkpr.supabase.co"
 SUPABASE_KEY = "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT"
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# --- 3. デザイン調整 (CSS) ---
+# --- 3. デザイン：初期の明るいLINE風スタイル (CSS) ---
 st.markdown("""
     <style>
-    /* 画面端の余白を極限まで削る */
-    .block-container { padding: 1rem 0.5rem !important; max-width: 100% !important; }
-    .stApp { background-color: #1a1c23 !important; color: #e0e6ed !important; }
+    /* 全体を標準の明るいテーマに */
+    .stApp { background-color: #f0f2f6; color: #31333F; }
     
-    /* 入力エリアの調整 */
-    [data-testid="stForm"] { border: none !important; padding: 0 !important; }
-    .stTextArea>div>div>textarea { height: 80px !important; background-color: #2d333b !important; color: #fff !important; }
-    .stTextInput>div>div>input { background-color: #2d333b !important; color: #fff !important; }
-
-    /* 吹き出しのレイアウト：幅が死なないように調整 */
+    /* 吹き出しのレイアウト */
     .chat-row { display: flex; margin-bottom: 12px; width: 100%; align-items: flex-end; }
     
     .chat-bubble { 
         padding: 10px 14px; border-radius: 18px; 
-        max-width: 80%; 
-        width: auto; 
+        max-width: 80%; width: auto; 
         font-size: 16px; line-height: 1.4; 
-        color: #ffffff !important; 
-        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         word-wrap: break-word;
-        white-space: pre-wrap; /* 改行を維持しつつ適切に折り返す */
+        white-space: pre-wrap;
     }
     
-    /* カラー設定（くすみ系） */
-    .bubble-hide { background-color: #4682b4 !important; border-bottom-right-radius: 2px; }
-    .bubble-maki { background-color: #d2691e !important; border-bottom-left-radius: 2px; }
+    /* Hide用（右・明るい緑） */
+    .bubble-hide { background-color: #95ec7a !important; color: #000000 !important; border-bottom-right-radius: 2px; }
+    
+    /* Maki用（左・白） */
+    .bubble-maki { background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ddd; border-bottom-left-radius: 2px; }
     
     .chat-info { font-size: 10px; color: #888888; margin: 0 5px; min-width: fit-content; }
-    .sender-name { font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #d2691e; margin-left: 10px; }
+    .sender-name { font-size: 12px; font-weight: bold; margin-bottom: 2px; color: #555555; margin-left: 10px; }
+
+    /* メニュー類は隠したままにします */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .stAppDeployButton {display:none;}
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown("### 💬 M25-Chat")
+st.title("💬 M25-Chat")
 
 # --- 4. 送信フォーム ---
 with st.form("send_message", clear_on_submit=True):
-    name = st.text_input("Name", value=current_user, label_visibility="collapsed")
-    msg = st.text_area("Message", placeholder="メッセージを入力...", label_visibility="collapsed")
+    name = st.text_input("Name", value=current_user)
+    msg = st.text_area("Message", placeholder="メッセージを入力...")
     submit = st.form_submit_button("送信", use_container_width=True)
     
     if submit and msg:
@@ -102,25 +102,24 @@ try:
         time = m['created_at'][11:16]
 
         if sender.upper() == "HIDE":
-            # Hide（右寄せ）：コンテナをflexで右に寄せる
             st.markdown(f"""
                 <div class="chat-row" style="justify-content: flex-end;">
-                    <div class="chat-info" style="text-align: right; padding-bottom: 2px;">{time} ✅</div>
+                    <div class="chat-info" style="text-align: right;">{time} ✅</div>
                     <div class="chat-bubble bubble-hide">{text}</div>
                 </div>
             """, unsafe_allow_html=True)
         else:
-            # Maki（左寄せ）：コンテナをflexで左に寄せる
             st.markdown(f"""
                 <div class="chat-row" style="justify-content: flex-start;">
                     <div style="display: flex; flex-direction: column; align-items: flex-start; max-width: 85%;">
                         <div class="sender-name">{sender}</div>
                         <div style="display: flex; align-items: flex-end;">
                             <div class="chat-bubble bubble-maki">{text}</div>
-                            <div class="chat-info" style="padding-bottom: 2px;">{time}</div>
+                            <div class="chat-info">{time}</div>
                         </div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
 except Exception as e:
     st.empty()
+
