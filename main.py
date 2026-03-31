@@ -16,19 +16,17 @@ st.markdown("""
     .chat-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }
     .message-text { font-size: 1rem; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; max-width: 85%; }
 
-    /* 右側 (自分/URL変数側) */
+    /* 配置用のクラス */
     .align-right { align-items: flex-end; text-align: right; }
-    /* ★名前の色をオレンジに */
-    .name-self { color: #ffa657; font-weight: bold; }
-    .text-self { color: #e6edf3; }
-
-    /* 左側 (相手) */
     .align-left { align-items: flex-start; text-align: left; }
-    /* ★名前の色を青に */
-    .name-other { color: #58a6ff; font-weight: bold; }
-    .text-other { color: #dbdee1; }
+
+    /* 名前ごとの固定色設定 */
+    .name-maki { color: #ffa657 !important; font-weight: bold; } /* オレンジ */
+    .name-hide { color: #58a6ff !important; font-weight: bold; } /* 青 */
+    .name-default { color: #dbdee1; font-weight: bold; }
 
     .timestamp { color: #949ba4; font-size: 0.75rem; }
+    .text-content { color: #e6edf3; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -53,7 +51,7 @@ if not check_password():
 
 # --- 4. 接続 & URLからユーザー判定 ---
 query_params = st.query_params
-# URLの ?user= の値を取得（なければデフォルトでHIDE）
+# 現在のログインユーザー（自分）を特定
 current_user = query_params.get("user", "HIDE").upper()
 
 SUPABASE_URL = "https://kvqbwknrsdasoipttkpr.supabase.co"
@@ -72,27 +70,27 @@ try:
         text = m['message_body']
         time = m['created_at'][11:16]
 
-        # ★判定ロジック：送信者が「今開いているURLのユーザー」と同じなら右側
-        if sender_upper == current_user:
-            st.markdown(f"""
-                <div class="chat-row align-right">
-                    <div class="chat-header" style="flex-direction: row-reverse;">
-                        <span class="name-self">{sender}</span>
-                        <span class="timestamp">{time}</span>
-                    </div>
-                    <div class="message-text text-self">{text}</div>
-                </div>
-            """, unsafe_allow_html=True)
+        # 1. 配置の判定 (自分が右、相手が左)
+        align_class = "align-right" if sender_upper == current_user else "align-left"
+        header_style = "flex-direction: row-reverse;" if sender_upper == current_user else ""
+
+        # 2. 名前の色判定 (名前そのもので判定)
+        if "MAKI" in sender_upper:
+            name_class = "name-maki"
+        elif "HIDE" in sender_upper:
+            name_class = "name-hide"
         else:
-            st.markdown(f"""
-                <div class="chat-row align-left">
-                    <div class="chat-header">
-                        <span class="name-other">{sender}</span>
-                        <span class="timestamp">{time}</span>
-                    </div>
-                    <div class="message-text text-other">{text}</div>
+            name_class = "name-default"
+
+        st.markdown(f"""
+            <div class="chat-row {align_class}">
+                <div class="chat-header" style="{header_style}">
+                    <span class="{name_class}">{sender}</span>
+                    <span class="timestamp">{time}</span>
                 </div>
-            """, unsafe_allow_html=True)
+                <div class="message-text text-content">{text}</div>
+            </div>
+        """, unsafe_allow_html=True)
 except Exception as e:
     st.empty()
 
@@ -101,7 +99,6 @@ prompt = st.chat_input("メッセージを入力...")
 
 if prompt:
     try:
-        # current_user（URLから取得した名前）で保存
         supabase.table("messages").insert({"sender_name": current_user, "message_body": prompt}).execute()
         st.rerun()
     except Exception as e:
