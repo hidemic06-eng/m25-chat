@@ -7,53 +7,24 @@ st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 # --- 2. デザイン (CSS) ---
 st.markdown("""
     <style>
-    /* 全体背景：Discord風ダークグレー */
     .stApp { background-color: #313338; color: #dbdee1; }
-    
-    /* 不要な要素を非表示 */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+    #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
     .stAppDeployButton {display:none;}
-    
-    /* 履歴エリアの余白調整 */
     .block-container { padding-top: 1rem; padding-bottom: 6rem; max-width: 100% !important; }
 
-    /* メッセージ一行の枠（背景なし・枠なし） */
-    .chat-row { 
-        display: flex; 
-        flex-direction: column;
-        margin-bottom: 16px; 
-        width: 100%; 
-    }
-    
-    /* 名前と時間のヘッダー */
-    .chat-header { 
-        display: flex; 
-        align-items: baseline; 
-        gap: 8px; 
-        margin-bottom: 4px;
-        font-size: 0.85rem;
-    }
+    .chat-row { display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }
+    .chat-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }
+    .message-text { font-size: 1rem; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; max-width: 85%; }
 
-    /* 本文：枠をなくしてシンプルに */
-    .message-text { 
-        font-size: 1rem; 
-        line-height: 1.5; 
-        white-space: pre-wrap;
-        word-wrap: break-word;
-        max-width: 85%;
-    }
-
-    /* 右側 (HIDE) の配色と配置 */
+    /* 右側 (自分/URL変数側) */
     .align-right { align-items: flex-end; text-align: right; }
-    .name-hide { color: #58a6ff; font-weight: bold; }
-    .text-hide { color: #e6edf3; }
+    .name-self { color: #58a6ff; font-weight: bold; }
+    .text-self { color: #e6edf3; }
 
-    /* 左側 (MAKI) の配色と配置 */
+    /* 左側 (相手) */
     .align-left { align-items: flex-start; text-align: left; }
-    .name-maki { color: #ffa657; font-weight: bold; }
-    .text-maki { color: #dbdee1; }
+    .name-other { color: #ffa657; font-weight: bold; }
+    .text-other { color: #dbdee1; }
 
     .timestamp { color: #949ba4; font-size: 0.75rem; }
     </style>
@@ -78,9 +49,10 @@ def check_password():
 if not check_password():
     st.stop()
 
-# --- 4. 接続 & 設定 ---
+# --- 4. 接続 & URLからユーザー判定 ---
 query_params = st.query_params
-user_param = query_params.get("user", "HIDE")
+# URLの ?user= の値を取得（なければデフォルトでHIDE）
+current_user = query_params.get("user", "HIDE").upper()
 
 SUPABASE_URL = "https://kvqbwknrsdasoipttkpr.supabase.co"
 SUPABASE_KEY = "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT"
@@ -88,35 +60,35 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.title("💬 M25-Chat")
 
-# --- 5. 履歴の表示 (新しいのが下) ---
+# --- 5. 履歴の表示 ---
 try:
     res = supabase.table("messages").select("*").order("created_at", desc=False).execute()
     
     for m in res.data:
         sender = m['sender_name']
+        sender_upper = sender.upper()
         text = m['message_body']
         time = m['created_at'][11:16]
 
-        if sender.upper() == "HIDE":
-            # 自分 (右寄せ・青文字)
+        # ★ 判定ロジック：送信者が「今開いているURLのユーザー」と同じなら右側
+        if sender_upper == current_user:
             st.markdown(f"""
                 <div class="chat-row align-right">
                     <div class="chat-header" style="flex-direction: row-reverse;">
-                        <span class="name-hide">{sender}</span>
+                        <span class="name-self">{sender}</span>
                         <span class="timestamp">{time}</span>
                     </div>
-                    <div class="message-text text-hide">{text}</div>
+                    <div class="message-text text-self">{text}</div>
                 </div>
             """, unsafe_allow_html=True)
         else:
-            # 相手 (左寄せ・オレンジ文字)
             st.markdown(f"""
                 <div class="chat-row align-left">
                     <div class="chat-header">
-                        <span class="name-maki">{sender}</span>
+                        <span class="name-other">{sender}</span>
                         <span class="timestamp">{time}</span>
                     </div>
-                    <div class="message-text text-maki">{text}</div>
+                    <div class="message-text text-other">{text}</div>
                 </div>
             """, unsafe_allow_html=True)
 except Exception as e:
@@ -127,7 +99,8 @@ prompt = st.chat_input("メッセージを入力...")
 
 if prompt:
     try:
-        supabase.table("messages").insert({"sender_name": user_param, "message_body": prompt}).execute()
+        # current_user（URLから取得した名前）で保存
+        supabase.table("messages").insert({"sender_name": current_user, "message_body": prompt}).execute()
         st.rerun()
     except Exception as e:
         st.error(f"Error")
