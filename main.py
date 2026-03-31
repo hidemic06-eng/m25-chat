@@ -12,15 +12,15 @@ st.markdown("""
     .stApp { background-color: #313338; color: #dbdee1; }
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
     .stAppDeployButton {display:none;}
+    [data-testid="bundle-viewer-container"] {display: none !important;}
 
-    /* 下部の余白を「150px」と大きく取ることで、アイコンや入力欄に最後のメッセージが絶対被らないようにします */
+    /* 余白を 150px → 80px へ。これで「広すぎず、隠れず」のラインを狙います */
     .block-container { 
         padding-top: 1rem; 
-        padding-bottom: 150px !important; 
+        padding-bottom: 80px !important; 
         max-width: 100% !important; 
     }
 
-    /* チャットのデザイン */
     .chat-row { display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }
     .chat-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }
     .message-text { font-size: 1.05rem; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; max-width: 85%; }
@@ -30,85 +30,65 @@ st.markdown("""
     .name-hide { color: #58a6ff !important; font-weight: bold; }
     .timestamp { color: #949ba4; font-size: 0.75rem; }
     .text-content { color: #e6edf3; }
-
-    /* 入力欄の微調整 */
-    div[data-testid="stChatInput"] { padding-bottom: 20px; }
+    
+    /* 入力欄の下の隙間を最小限に */
+    div[data-testid="stChatInput"] { padding-bottom: 10px; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. パスワード認証 ---
+# --- 3. 認証 ---
 if "password_correct" not in st.session_state:
     pw = st.text_input("PW", type="password")
     if pw == "05250206":
         st.session_state["password_correct"] = True
         st.rerun()
-    elif pw:
-        st.error("❌")
     st.stop()
 
-# --- 4. 接続 & ユーザー判定 ---
+# --- 4. 接続 ---
 query_params = st.query_params
 current_user = query_params.get("user", "HIDE").upper()
+supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 
-SUPABASE_URL = "https://kvqbwknrsdasoipttkpr.supabase.co"
-SUPABASE_KEY = "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT"
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-# --- 5. 操作パネル ---
+# --- 5. 操作 ---
 st.title("💬 M25-Chat")
 auto_update = st.toggle("自動更新(5s)", value=True)
-
 if auto_update:
-    st_autorefresh(interval=5000, key="chat_update_stable")
+    st_autorefresh(interval=5000, key="chat_ref")
 
 st.divider()
 
-# --- 6. 履歴の表示 (最新20件) ---
+# --- 6. 表示 (20件) ---
 try:
     res = supabase.table("messages").select("*").order("created_at", desc=True).limit(20).execute()
-    messages = res.data[::-1]
-    for m in messages:
+    for m in res.data[::-1]:
         sender = m['sender_name']
-        sender_upper = sender.upper()
-        text = m['message_body']
-        time = m['created_at'][11:16]
-        align_class = "align-right" if sender_upper == current_user else "align-left"
-        header_style = "flex-direction: row-reverse;" if sender_upper == current_user else ""
-        name_class = "name-maki" if "MAKI" in sender_upper else "name-hide" if "HIDE" in sender_upper else "name-default"
+        s_up = sender.upper()
+        align = "align-right" if s_up == current_user else "align-left"
+        h_style = "flex-direction: row-reverse;" if s_up == current_user else ""
+        n_class = "name-maki" if "MAKI" in s_up else "name-hide" if "HIDE" in s_up else ""
+        
         st.markdown(f"""
-            <div class="chat-row {align_class}">
-                <div class="chat-header" style="{header_style}">
-                    <span class="{name_class}">{sender}</span>
-                    <span class="timestamp">{time}</span>
+            <div class="chat-row {align}">
+                <div class="chat-header" style="{h_style}">
+                    <span class="{n_class}">{sender}</span>
+                    <span class="timestamp">{m['created_at'][11:16]}</span>
                 </div>
-                <div class="message-text text-content">{text}</div>
+                <div class="message-text text-content">{m['message_body']}</div>
             </div>
         """, unsafe_allow_html=True)
 except:
     st.empty()
 
-# --- 7. 入力欄 ---
+# --- 7. 入力 ---
 prompt = st.chat_input("メッセージを入力...")
 if prompt:
-    try:
-        supabase.table("messages").insert({"sender_name": current_user, "message_body": prompt}).execute()
-        st.rerun()
-    except:
-        pass
+    supabase.table("messages").insert({"sender_name": current_user, "message_body": prompt}).execute()
+    st.rerun()
 
-# --- 8. シンプルな強制スクロール ---
+# --- 8. スクロール ---
 components.html(
-    """
-    <script>
-    const scrollToBottom = () => {
-        const main = window.parent.document.querySelector(".main");
-        if (main) {
-            main.scrollTo({ top: main.scrollHeight + 5000, behavior: 'auto' });
-        }
-    };
-    setTimeout(scrollToBottom, 500);
-    setTimeout(scrollToBottom, 1500);
-    </script>
-    """,
-    height=0,
+    """<script>
+    const f = () => { window.parent.document.querySelector(".main").scrollTo(0, 99999); };
+    setTimeout(f, 500); setTimeout(f, 1500);
+    </script>""", height=0
 )
