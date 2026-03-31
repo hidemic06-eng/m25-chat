@@ -41,26 +41,32 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 認証 (Enter不要/テンキー/履歴表示なし) ---
+# --- 3. 認証 (履歴ブロック ＆ 自動ログイン) ---
 if "password_correct" not in st.session_state:
     st.write("🔒 Enter Password")
-    pw = st.text_input("Password", type="default", key="pw_input")
     
-    # JavaScriptで「履歴オフ」「テンキー」「伏せ字」をまとめて強制
+    # name属性を毎回変えることで、ブラウザに「初めて見る入力欄だ」と誤認させ、履歴を封じます
+    import time
+    random_id = str(int(time.time())) 
+    
+    pw = st.text_input("Password", type="default", key=f"pw_{random_id}")
+    
     components.html(
-        """
+        f"""
         <script>
         const inputs = window.parent.document.querySelectorAll('input');
-        inputs.forEach(input => {
-            if (input.getAttribute('aria-label') === 'Password') {
-                // 自動補完をオフにする（履歴を出させない）
+        inputs.forEach(input => {{
+            if (input.getAttribute('aria-label') === 'Password') {{
+                // 1. 履歴を強力に拒否する3点セット
                 input.setAttribute('autocomplete', 'new-password');
-                // テンキーを出す
+                input.setAttribute('name', 'pw_{random_id}');
+                input.setAttribute('spellcheck', 'false');
+                
+                // 2. テンキー ＆ 伏せ字
                 input.setAttribute('type', 'tel');
-                // 伏せ字にする
                 input.style.webkitTextSecurity = 'disc';
-            }
-        });
+            }}
+        }});
         </script>
         """,
         height=0,
