@@ -13,7 +13,6 @@ st.markdown("""
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
     .stAppDeployButton {display:none;}
 
-    /* 余白を 50px に。これで入力欄のすぐ上までメッセージが来ます */
     .block-container { 
         padding-top: 1rem; 
         padding-bottom: 50px !important; 
@@ -25,11 +24,13 @@ st.markdown("""
     .message-text { font-size: 1.05rem; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; max-width: 85%; }
     .align-right { align-items: flex-end; text-align: right; }
     .align-left { align-items: flex-start; text-align: left; }
+    
+    /* 名前の色設定（判定は大文字で行いますが、表示は元の文字を維持します） */
     .name-maki { color: #ffa657 !important; font-weight: bold; }
     .name-hide { color: #58a6ff !important; font-weight: bold; }
+    
     .timestamp { color: #949ba4; font-size: 0.75rem; }
     .text-content { color: #e6edf3; }
-    
     div[data-testid="stChatInput"] { padding-bottom: 0px !important; }
     </style>
 """, unsafe_allow_html=True)
@@ -44,8 +45,10 @@ if "password_correct" not in st.session_state:
 
 # --- 4. 接続 ---
 query_params = st.query_params
-current_user = query_params.get("user", "HIDE").upper()
-# 接続情報を整理
+# 判定用には大文字を使いますが、変数としては元の値を保持
+current_user_raw = query_params.get("user", "Hide")
+current_user_upper = current_user_raw.upper()
+
 SUPABASE_URL = "https://kvqbwknrsdasoipttkpr.supabase.co"
 SUPABASE_KEY = "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT"
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -61,38 +64,46 @@ st.divider()
 # --- 6. 表示 (20件) ---
 try:
     res = supabase.table("messages").select("*").order("created_at", desc=True).limit(20).execute()
-    messages = res.data[::-1] # 古い順に並び替え
+    messages = res.data[::-1]
     
     for m in messages:
-        sender = m['sender_name']
-        s_up = sender.upper()
+        sender_name = m['sender_name'] # DBから取得した名前（Hide や Maki）
+        s_up = sender_name.upper()     # 判定用
         
-        # クラス判定
-        align = "align-right" if s_up == current_user else "align-left"
-        h_style = "flex-direction: row-reverse;" if s_up == current_user else ""
-        n_class = "name-maki" if "MAKI" in s_up else "name-hide" if "HIDE" in s_up else ""
+        # 右寄せ・左寄せの判定
+        align = "align-right" if s_up == current_user_upper else "align-left"
+        h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
+        
+        # 色分けのクラス判定
+        n_class = ""
+        if "MAKI" in s_up:
+            n_class = "name-maki"
+        elif "HIDE" in s_up:
+            n_class = "name-hide"
+            
         t_str = m['created_at'][11:16]
         
         st.markdown(f"""
             <div class="chat-row {align}">
-                <div class="chat-header" style="{h_style}">
-                    <span class="{n_class}">{sender}</span>
+                <div class="chat-header" style="{header_style if 'header_style' in locals() else h_style}">
+                    <span class="{n_class}">{sender_name}</span>
                     <span class="timestamp">{t_str}</span>
                 </div>
                 <div class="message-text text-content">{m['message_body']}</div>
             </div>
         """, unsafe_allow_html=True)
 except Exception as e:
-    st.error("表示エラーが発生しました")
+    st.empty()
 
 # --- 7. 入力 ---
 prompt = st.chat_input("メッセージを入力...")
 if prompt:
     try:
-        supabase.table("messages").insert({"sender_name": current_user, "message_body": prompt}).execute()
+        # 送信時は元の表記(Hide/Maki)で送るように設定
+        supabase.table("messages").insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
         st.rerun()
     except:
-        st.error("送信に失敗しました")
+        pass
 
 # --- 8. スクロール ---
 components.html(
