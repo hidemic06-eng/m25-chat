@@ -4,40 +4,58 @@ from supabase import create_client
 # --- 1. 設定 (必ず最初に実行) ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
-# --- 2. メニュー非表示 & デザイン (CSS) ---
+# --- 2. デザイン (CSS) ---
 st.markdown("""
     <style>
-    /* 全体背景：Discord風ダーク */
+    /* 全体背景：Discord風ダークグレー */
     .stApp { background-color: #313338; color: #dbdee1; }
     
-    /* 余計な要素を隠す */
+    /* 不要な要素を非表示 */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     .stAppDeployButton {display:none;}
     
-    /* 履歴エリア：入力欄が下にあるので下に余白を作る */
-    .block-container { padding-top: 1rem; padding-bottom: 5rem; max-width: 100% !important; }
+    /* 履歴エリアの余白調整 */
+    .block-container { padding-top: 1rem; padding-bottom: 6rem; max-width: 100% !important; }
 
-    /* 吹き出しの基本構造 */
-    .chat-row { display: flex; margin-bottom: 12px; width: 100%; align-items: flex-end; }
+    /* メッセージ一行の枠（背景なし・枠なし） */
+    .chat-row { 
+        display: flex; 
+        flex-direction: column;
+        margin-bottom: 16px; 
+        width: 100%; 
+    }
     
-    .chat-bubble { 
-        padding: 10px 14px; border-radius: 18px; 
-        max-width: 75%; width: auto; 
-        font-size: 16px; line-height: 1.4; 
-        color: #ffffff !important; box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        word-wrap: break-word;
-        white-space: pre-wrap;
+    /* 名前と時間のヘッダー */
+    .chat-header { 
+        display: flex; 
+        align-items: baseline; 
+        gap: 8px; 
+        margin-bottom: 4px;
+        font-size: 0.85rem;
     }
 
-    /* 右側 (HIDE)：青系 */
-    .bubble-right { background-color: #4682b4 !important; border-bottom-right-radius: 2px; }
-    /* 左側 (MAKI)：オレンジ系 */
-    .bubble-left { background-color: #d2691e !important; border-bottom-left-radius: 2px; }
+    /* 本文：枠をなくしてシンプルに */
+    .message-text { 
+        font-size: 1rem; 
+        line-height: 1.5; 
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        max-width: 85%;
+    }
 
-    .chat-info { font-size: 10px; color: #949ba4; margin: 0 6px; min-width: fit-content; }
-    .sender-name { font-size: 11px; font-weight: bold; margin-bottom: 2px; color: #d2691e; margin-left: 8px; }
+    /* 右側 (HIDE) の配色と配置 */
+    .align-right { align-items: flex-end; text-align: right; }
+    .name-hide { color: #58a6ff; font-weight: bold; }
+    .text-hide { color: #e6edf3; }
+
+    /* 左側 (MAKI) の配色と配置 */
+    .align-left { align-items: flex-start; text-align: left; }
+    .name-maki { color: #ffa657; font-weight: bold; }
+    .text-maki { color: #dbdee1; }
+
+    .timestamp { color: #949ba4; font-size: 0.75rem; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -70,9 +88,8 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.title("💬 M25-Chat")
 
-# --- 5. 履歴の表示 (古いものから順に下へ) ---
+# --- 5. 履歴の表示 (新しいのが下) ---
 try:
-    # Discord/LINEと同じく、新しいのが下に来るように asc=True
     res = supabase.table("messages").select("*").order("created_at", desc=False).execute()
     
     for m in res.data:
@@ -81,30 +98,31 @@ try:
         time = m['created_at'][11:16]
 
         if sender.upper() == "HIDE":
-            # 自分 (右寄せ)
+            # 自分 (右寄せ・青文字)
             st.markdown(f"""
-                <div class="chat-row" style="justify-content: flex-end;">
-                    <div class="chat-info" style="text-align: right; padding-bottom: 2px;">{time} ✅</div>
-                    <div class="chat-bubble bubble-right">{text}</div>
+                <div class="chat-row align-right">
+                    <div class="chat-header" style="flex-direction: row-reverse;">
+                        <span class="name-hide">{sender}</span>
+                        <span class="timestamp">{time}</span>
+                    </div>
+                    <div class="message-text text-hide">{text}</div>
                 </div>
             """, unsafe_allow_html=True)
         else:
-            # 相手 (左寄せ)
+            # 相手 (左寄せ・オレンジ文字)
             st.markdown(f"""
-                <div class="chat-row" style="justify-content: flex-start;">
-                    <div style="display: flex; flex-direction: column; align-items: flex-start; max-width: 80%;">
-                        <div class="sender-name">{sender}</div>
-                        <div style="display: flex; align-items: flex-end;">
-                            <div class="chat-bubble bubble-left">{text}</div>
-                            <div class="chat-info" style="padding-bottom: 2px;">{time}</div>
-                        </div>
+                <div class="chat-row align-left">
+                    <div class="chat-header">
+                        <span class="name-maki">{sender}</span>
+                        <span class="timestamp">{time}</span>
                     </div>
+                    <div class="message-text text-maki">{text}</div>
                 </div>
             """, unsafe_allow_html=True)
 except Exception as e:
     st.empty()
 
-# --- 6. 入力欄の固定 (画面最下部) ---
+# --- 6. 入力欄の固定 ---
 prompt = st.chat_input("メッセージを入力...")
 
 if prompt:
@@ -112,4 +130,4 @@ if prompt:
         supabase.table("messages").insert({"sender_name": user_param, "message_body": prompt}).execute()
         st.rerun()
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"Error")
