@@ -44,7 +44,7 @@ st.markdown("""
 # --- 3. 認証 ---
 if "password_correct" not in st.session_state:
     pw = st.text_input("PW", type="password")
-    if pw == "05250206":
+    if pw == "0525":
         st.session_state["password_correct"] = True
         st.rerun()
     st.stop()
