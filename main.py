@@ -41,23 +41,20 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 認証 (数字テンキー強制版) ---
+# --- 3. 認証 (テンキー ＆ 確定ボタン復活版) ---
 if "password_correct" not in st.session_state:
     st.write("🔒 Enter Password")
-    # ここは標準のままでOK
     pw = st.text_input("Password", type="default", key="pw_input")
     
-    # JavaScriptで「数字モード」と「伏せ字」を強制
     components.html(
         """
         <script>
         const inputs = window.parent.document.querySelectorAll('input');
         inputs.forEach(input => {
             if (input.getAttribute('aria-label') === 'Password') {
-                // 数字入力モードを強制（これで数字だけのキーボードが出ます）
-                input.setAttribute('inputmode', 'numeric');
-                input.setAttribute('pattern', '[0-9]*');
-                // 伏せ字にする
+                // inputmodeを decimal に変更することで「確定」キーを呼び出します
+                input.setAttribute('inputmode', 'decimal');
+                // 伏せ字の設定
                 input.style.webkitTextSecurity = 'disc';
             }
         });
