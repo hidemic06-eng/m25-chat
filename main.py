@@ -5,23 +5,6 @@ from streamlit_autorefresh import st_autorefresh
 # --- 1. 設定 (必ず最初に実行) ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
-# --- サイドバーで更新設定を管理 ---
-with st.sidebar:
-    st.title("⚙️ 設定")
-    # 自動更新のON/OFF切り替え
-    auto_update = st.toggle("自動更新 (5秒)", value=False)
-    
-    if auto_update:
-        # ONのときだけ実行
-        st_autorefresh(interval=5000, key="chat_update")
-        st.caption("✅ 5秒ごとにチェック中")
-    else:
-        st.caption("⏸️ 自動更新停止中")
-    
-    # 手動更新ボタン（クリックすると再読み込み）
-    if st.button("🔄 手動更新", use_container_width=True):
-        st.rerun()
-
 # --- 2. デザイン (CSS) ---
 st.markdown("""
     <style>
@@ -29,6 +12,15 @@ st.markdown("""
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
     .stAppDeployButton {display:none;}
     .block-container { padding-top: 1rem; padding-bottom: 6rem; max-width: 100% !important; }
+
+    /* 操作パネル用の枠（少しDiscordのツールバー風に） */
+    .control-panel {
+        background-color: #2b2d31;
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border: 1px solid #404249;
+    }
 
     .chat-row { display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }
     .chat-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }
@@ -39,8 +31,7 @@ st.markdown("""
 
     .name-maki { color: #ffa657 !important; font-weight: bold; }
     .name-hide { color: #58a6ff !important; font-weight: bold; }
-    .name-default { color: #dbdee1; font-weight: bold; }
-
+    
     .timestamp { color: #949ba4; font-size: 0.75rem; }
     .text-content { color: #e6edf3; }
     </style>
@@ -65,7 +56,7 @@ def check_password():
 if not check_password():
     st.stop()
 
-# --- 4. 接続 & URLからユーザー判定 ---
+# --- 4. 接続 & URL判定 ---
 query_params = st.query_params
 current_user = query_params.get("user", "HIDE").upper()
 
@@ -73,9 +64,25 @@ SUPABASE_URL = "https://kvqbwknrsdasoipttkpr.supabase.co"
 SUPABASE_KEY = "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT"
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# --- 5. メイン画面の操作パネル ---
 st.title("💬 M25-Chat")
 
-# --- 5. 履歴の表示 ---
+# カラムを分けて横並びにする（スマホでも横に並びやすいよう比率を調整）
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    auto_update = st.toggle("自動更新(5s)", value=False)
+with col2:
+    if st.button("🔄更新", use_container_width=True):
+        st.rerun()
+
+# 自動更新ロジック
+if auto_update:
+    st_autorefresh(interval=5000, key="chat_update")
+
+st.divider() # 区切り線
+
+# --- 6. 履歴の表示 ---
 try:
     res = supabase.table("messages").select("*").order("created_at", desc=False).execute()
     
@@ -107,7 +114,7 @@ try:
 except Exception as e:
     st.empty()
 
-# --- 6. 入力欄の固定 ---
+# --- 7. 入力欄の固定 ---
 prompt = st.chat_input("メッセージを入力...")
 
 if prompt:
