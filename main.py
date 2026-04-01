@@ -128,10 +128,31 @@ try:
                 emoji = "🍜"
             elif any(word in msg_body for word in ["野菜", "サラダ", "レタス"]):
                 emoji = "🥬"
+            elif any(word in msg_body for word in ["おやすみ", "眠い", "寝る"]):
+                emoji = "💤"
+            elif any(word in msg_body for word in ["綺麗", "きれい", "すごい", "最高"]):
+                emoji = "✨"
+            elif any(word in msg_body for word in ["コーヒー", "カフェ", "休憩"]):
+                emoji = "☕️"
+            elif any(word in msg_body for word in ["ドライブ"]):
+                emoji = "🚗"
+            elif any(word in msg_body for word in ["乾杯", "ワイン", "ハイボール"]):
+                emoji = "🥂"
+            elif any(word in msg_body for word in ["花見", "さくら", "桜"]):
+                emoji = "🌸"
+            elif any(word in msg_body for word in ["楽しみ", "ルンルン", "うれしい"]):
+                emoji = "🎶"
+            elif any(word in msg_body for word in ["ケーキ", "スイーツ", "甘いもの"]):
+                emoji = "🍰"
+            elif any(word in msg_body for word in ["ラッキー", "幸せ", "しあわせ", "ハッピー"]):
+                emoji = "🍀"
+            elif any(word in msg_body for word in ["熊", "困った"]):
+                emoji = "🐻"
+
 
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]):
                 st.balloons()
-            if any(word in msg_body for word in ["雪", "寒い", "冬"]):
+            if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]):
                 st.snow()
 
             if emoji:
