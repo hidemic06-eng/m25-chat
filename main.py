@@ -120,17 +120,28 @@ try:
         if msg_id != st.session_state["last_effect_id"]:
             emoji = None
             
-            # ハートの演出（大好き、ありがとう、感謝）
+            # ❤️ ハート
             if any(word in msg_body for word in ["大好き", "ありがとう", "感謝"]):
                 emoji = "❤️"
-            
-            # ビールの演出（お疲れ様のバリエーション、ちょい飲み）
+            # 🍺 ビール
             elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れさま", "ちょい飲み", "ちょい呑み"]):
                 emoji = "🍺"
-            
-            # おにぎりの演出
+            # 🍙 おにぎり
             elif "おにぎり" in msg_body:
                 emoji = "🍙"
+            # 🏸 バドミントン（新！）
+            elif any(word in msg_body for word in ["バドミントン", "練習", "試合", "ナイスショット"]):
+                emoji = "🏸"
+            # ✨ おやすみ（新！）
+            elif any(word in msg_body for word in ["おやすみ", "また明日"]):
+                emoji = "✨"
+            # 🍜 ラーメン・お腹すいた（新！）
+            elif any(word in msg_body for word in ["お腹すいた", "ラーメン", "ペコペコ"]):
+                emoji = "🍜"
+            # 🌸 応援（新！）
+            elif any(word in msg_body for word in ["頑張って", "応援してる", "ファイト"]):
+                emoji = "🌸"
+
 
             if emoji:
                 effect_html = ""
