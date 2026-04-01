@@ -72,7 +72,6 @@ if "page_offset" not in st.session_state:
 if "is_sending" not in st.session_state:
     st.session_state["is_sending"] = False
 
-# 【追加】最後に演出を出したメッセージIDを記憶するメモ帳
 if "last_effect_id" not in st.session_state:
     st.session_state["last_effect_id"] = None
 
@@ -110,37 +109,44 @@ try:
     res = supabase.table(table_name).select("*").order("created_at", desc=True).range(st.session_state["page_offset"], st.session_state["page_offset"] + 19).execute()
     messages = res.data[::-1]
     
-    # 【演出機能】
     if messages and st.session_state["page_offset"] == 0:
         latest_msg = messages[-1]
         msg_id = latest_msg.get("id")
         msg_body = latest_msg["message_body"]
+        sender = latest_msg["sender_name"]
         
-        # 新しいメッセージが来た時だけトリガー
         if msg_id != st.session_state["last_effect_id"]:
             
-            # --- A. Streamlit標準アクション (画面全体) ---
+            # --- 演出A: トースト通知 (右下) ---
+            # おはよう系
+            if any(word in msg_body for word in ["おはよう", "おはよー", "おはよ"]):
+                st.toast(f"{sender}さん、おはよう！今日も良い一日にしようね☀️", icon="☀️")
+            
+            # 大好き・愛してる系
+            elif any(word in msg_body for word in ["大好き", "愛してる"]):
+                st.toast(f"{sender}さんから愛が届きました！", icon="❤️")
+            
+            # ありがとう・感謝系
+            elif any(word in msg_body for word in ["ありがとう", "感謝"]):
+                st.toast(f"{sender}さんが感謝しています", icon="✨")
+
+            # --- 演出B: 標準アクション (画面全体) ---
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]):
-                st.balloons() # 風船が下から上がる
+                st.balloons()
             
             if any(word in msg_body for word in ["雪", "寒い", "冬", "スキー"]):
-                st.snow()     # 雪が上から降る
+                st.snow()
 
-            # --- B. 自作の不規則・バラバラ降臨アクション ---
+            # --- 演出C: 自作の不規則・バラバラ降臨アクション ---
             emoji = None
-            # ❤️ ハート
             if any(word in msg_body for word in ["大好き", "ありがとう", "感謝", "愛してる"]):
                 emoji = "❤️"
-            # 🍺 ビール
             elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れさま", "ちょい飲み", "ちょい呑み"]):
                 emoji = "🍺"
-            # 🍙 おにぎり
             elif "おにぎり" in msg_body:
                 emoji = "🍙"
-            # 🏸 バドミントン (Hideさんの趣味)
             elif any(word in msg_body for word in ["バドミントン", "練習", "試合", "ナイスショット"]):
                 emoji = "🏸"
-            # 🍜 ラーメン (二人の好物)
             elif any(word in msg_body for word in ["ラーメン", "山岡家", "お腹すいた"]):
                 emoji = "🍜"
 
@@ -161,10 +167,8 @@ try:
                         </div>"""
                 st.markdown(effect_html, unsafe_allow_html=True)
 
-            # 演出を出したIDを記録
             st.session_state["last_effect_id"] = msg_id
 
-    # メッセージの表示
     for m in messages:
         utc_time = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
         jst_time = utc_time + timedelta(hours=9)
