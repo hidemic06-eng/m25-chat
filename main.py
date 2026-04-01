@@ -110,18 +110,26 @@ try:
     res = supabase.table(table_name).select("*").order("created_at", desc=True).range(st.session_state["page_offset"], st.session_state["page_offset"] + 19).execute()
     messages = res.data[::-1]
     
-    # 【演出機能】不規則な「降り」の演出
+    # 【演出機能】
     if messages and st.session_state["page_offset"] == 0:
         latest_msg = messages[-1]
         msg_id = latest_msg.get("id")
         msg_body = latest_msg["message_body"]
         
-        # 新しいメッセージが来た時だけ判定
+        # 新しいメッセージが来た時だけトリガー
         if msg_id != st.session_state["last_effect_id"]:
-            emoji = None
             
+            # --- A. Streamlit標準アクション (画面全体) ---
+            if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]):
+                st.balloons() # 風船が下から上がる
+            
+            if any(word in msg_body for word in ["雪", "寒い", "冬", "スキー"]):
+                st.snow()     # 雪が上から降る
+
+            # --- B. 自作の不規則・バラバラ降臨アクション ---
+            emoji = None
             # ❤️ ハート
-            if any(word in msg_body for word in ["大好き", "ありがとう", "感謝"]):
+            if any(word in msg_body for word in ["大好き", "ありがとう", "感謝", "愛してる"]):
                 emoji = "❤️"
             # 🍺 ビール
             elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れさま", "ちょい飲み", "ちょい呑み"]):
@@ -129,19 +137,12 @@ try:
             # 🍙 おにぎり
             elif "おにぎり" in msg_body:
                 emoji = "🍙"
-            # 🏸 バドミントン（新！）
+            # 🏸 バドミントン (Hideさんの趣味)
             elif any(word in msg_body for word in ["バドミントン", "練習", "試合", "ナイスショット"]):
                 emoji = "🏸"
-            # ✨ おやすみ（新！）
-            elif any(word in msg_body for word in ["おやすみ", "また明日"]):
-                emoji = "✨"
-            # 🍜 ラーメン・お腹すいた（新！）
-            elif any(word in msg_body for word in ["お腹すいた", "ラーメン", "ペコペコ"]):
+            # 🍜 ラーメン (二人の好物)
+            elif any(word in msg_body for word in ["ラーメン", "山岡家", "お腹すいた"]):
                 emoji = "🍜"
-            # 🌸 応援（新！）
-            elif any(word in msg_body for word in ["頑張って", "応援してる", "ファイト"]):
-                emoji = "🌸"
-
 
             if emoji:
                 effect_html = ""
@@ -159,8 +160,9 @@ try:
                             {emoji}
                         </div>"""
                 st.markdown(effect_html, unsafe_allow_html=True)
-                # 演出を出したIDを記録（重複防止）
-                st.session_state["last_effect_id"] = msg_id
+
+            # 演出を出したIDを記録
+            st.session_state["last_effect_id"] = msg_id
 
     # メッセージの表示
     for m in messages:
