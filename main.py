@@ -39,13 +39,33 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: bold; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* アニメーション設定 */
+    /* アニメーション：昇る絵文字 */
     @keyframes rise {{
         0% {{ transform: translateY(0); opacity: 0; }}
         5% {{ opacity: 1; }}
         85% {{ opacity: 1; }}
         100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }}
     }}
+    
+    /* 【追加】アニメーション：画面を揺らす(Shake) */
+    @keyframes shake {{
+        0% {{ transform: translate(1px, 1px) rotate(0deg); }}
+        10% {{ transform: translate(-1px, -2px) rotate(-1deg); }}
+        20% {{ transform: translate(-3px, 0px) rotate(1deg); }}
+        30% {{ transform: translate(3px, 2px) rotate(0deg); }}
+        40% {{ transform: translate(1px, -1px) rotate(1deg); }}
+        50% {{ transform: translate(-1px, 2px) rotate(-1deg); }}
+        60% {{ transform: translate(-3px, 1px) rotate(0deg); }}
+        70% {{ transform: translate(3px, 1px) rotate(-1deg); }}
+        80% {{ transform: translate(-1px, -1px) rotate(1deg); }}
+        90% {{ transform: translate(1px, 2px) rotate(0deg); }}
+        100% {{ transform: translate(1px, -2px) rotate(-1deg); }}
+    }}
+    .shake-screen {{
+        animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        animation-iteration-count: 4; /* 合計2秒間揺れる */
+    }}
+
     .rising-emoji {{
         position: fixed;
         bottom: -12vh;
@@ -84,7 +104,6 @@ supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publish
 
 # --- 6. ヘッダー ---
 st.title(f"💬 M25-Chat{status_label}")
-# 自動更新の間隔を8秒に変更
 auto_update = st.toggle("自動更新(8s)", value=True)
 if auto_update and st.session_state["page_offset"] == 0:
     st_autorefresh(interval=8000, key="chat_ref")
@@ -116,6 +135,7 @@ try:
         
         if msg_id != st.session_state["last_effect_id"]:
             emoji = None
+            # 絵文字判定
             if any(word in msg_body for word in ["大好き", "好き", "ありがとう", "感謝", "愛してる", "ラブラブ"]):
                 emoji = "❤️"
             elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み"]):
@@ -128,20 +148,43 @@ try:
                 emoji = "🍜"
             elif any(word in msg_body for word in ["野菜", "サラダ", "レタス"]):
                 emoji = "🥬"
+            elif any(word in msg_body for word in ["おやすみ", "眠い", "寝る"]):
+                emoji = "💤"
+            elif any(word in msg_body for word in ["綺麗", "きれい", "すごい", "最高"]):
+                emoji = "✨"
+            elif any(word in msg_body for word in ["コーヒー", "カフェ", "休憩"]):
+                emoji = "☕️"
+            elif any(word in msg_body for word in ["ドライブ"]):
+                emoji = "🚗"
+            elif any(word in msg_body for word in ["乾杯", "ワイン", "ハイボール"]):
+                emoji = "🥂"
+            elif any(word in msg_body for word in ["花見", "さくら", "桜"]):
+                emoji = "🌸"
+            elif any(word in msg_body for word in ["楽しみ", "ルンルン", "うれしい"]):
+                emoji = "🎶"
+            elif any(word in msg_body for word in ["ケーキ", "スイーツ", "甘いもの"]):
+                emoji = "🍰"
+            elif any(word in msg_body for word in ["ラッキー", "幸せ", "しあわせ", "ハッピー"]):
+                emoji = "🍀"
+            elif any(word in msg_body for word in ["熊", "困った"]):
+                emoji = "🐻"
 
+            # 特別アクション
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]):
                 st.balloons()
-            if any(word in msg_body for word in ["雪", "寒い", "冬"]):
+            if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]):
                 st.snow()
+            
+            # 【追加】画面揺らしアクション
+            if any(word in msg_body for word in ["こら", "起きて", "びっくり", "地震", "怒"]):
+                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
 
             if emoji:
                 effect_html = '<div class="rising-emoji">'
                 for i in range(25):
                     left = random.randint(5, 95)
                     size = random.uniform(2.5, 4.5)
-                    # 出現の遅れを最大0.5秒に短縮
                     delay = random.uniform(0, 0.5)
-                    # 昇る時間を5.5秒〜6.5秒に設定（遅れと合わせても最大7秒）
                     duration = random.uniform(5.5, 6.5)
                     effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{emoji}</div>'
                 effect_html += '</div>'
