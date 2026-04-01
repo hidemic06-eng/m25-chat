@@ -39,7 +39,6 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: bold; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* 降り注ぐエフェクトのアニメーション */
     @keyframes fall {{
         0% {{ transform: translateY(-20vh) rotate(0deg); opacity: 0; }}
         10% {{ opacity: 1; }}
@@ -68,9 +67,6 @@ if "password_correct" not in st.session_state:
 # --- 5. 設定 ---
 if "page_offset" not in st.session_state:
     st.session_state["page_offset"] = 0
-
-if "is_sending" not in st.session_state:
-    st.session_state["is_sending"] = False
 
 if "last_effect_id" not in st.session_state:
     st.session_state["last_effect_id"] = None
@@ -116,28 +112,18 @@ try:
         sender = latest_msg["sender_name"]
         
         if msg_id != st.session_state["last_effect_id"]:
-            
-            # --- 演出A: トースト通知 (右下) ---
-            # おはよう系
             if any(word in msg_body for word in ["おはよう", "おはよー", "おはよ"]):
-                st.toast(f"{sender}さん、おはよう！今日も良い一日にしようね☀️", icon="☀️")
-            
-            # 大好き・愛してる系
+                st.toast(f"{sender}さん、おはよう！☀️", icon="☀️")
             elif any(word in msg_body for word in ["大好き", "愛してる"]):
                 st.toast(f"{sender}さんから愛が届きました！", icon="❤️")
-            
-            # ありがとう・感謝系
             elif any(word in msg_body for word in ["ありがとう", "感謝"]):
                 st.toast(f"{sender}さんが感謝しています", icon="✨")
 
-            # --- 演出B: 標準アクション (画面全体) ---
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]):
                 st.balloons()
-            
             if any(word in msg_body for word in ["雪", "寒い", "冬", "スキー"]):
                 st.snow()
 
-            # --- 演出C: 自作の不規則・バラバラ降臨アクション ---
             emoji = None
             if any(word in msg_body for word in ["大好き", "ありがとう", "感謝", "愛してる"]):
                 emoji = "❤️"
@@ -145,7 +131,7 @@ try:
                 emoji = "🍺"
             elif "おにぎり" in msg_body:
                 emoji = "🍙"
-            elif any(word in msg_body for word in ["バドミントン", "練習", "試合", "ナイスショット"]):
+            elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]):
                 emoji = "🏸"
             elif any(word in msg_body for word in ["ラーメン", "山岡家", "お腹すいた"]):
                 emoji = "🍜"
@@ -157,14 +143,7 @@ try:
                     size = random.uniform(1.5, 4.0)
                     delay = random.uniform(0.0, 3.0)
                     duration = random.uniform(4.0, 7.0)
-                    effect_html += f"""
-                        <div class="falling-emoji" style="
-                            left:{left}%; 
-                            font-size:{size}rem; 
-                            animation-delay:{delay}s; 
-                            animation-duration:{duration}s;">
-                            {emoji}
-                        </div>"""
+                    effect_html += f'<div class="falling-emoji" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{emoji}</div>'
                 st.markdown(effect_html, unsafe_allow_html=True)
 
             st.session_state["last_effect_id"] = msg_id
@@ -173,7 +152,6 @@ try:
         utc_time = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
         jst_time = utc_time + timedelta(hours=9)
         time_display = jst_time.strftime('%H:%M')
-
         s_up = m['sender_name'].upper()
         align = "align-right" if s_up == current_user_upper else "align-left"
         h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
@@ -193,15 +171,12 @@ except Exception as e:
 
 # --- 9. 送信 ---
 prompt = st.chat_input(input_placeholder)
-if prompt and not st.session_state["is_sending"]:
-    st.session_state["is_sending"] = True
+if prompt:
     try:
         supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
-        st.session_state["is_sending"] = False
         st.session_state["page_offset"] = 0
         st.rerun()
     except Exception as e:
-        st.session_state["is_sending"] = False
         st.error(f"送信エラー: {e}")
 
 # --- 10. スクロール ---
