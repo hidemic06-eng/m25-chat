@@ -12,7 +12,7 @@ st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 table_name = st.secrets.get("TABLE_NAME", "messages")
 
 # --- 3. デザイン設定 ---
-app_bg_color = "#313338" 
+app_bg_color = "#313338"
 text_main_color = "#dbdee1"
 sub_text_color = "#949ba4"
 
@@ -39,19 +39,24 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: bold; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* 下から上に昇るアニメーション */
     @keyframes rise {{
-        0% {{ transform: translateY(110vh) rotate(0deg); opacity: 0; }}
+        0% {{ transform: translateY(0); opacity: 0; }}
         10% {{ opacity: 1; }}
-        80% {{ opacity: 1; }}
-        100% {{ transform: translateY(-20vh) rotate(360deg); opacity: 0; }}
+        90% {{ opacity: 1; }}
+        100% {{ transform: translateY(-120vh) rotate(360deg); opacity: 0; }}
     }}
     .rising-emoji {{
         position: fixed;
         bottom: -10vh;
-        animation: rise linear forwards;
+        left: 0;
+        width: 100%;
+        height: 0;
         z-index: 9999;
         pointer-events: none;
+    }}
+    .emoji-item {{
+        position: absolute;
+        animation: rise linear forwards;
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -68,7 +73,6 @@ if "password_correct" not in st.session_state:
 # --- 5. 設定 ---
 if "page_offset" not in st.session_state:
     st.session_state["page_offset"] = 0
-
 if "last_effect_id" not in st.session_state:
     st.session_state["last_effect_id"] = None
 
@@ -79,9 +83,6 @@ supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publish
 
 # --- 6. ヘッダー ---
 st.title(f"💬 M25-Chat{status_label}")
-if table_name == "messages_test":
-    st.info("⚠️ 現在は【テスト環境】です。投稿はMakiちゃんには届きません。")
-
 auto_update = st.toggle("自動更新(5s)", value=True)
 if auto_update and st.session_state["page_offset"] == 0:
     st_autorefresh(interval=5000, key="chat_ref")
@@ -94,7 +95,7 @@ with col_prev:
         st.session_state["page_offset"] += 20
         st.rerun()
 with col_page:
-    st.write(f"<div style='text-align:center; font-size:0.8rem; color:{sub_text_color};'>{st.session_state['page_offset']+1}〜件目</div>", unsafe_allow_html=True)
+    st.write(f"<div style='text-align:center; font-size:0.8rem;'>{st.session_state['page_offset']+1}〜件目</div>", unsafe_allow_html=True)
 with col_next:
     if st.session_state["page_offset"] >= 20:
         if st.button("次の20件 ➡️"):
@@ -113,40 +114,36 @@ try:
         sender = latest_msg["sender_name"]
         
         if msg_id != st.session_state["last_effect_id"]:
-            if any(word in msg_body for word in ["おはよう", "おはよー", "おはよ"]):
-                st.toast(f"{sender}さん、おはよう！☀️", icon="☀️")
-            elif any(word in msg_body for word in ["大好き", "愛してる"]):
-                st.toast(f"{sender}さんから愛が届きました！", icon="❤️")
-            elif any(word in msg_body for word in ["ありがとう", "感謝"]):
-                st.toast(f"{sender}さんが感謝しています", icon="✨")
-
+            # 標準演出
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]):
                 st.balloons()
-            if any(word in msg_body for word in ["雪", "寒い", "冬", "スキー"]):
+            if any(word in msg_body for word in ["雪", "寒い", "冬"]):
                 st.snow()
 
+            # 絵文字判定
             emoji = None
             if any(word in msg_body for word in ["大好き", "ありがとう", "感謝", "愛してる"]):
                 emoji = "❤️"
-            elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れさま", "ちょい飲み", "ちょい呑み"]):
+            elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "ちょい飲み", "ちょい呑み"]):
                 emoji = "🍺"
             elif "おにぎり" in msg_body:
                 emoji = "🍙"
             elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]):
                 emoji = "🏸"
-            elif any(word in msg_body for word in ["ラーメン", "山岡家", "お腹すいた"]):
+            elif any(word in msg_body for word in ["ラーメン", "山岡家"]):
                 emoji = "🍜"
 
             if emoji:
-                effect_html = ""
-                for i in range(25):
-                    left = random.randint(0, 95)
-                    size = random.uniform(1.5, 4.0)
-                    delay = random.uniform(0.0, 3.0)
-                    # 時間を長く(6秒〜10秒)してゆっくり昇るように変更
-                    duration = random.uniform(6.0, 10.0)
-                    effect_html += f'<div class="rising-emoji" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{emoji}</div>'
+                effect_html = '<div class="rising-emoji">'
+                for i in range(20):
+                    left = random.randint(5, 90)
+                    size = random.uniform(2, 4)
+                    delay = random.uniform(0, 2)
+                    duration = random.uniform(5, 8)
+                    effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{emoji}</div>'
+                effect_html += '</div>'
                 st.markdown(effect_html, unsafe_allow_html=True)
+                st.toast(f"{sender}さんから演出が届きました！", icon=emoji)
 
             st.session_state["last_effect_id"] = msg_id
 
