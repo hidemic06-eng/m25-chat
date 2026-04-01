@@ -2,7 +2,6 @@ import streamlit as st
 from supabase import create_client
 from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
-import datetime
 
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
@@ -10,26 +9,15 @@ st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 # --- 2. データベース(Supabase)接続設定 ---
 table_name = st.secrets.get("TABLE_NAME", "messages")
 
-# --- 3. デザイン設定 (昼夜自動切り替え) ---
-# 【修正】UTCに9時間を足して、確実に日本時間で判定するようにしました
-now = datetime.datetime.utcnow() + datetime.timedelta(hours=9)
-is_daytime = 6 <= now.hour < 18  # 6:00 〜 17:59 を昼とする
-
-if is_daytime:
-    # --- 【昼モード】 ---
-    app_bg_color = "#FFFFFF"  # 真っ白
-    text_main_color = "#313338"  # 濃いグレーの文字
-    sub_text_color = "#606367"  # タイムスタンプなど
-else:
-    # --- 【夜モード】 ---
-    app_bg_color = "#313338"  # グレー
-    text_main_color = "#dbdee1"
-    sub_text_color = "#949ba4"
+# --- 3. デザイン設定 (いつものダークモードに固定) ---
+app_bg_color = "#313338"  # いつものDiscord風グレー
+text_main_color = "#dbdee1"
+sub_text_color = "#949ba4"
 
 # テストラベルとプレースホルダーの設定
 if table_name == "messages_test":
     status_label = " 🧪 TEST"
-    input_placeholder = "テストメッセージを入力..."  # ←ここをテスト用に変更
+    input_placeholder = "テストメッセージを入力..."
 else:
     status_label = ""
     input_placeholder = "メッセージを入力..."
@@ -163,7 +151,6 @@ except Exception as e:
     st.empty()
 
 # --- 9. メッセージ入力・送信処理 ---
-# 【修正】プレースホルダーを動的に変更
 prompt = st.chat_input(input_placeholder)
 if prompt:
     supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
