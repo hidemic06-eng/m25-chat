@@ -7,11 +7,9 @@ import streamlit.components.v1 as components
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
 # --- 2. データベース(Supabase)接続設定 (デザイン判定のために先に取得) ---
-# Secretsに TABLE_NAME の設定があればそれを使い、なければ本番用の "messages" を使用する
 table_name = st.secrets.get("TABLE_NAME", "messages")
 
 # --- 3. デザイン設定 (環境によって色を切り替え) ---
-# テスト環境なら「深緑」、本番なら「ダークグレー」
 if table_name == "messages_test":
     app_bg_color = "#1e3a1e"  # テスト用：落ち着いた深緑
     status_label = " 🧪 TEST"
@@ -37,7 +35,18 @@ st.markdown(f"""
 
     .chat-row {{ display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }}
     .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }}
-    .message-text {{ font-size: 1.05rem; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; max-width: 85%; }}
+    
+    /* 【微調整箇所】メッセージの文字サイズを少し大きく設定 */
+    /* 変更前: font-size: 1.05rem; line-height: 1.6; */
+    .message-text {{ 
+        font-size: 1.18rem; 
+        line-height: 1.5; 
+        font-weight: 450;
+        white-space: pre-wrap; 
+        word-wrap: break-word; 
+        max-width: 85%; 
+    }}
+
     .align-right {{ align-items: flex-end; text-align: right; }}
     .align-left {{ align-items: flex-start; text-align: left; }}
     .name-maki {{ color: #ffa657 !important; font-weight: bold; }}
@@ -79,10 +88,8 @@ current_user_upper = current_user_raw.upper()
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 
 # --- 6. 画面上部の操作パネル ---
-# タイトルにテスト中かどうかのラベルを表示
 st.title(f"💬 M25-Chat{status_label}")
 
-# テスト環境のときだけ注意書きを表示
 if table_name == "messages_test":
     st.info("⚠️ 現在は【テスト環境】です。投稿はMakiちゃんには届きません。")
 
