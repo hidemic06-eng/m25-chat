@@ -39,16 +39,17 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: bold; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    @keyframes fall {{
-        0% {{ transform: translateY(-20vh) rotate(0deg); opacity: 0; }}
+    /* 下から上に昇るアニメーション */
+    @keyframes rise {{
+        0% {{ transform: translateY(110vh) rotate(0deg); opacity: 0; }}
         10% {{ opacity: 1; }}
-        90% {{ opacity: 1; }}
-        100% {{ transform: translateY(110vh) rotate(720deg); opacity: 0; }}
+        80% {{ opacity: 1; }}
+        100% {{ transform: translateY(-20vh) rotate(360deg); opacity: 0; }}
     }}
-    .falling-emoji {{
+    .rising-emoji {{
         position: fixed;
-        top: -10%;
-        animation: fall 5s linear forwards;
+        bottom: -10vh;
+        animation: rise linear forwards;
         z-index: 9999;
         pointer-events: none;
     }}
@@ -142,8 +143,9 @@ try:
                     left = random.randint(0, 95)
                     size = random.uniform(1.5, 4.0)
                     delay = random.uniform(0.0, 3.0)
-                    duration = random.uniform(4.0, 7.0)
-                    effect_html += f'<div class="falling-emoji" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{emoji}</div>'
+                    # 時間を長く(6秒〜10秒)してゆっくり昇るように変更
+                    duration = random.uniform(6.0, 10.0)
+                    effect_html += f'<div class="rising-emoji" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{emoji}</div>'
                 st.markdown(effect_html, unsafe_allow_html=True)
 
             st.session_state["last_effect_id"] = msg_id
