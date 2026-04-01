@@ -3,6 +3,7 @@ from supabase import create_client
 from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
 from datetime import datetime, timedelta
+import random  # ランダム演出用に追加
 
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
@@ -40,13 +41,17 @@ st.markdown(f"""
     
     /* 降り注ぐエフェクトのアニメーション */
     @keyframes fall {{
-        0% {{ transform: translateY(0) rotate(0deg); opacity: 1; }}
-        100% {{ transform: translateY(-100vh) rotate(360deg); opacity: 0; }}
+        0% {{ transform: translateY(-20vh) rotate(0deg); opacity: 0; }}
+        10% {{ opacity: 1; }}
+        90% {{ opacity: 1; }}
+        100% {{ transform: translateY(110vh) rotate(720deg); opacity: 0; }}
     }}
     .falling-emoji {{
-        position: fixed; bottom: -10%; font-size: 2.5rem;
-        animation: fall 4s linear forwards;
-        z-index: 9999; pointer-events: none;
+        position: fixed;
+        top: -10%;
+        animation: fall 5s linear forwards;
+        z-index: 9999;
+        pointer-events: none;
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -101,7 +106,7 @@ try:
     res = supabase.table(table_name).select("*").order("created_at", desc=True).range(st.session_state["page_offset"], st.session_state["page_offset"] + 19).execute()
     messages = res.data[::-1]
     
-    # 【追加機能】キーワードに応じて絵文字を降らせる
+    # 【追加機能】不規則な「降り」の演出
     if messages:
         latest_msg = messages[-1]["message_body"]
         emoji = None
@@ -114,10 +119,20 @@ try:
 
         if emoji:
             effect_html = ""
-            for i in range(15):
-                left = i * 7
-                delay = i * 0.2
-                effect_html += f'<div class="falling-emoji" style="left:{left}%; animation-delay:{delay}s;">{emoji}</div>'
+            for i in range(25):  # 25個降らせる
+                left = random.randint(0, 95)     # 横位置をバラバラに
+                size = random.uniform(1.0, 3.5)  # 大きさをバラバラに (1rem〜3.5rem)
+                delay = random.uniform(0.0, 3.0) # 落ち始める時間をバラバラに
+                duration = random.uniform(4.0, 7.0) # 落ちるスピードをバラバラに
+                
+                effect_html += f"""
+                    <div class="falling-emoji" style="
+                        left:{left}%; 
+                        font-size:{size}rem; 
+                        animation-delay:{delay}s; 
+                        animation-duration:{duration}s;">
+                        {emoji}
+                    </div>"""
             st.markdown(effect_html, unsafe_allow_html=True)
 
     for m in messages:
@@ -143,6 +158,7 @@ except:
     st.empty()
 
 # --- 9. 送信 ---
+# （中略：変更なし）
 prompt = st.chat_input(input_placeholder)
 if prompt and not st.session_state["is_sending"]:
     st.session_state["is_sending"] = True
