@@ -38,14 +38,14 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: bold; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* ハートのアニメーション設定 */
-    @keyframes hearts {{
+    /* 降り注ぐエフェクトのアニメーション */
+    @keyframes fall {{
         0% {{ transform: translateY(0) rotate(0deg); opacity: 1; }}
         100% {{ transform: translateY(-100vh) rotate(360deg); opacity: 0; }}
     }}
-    .heart {{
-        position: fixed; bottom: -10%; font-size: 2rem;
-        animation: hearts 4s linear forwards;
+    .falling-emoji {{
+        position: fixed; bottom: -10%; font-size: 2.5rem;
+        animation: fall 4s linear forwards;
         z-index: 9999; pointer-events: none;
     }}
     </style>
@@ -96,22 +96,29 @@ with col_next:
             st.session_state["page_offset"] -= 20
             st.rerun()
 
-# --- 8. 表示 & ハートの判定 ---
+# --- 8. 表示 & 演出の判定 ---
 try:
     res = supabase.table(table_name).select("*").order("created_at", desc=True).range(st.session_state["page_offset"], st.session_state["page_offset"] + 19).execute()
     messages = res.data[::-1]
     
-    # 【追加機能】最新のメッセージにキーワードが含まれているかチェック
+    # 【追加機能】キーワードに応じて絵文字を降らせる
     if messages:
         latest_msg = messages[-1]["message_body"]
+        emoji = None
         if any(word in latest_msg for word in ["大好き", "ありがとう", "感謝"]):
-            # ハートを降らせるJavaScriptを生成
-            heart_js = ""
+            emoji = "❤️"
+        elif "お疲れ様" in latest_msg:
+            emoji = "🍺"
+        elif "おにぎり" in latest_msg:
+            emoji = "🍙"
+
+        if emoji:
+            effect_html = ""
             for i in range(15):
                 left = i * 7
                 delay = i * 0.2
-                heart_js += f'<div class="heart" style="left:{left}%; animation-delay:{delay}s;">❤️</div>'
-            st.markdown(heart_js, unsafe_allow_html=True)
+                effect_html += f'<div class="falling-emoji" style="left:{left}%; animation-delay:{delay}s;">{emoji}</div>'
+            st.markdown(effect_html, unsafe_allow_html=True)
 
     for m in messages:
         utc_time = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
