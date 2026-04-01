@@ -3,7 +3,7 @@ from supabase import create_client
 from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
 from datetime import datetime, timedelta
-import random  # ランダム演出用に追加
+import random
 
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
@@ -72,6 +72,10 @@ if "page_offset" not in st.session_state:
 if "is_sending" not in st.session_state:
     st.session_state["is_sending"] = False
 
+# 【追加】最後に演出を出したメッセージIDを記憶するメモ帳
+if "last_effect_id" not in st.session_state:
+    st.session_state["last_effect_id"] = None
+
 query_params = st.query_params
 current_user_raw = query_params.get("user", "Hide")
 current_user_upper = current_user_raw.upper()
@@ -107,36 +111,39 @@ try:
     messages = res.data[::-1]
     
     # 【演出機能】不規則な「降り」の演出
-    if messages:
-        latest_msg = messages[-1]["message_body"]
-        emoji = None
+    if messages and st.session_state["page_offset"] == 0:
+        latest_msg = messages[-1]
+        msg_id = latest_msg.get("id")
+        msg_body = latest_msg["message_body"]
         
-        # キーワード判定
-        if any(word in latest_msg for word in ["大好き", "ありがとう", "感謝"]):
-            emoji = "❤️"
-        elif "お疲れ様" in latest_msg:
-            emoji = "🍺"
-        elif "おにぎり" in latest_msg:
-            emoji = "🍙"
+        # 新しいメッセージが来た時だけ判定
+        if msg_id != st.session_state["last_effect_id"]:
+            emoji = None
+            if any(word in msg_body for word in ["大好き", "ありがとう", "感謝"]):
+                emoji = "❤️"
+            elif "お疲れ様" in msg_body:
+                emoji = "🍺"
+            elif "おにぎり" in msg_body:
+                emoji = "🍙"
 
-        # 演出の実行（1ページ目のみ）
-        if emoji and st.session_state["page_offset"] == 0:
-            effect_html = ""
-            for i in range(25):
-                left = random.randint(0, 95)
-                size = random.uniform(1.5, 4.0)
-                delay = random.uniform(0.0, 3.0)
-                duration = random.uniform(4.0, 7.0)
-                
-                effect_html += f"""
-                    <div class="falling-emoji" style="
-                        left:{left}%; 
-                        font-size:{size}rem; 
-                        animation-delay:{delay}s; 
-                        animation-duration:{duration}s;">
-                        {emoji}
-                    </div>"""
-            st.markdown(effect_html, unsafe_allow_html=True)
+            if emoji:
+                effect_html = ""
+                for i in range(25):
+                    left = random.randint(0, 95)
+                    size = random.uniform(1.5, 4.0)
+                    delay = random.uniform(0.0, 3.0)
+                    duration = random.uniform(4.0, 7.0)
+                    effect_html += f"""
+                        <div class="falling-emoji" style="
+                            left:{left}%; 
+                            font-size:{size}rem; 
+                            animation-delay:{delay}s; 
+                            animation-duration:{duration}s;">
+                            {emoji}
+                        </div>"""
+                st.markdown(effect_html, unsafe_allow_html=True)
+                # 演出を出したIDを記録（重複防止）
+                st.session_state["last_effect_id"] = msg_id
 
     # メッセージの表示
     for m in messages:
@@ -159,7 +166,7 @@ try:
             </div>
         """, unsafe_allow_html=True)
 except Exception as e:
-    st.error(f"表示エラー: {e}") # ← ここが抜けていたためエラーになっていました
+    st.error(f"表示エラー: {e}")
 
 # --- 9. 送信 ---
 prompt = st.chat_input(input_placeholder)
@@ -177,4 +184,3 @@ if prompt and not st.session_state["is_sending"]:
 # --- 10. スクロール ---
 if st.session_state["page_offset"] == 0:
     components.html('<script>window.parent.document.querySelector(".main").scrollTo(0, 99999);</script>', height=0)
-
