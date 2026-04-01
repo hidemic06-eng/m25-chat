@@ -106,10 +106,12 @@ try:
     res = supabase.table(table_name).select("*").order("created_at", desc=True).range(st.session_state["page_offset"], st.session_state["page_offset"] + 19).execute()
     messages = res.data[::-1]
     
-    # 【追加機能】不規則な「降り」の演出
+    # 【修正ポイント】最新のメッセージを確実に取得して判定
     if messages:
         latest_msg = messages[-1]["message_body"]
         emoji = None
+        
+        # キーワード判定（大好き、ありがとう、感謝 を優先）
         if any(word in latest_msg for word in ["大好き", "ありがとう", "感謝"]):
             emoji = "❤️"
         elif "お疲れ様" in latest_msg:
@@ -117,13 +119,14 @@ try:
         elif "おにぎり" in latest_msg:
             emoji = "🍙"
 
-        if emoji:
+        # 演出の実行
+        if emoji and st.session_state["page_offset"] == 0:
             effect_html = ""
-            for i in range(25):  # 25個降らせる
-                left = random.randint(0, 95)     # 横位置をバラバラに
-                size = random.uniform(1.0, 3.5)  # 大きさをバラバラに (1rem〜3.5rem)
-                delay = random.uniform(0.0, 3.0) # 落ち始める時間をバラバラに
-                duration = random.uniform(4.0, 7.0) # 落ちるスピードをバラバラに
+            for i in range(25):
+                left = random.randint(0, 95)
+                size = random.uniform(1.5, 4.0)  # ハートが目立つように少し大きく
+                delay = random.uniform(0.0, 3.0)
+                duration = random.uniform(4.0, 7.0)
                 
                 effect_html += f"""
                     <div class="falling-emoji" style="
@@ -135,27 +138,6 @@ try:
                     </div>"""
             st.markdown(effect_html, unsafe_allow_html=True)
 
-    for m in messages:
-        utc_time = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
-        jst_time = utc_time + timedelta(hours=9)
-        time_display = jst_time.strftime('%H:%M')
-
-        s_up = m['sender_name'].upper()
-        align = "align-right" if s_up == current_user_upper else "align-left"
-        h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
-        n_class = "name-maki" if "MAKI" in s_up else "name-hide" if "HIDE" in s_up else ""
-        
-        st.markdown(f"""
-            <div class="chat-row {align}">
-                <div class="chat-header" style="{h_style}">
-                    <span class="{n_class}">{m["sender_name"]}</span>
-                    <span class="timestamp">{time_display}</span>
-                </div>
-                <div class="message-text">{m["message_body"]}</div>
-            </div>
-        """, unsafe_allow_html=True)
-except:
-    st.empty()
 
 # --- 9. 送信 ---
 # （中略：変更なし）
