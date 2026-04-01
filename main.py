@@ -39,6 +39,7 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: bold; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
+    /* 下から上に昇るアニメーション設定 */
     @keyframes rise {{
         0% {{ transform: translateY(0); opacity: 0; }}
         10% {{ opacity: 1; }}
@@ -47,7 +48,7 @@ st.markdown(f"""
     }}
     .rising-emoji {{
         position: fixed;
-        bottom: -10vh;
+        bottom: -10vh; /* 画面の下外から出発 */
         left: 0;
         width: 100%;
         height: 0;
@@ -111,16 +112,9 @@ try:
         latest_msg = messages[-1]
         msg_id = latest_msg.get("id")
         msg_body = latest_msg["message_body"]
-        sender = latest_msg["sender_name"]
         
         if msg_id != st.session_state["last_effect_id"]:
-            # 標準演出
-            if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]):
-                st.balloons()
-            if any(word in msg_body for word in ["雪", "寒い", "冬"]):
-                st.snow()
-
-            # 絵文字判定
+            # キーワード判定
             emoji = None
             if any(word in msg_body for word in ["大好き", "ありがとう", "感謝", "愛してる"]):
                 emoji = "❤️"
@@ -133,17 +127,23 @@ try:
             elif any(word in msg_body for word in ["ラーメン", "山岡家"]):
                 emoji = "🍜"
 
+            # 🎈 標準アクション
+            if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]):
+                st.balloons()
+            if any(word in msg_body for word in ["雪", "寒い", "冬"]):
+                st.snow()
+
+            # 🍙 下から昇るアクション
             if emoji:
                 effect_html = '<div class="rising-emoji">'
-                for i in range(20):
-                    left = random.randint(5, 90)
+                for i in range(25):
+                    left = random.randint(5, 95)
                     size = random.uniform(2, 4)
                     delay = random.uniform(0, 2)
-                    duration = random.uniform(5, 8)
+                    duration = random.uniform(6, 10) # ゆっくり昇る
                     effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{emoji}</div>'
                 effect_html += '</div>'
                 st.markdown(effect_html, unsafe_allow_html=True)
-                st.toast(f"{sender}さんから演出が届きました！", icon=emoji)
 
             st.session_state["last_effect_id"] = msg_id
 
