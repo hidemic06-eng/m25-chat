@@ -116,9 +116,9 @@ try:
         
         if msg_id != st.session_state["last_effect_id"]:
             emoji = None
-            if any(word in msg_body for word in ["大好き", "ありがとう", "感謝", "愛してる"]):
+            if any(word in msg_body for word in ["大好き", "好き", "ありがとう", "感謝", "愛してる", "ラブラブ"]):
                 emoji = "❤️"
-            elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "ちょい飲み", "ちょい呑み"]):
+            elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み"]):
                 emoji = "🍺"
             elif "おにぎり" in msg_body:
                 emoji = "🍙"
