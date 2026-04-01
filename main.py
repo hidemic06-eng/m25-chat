@@ -2,6 +2,7 @@ import streamlit as st
 from supabase import create_client
 from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
+from datetime import datetime, timedelta  # 時間変換用に追加
 
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
@@ -52,7 +53,6 @@ if "password_correct" not in st.session_state:
 if "page_offset" not in st.session_state:
     st.session_state["page_offset"] = 0
 
-# 【追加】送信中フラグの初期化
 if "is_sending" not in st.session_state:
     st.session_state["is_sending"] = False
 
@@ -85,37 +85,46 @@ with col_next:
             st.session_state["page_offset"] -= 20
             st.rerun()
 
-# --- 8. 表示 ---
+# --- 8. 表示 (日本時間への変換処理を追加) ---
 try:
     res = supabase.table(table_name).select("*").order("created_at", desc=True).range(st.session_state["page_offset"], st.session_state["page_offset"] + 19).execute()
     messages = res.data[::-1]
+    
     for m in messages:
+        # UTCの文字列をPythonのdatetimeオブジェクトに変換
+        utc_time = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
+        # 日本時間(+9時間)に変換
+        jst_time = utc_time + timedelta(hours=9)
+        # 表示用のフォーマット (18:30 の形式)
+        time_display = jst_time.strftime('%H:%M')
+
         s_up = m['sender_name'].upper()
         align = "align-right" if s_up == current_user_upper else "align-left"
         h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
         n_class = "name-maki" if "MAKI" in s_up else "name-hide" if "HIDE" in s_up else ""
-        st.markdown(f'<div class="chat-row {align}"><div class="chat-header" style="{h_style}"><span class="{n_class}">{m["sender_name"]}</span><span class="timestamp">{m["created_at"][11:16]}</span></div><div class="message-text">{m["message_body"]}</div></div>', unsafe_allow_html=True)
+        
+        st.markdown(f"""
+            <div class="chat-row {align}">
+                <div class="chat-header" style="{h_style}">
+                    <span class="{n_class}">{m["sender_name"]}</span>
+                    <span class="timestamp">{time_display}</span>
+                </div>
+                <div class="message-text">{m["message_body"]}</div>
+            </div>
+        """, unsafe_allow_html=True)
 except:
     st.empty()
 
-# --- 9. 送信 (二重送信防止ロジック) ---
+# --- 9. 送信 ---
 prompt = st.chat_input(input_placeholder)
-
-# 送信ボタンが押され、かつ「現在送信中ではない」場合のみ実行
 if prompt and not st.session_state["is_sending"]:
-    # 1. 送信中フラグをONにする
     st.session_state["is_sending"] = True
-    
     try:
-        # 2. データベースに挿入
         supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
-        
-        # 3. 成功したらフラグをリセットし、ページを最新に戻して更新
         st.session_state["is_sending"] = False
         st.session_state["page_offset"] = 0
         st.rerun()
     except Exception as e:
-        # エラーが起きた場合もフラグを戻さないと次が送れなくなるのでリセット
         st.session_state["is_sending"] = False
         st.error(f"送信エラー: {e}")
 
