@@ -4,6 +4,7 @@ from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
 
 # --- 1. アプリの基本設定 ---
+# デフォルトのタイトルを設定
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
 # --- 2. データベース(Supabase)接続設定 ---
@@ -131,6 +132,20 @@ try:
     
     messages = res.data[::-1]
 
+    # --- 【追加】新着判定ロジック ---
+    if messages:
+        latest_msg = messages[-1]
+        # セッションに「最後に見たID」を保存
+        if "last_seen_id" not in st.session_state:
+            st.session_state["last_seen_id"] = latest_msg['id']
+        
+        # 新しいメッセージがあり、かつ送信者が自分ではない場合
+        if latest_msg['id'] > st.session_state['last_seen_id'] and latest_msg['sender_name'] != current_user_raw:
+            # ブラウザのタブタイトルを「新着あり」に変更するスクリプトを発動させる準備
+            new_msg_flag = True
+        else:
+            new_msg_flag = False
+
     for m in messages:
         sender_name = m['sender_name']
         s_up = sender_name.upper()
@@ -153,14 +168,27 @@ except Exception as e:
 # --- 9. メッセージ入力・送信処理 ---
 prompt = st.chat_input(input_placeholder)
 if prompt:
-    supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
+    res = supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
+    # 自分が送信した時は、そのIDを「既読」とする
+    if res.data:
+        st.session_state["last_seen_id"] = res.data[0]['id']
     st.session_state["page_offset"] = 0
     st.rerun()
 
-# --- 10. スクロール制御 (JavaScript) ---
+# --- 10. スクロール制御 & 新着リセット (JavaScript) ---
 if st.session_state["page_offset"] == 0:
+    # 新着があればタイトルを✨に、スクロールしたら💬に戻す
+    title_script = 'window.parent.document.title = "✨ 新着あり！ M25";' if 'new_msg_flag' in locals() and new_msg_flag else 'window.parent.document.title = "💬 M25";'
+    
     components.html(
         f"""<script>
+        // 一番下までスクロール
         window.parent.document.querySelector(".main").scrollTo(0, 99999);
+        // タイトルの制御
+        {title_script}
         </script>""", height=0
     )
+    
+    # 画面を表示（スクロール実行）したので、最後に見たIDを最新に更新
+    if 'messages' in locals() and messages:
+        st.session_state["last_seen_id"] = messages[-1]['id']
