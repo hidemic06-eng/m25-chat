@@ -126,6 +126,8 @@ try:
                 emoji = "🏸"
             elif any(word in msg_body for word in ["ラーメン", "山岡家"]):
                 emoji = "🍜"
+            elif any(word in msg_body for word in ["野菜", "サラダ", "レタス"]):
+                emoji = "🥬"
 
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]):
                 st.balloons()
