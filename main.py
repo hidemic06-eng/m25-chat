@@ -39,7 +39,7 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: bold; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* ゆっくり昇るアニメーション設定 */
+    /* アニメーション設定 */
     @keyframes rise {{
         0% {{ transform: translateY(0); opacity: 0; }}
         5% {{ opacity: 1; }}
@@ -84,9 +84,10 @@ supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publish
 
 # --- 6. ヘッダー ---
 st.title(f"💬 M25-Chat{status_label}")
-auto_update = st.toggle("自動更新(5s)", value=True)
+# 自動更新の間隔を8秒に変更
+auto_update = st.toggle("自動更新(8s)", value=True)
 if auto_update and st.session_state["page_offset"] == 0:
-    st_autorefresh(interval=5000, key="chat_ref")
+    st_autorefresh(interval=8000, key="chat_ref")
 st.divider()
 
 # --- 7. ナビゲーション ---
@@ -136,9 +137,10 @@ try:
                 for i in range(25):
                     left = random.randint(5, 95)
                     size = random.uniform(2.5, 4.5)
-                    delay = random.uniform(0, 3)
-                    # 【修正】時間をさらに長く (10秒〜15秒)
-                    duration = random.uniform(10.0, 15.0)
+                    # 出現の遅れを最大0.5秒に短縮
+                    delay = random.uniform(0, 0.5)
+                    # 昇る時間を5.5秒〜6.5秒に設定（遅れと合わせても最大7秒）
+                    duration = random.uniform(5.5, 6.5)
                     effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{emoji}</div>'
                 effect_html += '</div>'
                 st.markdown(effect_html, unsafe_allow_html=True)
