@@ -2,7 +2,8 @@ import streamlit as st
 from supabase import create_client
 from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
-from datetime import datetime, timedelta  # 時間変換用に追加
+from datetime import datetime, timedelta
+import random
 
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
@@ -37,6 +38,21 @@ st.markdown(f"""
     .name-maki {{ color: #ffa657 !important; font-weight: bold; }}
     .name-hide {{ color: #58a6ff !important; font-weight: bold; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
+    
+    /* 降り注ぐエフェクトのアニメーション */
+    @keyframes fall {{
+        0% {{ transform: translateY(-20vh) rotate(0deg); opacity: 0; }}
+        10% {{ opacity: 1; }}
+        90% {{ opacity: 1; }}
+        100% {{ transform: translateY(110vh) rotate(720deg); opacity: 0; }}
+    }}
+    .falling-emoji {{
+        position: fixed;
+        top: -10%;
+        animation: fall 5s linear forwards;
+        z-index: 9999;
+        pointer-events: none;
+    }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -55,6 +71,9 @@ if "page_offset" not in st.session_state:
 
 if "is_sending" not in st.session_state:
     st.session_state["is_sending"] = False
+
+if "last_effect_id" not in st.session_state:
+    st.session_state["last_effect_id"] = None
 
 query_params = st.query_params
 current_user_raw = query_params.get("user", "Hide")
@@ -85,17 +104,74 @@ with col_next:
             st.session_state["page_offset"] -= 20
             st.rerun()
 
-# --- 8. 表示 (日本時間への変換処理を追加) ---
+# --- 8. 表示 & 演出の判定 ---
 try:
     res = supabase.table(table_name).select("*").order("created_at", desc=True).range(st.session_state["page_offset"], st.session_state["page_offset"] + 19).execute()
     messages = res.data[::-1]
     
+    if messages and st.session_state["page_offset"] == 0:
+        latest_msg = messages[-1]
+        msg_id = latest_msg.get("id")
+        msg_body = latest_msg["message_body"]
+        sender = latest_msg["sender_name"]
+        
+        if msg_id != st.session_state["last_effect_id"]:
+            
+            # --- 演出A: トースト通知 (右下) ---
+            # おはよう系
+            if any(word in msg_body for word in ["おはよう", "おはよー", "おはよ"]):
+                st.toast(f"{sender}さん、おはよう！今日も良い一日にしようね☀️", icon="☀️")
+            
+            # 大好き・愛してる系
+            elif any(word in msg_body for word in ["大好き", "愛してる"]):
+                st.toast(f"{sender}さんから愛が届きました！", icon="❤️")
+            
+            # ありがとう・感謝系
+            elif any(word in msg_body for word in ["ありがとう", "感謝"]):
+                st.toast(f"{sender}さんが感謝しています", icon="✨")
+
+            # --- 演出B: 標準アクション (画面全体) ---
+            if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]):
+                st.balloons()
+            
+            if any(word in msg_body for word in ["雪", "寒い", "冬", "スキー"]):
+                st.snow()
+
+            # --- 演出C: 自作の不規則・バラバラ降臨アクション ---
+            emoji = None
+            if any(word in msg_body for word in ["大好き", "ありがとう", "感謝", "愛してる"]):
+                emoji = "❤️"
+            elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れさま", "ちょい飲み", "ちょい呑み"]):
+                emoji = "🍺"
+            elif "おにぎり" in msg_body:
+                emoji = "🍙"
+            elif any(word in msg_body for word in ["バドミントン", "練習", "試合", "ナイスショット"]):
+                emoji = "🏸"
+            elif any(word in msg_body for word in ["ラーメン", "山岡家", "お腹すいた"]):
+                emoji = "🍜"
+
+            if emoji:
+                effect_html = ""
+                for i in range(25):
+                    left = random.randint(0, 95)
+                    size = random.uniform(1.5, 4.0)
+                    delay = random.uniform(0.0, 3.0)
+                    duration = random.uniform(4.0, 7.0)
+                    effect_html += f"""
+                        <div class="falling-emoji" style="
+                            left:{left}%; 
+                            font-size:{size}rem; 
+                            animation-delay:{delay}s; 
+                            animation-duration:{duration}s;">
+                            {emoji}
+                        </div>"""
+                st.markdown(effect_html, unsafe_allow_html=True)
+
+            st.session_state["last_effect_id"] = msg_id
+
     for m in messages:
-        # UTCの文字列をPythonのdatetimeオブジェクトに変換
         utc_time = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
-        # 日本時間(+9時間)に変換
         jst_time = utc_time + timedelta(hours=9)
-        # 表示用のフォーマット (18:30 の形式)
         time_display = jst_time.strftime('%H:%M')
 
         s_up = m['sender_name'].upper()
@@ -112,8 +188,8 @@ try:
                 <div class="message-text">{m["message_body"]}</div>
             </div>
         """, unsafe_allow_html=True)
-except:
-    st.empty()
+except Exception as e:
+    st.error(f"表示エラー: {e}")
 
 # --- 9. 送信 ---
 prompt = st.chat_input(input_placeholder)
