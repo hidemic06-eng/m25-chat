@@ -23,10 +23,7 @@ if is_daytime:
     status_label_color = "#1e3a1e" # テスト文字の色
 else:
     # --- 【夜モード：今までの色を維持】 ---
-    if table_name == "messages_test":
-        app_bg_color = "#1e3a1e"  # テスト用：深緑
-    else:
-        app_bg_color = "#313338"  # 本番用：グレー
+    app_bg_color = "#313338"  # 本番用：グレー
     text_main_color = "#dbdee1"
     sub_text_color = "#949ba4"
     status_label_color = "#ffa657"
