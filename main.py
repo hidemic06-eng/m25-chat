@@ -11,8 +11,8 @@ st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 table_name = st.secrets.get("TABLE_NAME", "messages")
 
 # --- 3. デザイン設定 (昼夜自動切り替え) ---
-# 現在の時間を取得（日本時間）
-now = datetime.datetime.now()
+# 【修正】UTCに9時間を足して、確実に日本時間で判定するようにしました
+now = datetime.datetime.utcnow() + datetime.timedelta(hours=9)
 is_daytime = 6 <= now.hour < 18  # 6:00 〜 17:59 を昼とする
 
 if is_daytime:
@@ -20,16 +20,19 @@ if is_daytime:
     app_bg_color = "#FFFFFF"  # 真っ白
     text_main_color = "#313338"  # 濃いグレーの文字
     sub_text_color = "#606367"  # タイムスタンプなど
-    status_label_color = "#1e3a1e" # テスト文字の色
 else:
-    # --- 【夜モード：今までの色を維持】 ---
-    app_bg_color = "#313338"  # 本番用：グレー
+    # --- 【夜モード】 ---
+    app_bg_color = "#313338"  # グレー
     text_main_color = "#dbdee1"
     sub_text_color = "#949ba4"
-    status_label_color = "#ffa657"
 
-# テストラベルの設定
-status_label = " 🧪 TEST" if table_name == "messages_test" else ""
+# テストラベルとプレースホルダーの設定
+if table_name == "messages_test":
+    status_label = " 🧪 TEST"
+    input_placeholder = "テストメッセージを入力..."  # ←ここをテスト用に変更
+else:
+    status_label = ""
+    input_placeholder = "メッセージを入力..."
 
 st.markdown(f"""
     <style>
@@ -160,7 +163,8 @@ except Exception as e:
     st.empty()
 
 # --- 9. メッセージ入力・送信処理 ---
-prompt = st.chat_input("メッセージを入力...")
+# 【修正】プレースホルダーを動的に変更
+prompt = st.chat_input(input_placeholder)
 if prompt:
     supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
     st.session_state["page_offset"] = 0
