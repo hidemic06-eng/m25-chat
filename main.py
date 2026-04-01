@@ -119,10 +119,16 @@ try:
         # 新しいメッセージが来た時だけ判定
         if msg_id != st.session_state["last_effect_id"]:
             emoji = None
+            
+            # ハートの演出（大好き、ありがとう、感謝）
             if any(word in msg_body for word in ["大好き", "ありがとう", "感謝"]):
                 emoji = "❤️"
-            elif "お疲れ様" in msg_body:
+            
+            # ビールの演出（お疲れ様のバリエーション、ちょい飲み）
+            elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れさま", "ちょい飲み", "ちょい呑み"]):
                 emoji = "🍺"
+            
+            # おにぎりの演出
             elif "おにぎり" in msg_body:
                 emoji = "🍙"
 
