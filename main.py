@@ -161,8 +161,9 @@ try:
             
             # A. 指定ワード判定（昇る演出用）
             priority_emoji = None
-            if any(word in msg_body for word in ["大好き", "好き", "ありがとう", "感謝", "愛してる", "ラブラブ"]): priority_emoji = "❤️"
-            elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "乾杯", "酒"]): priority_emoji = "🍺"
+            if any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
+            elif any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💞"
+            elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
             elif "おにぎり" in msg_body: priority_emoji = "🍙"
             elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]): priority_emoji = "🏸"
             elif any(word in msg_body for word in ["ラーメン", "山岡家"]): priority_emoji = "🍜"
@@ -171,7 +172,7 @@ try:
             elif any(word in msg_body for word in ["綺麗", "きれい", "すごい", "最高"]): priority_emoji = "✨"
             elif any(word in msg_body for word in ["コーヒー", "カフェ", "休憩"]): priority_emoji = "☕️"
             elif any(word in msg_body for word in ["ドライブ"]): priority_emoji = "🚗"
-            elif any(word in msg_body for word in ["ワイン", "ハイボール"]): priority_emoji = "🥂"
+            elif any(word in msg_body for word in ["ワイン", "ハイボール", "乾杯"]): priority_emoji = "🥂"
             elif any(word in msg_body for word in ["花見", "さくら", "桜"]): priority_emoji = "🌸"
             elif any(word in msg_body for word in ["楽しみ", "ルンルン", "うれしい"]): priority_emoji = "🎶"
             elif any(word in msg_body for word in ["ケーキ", "スイーツ", "甘いもの"]): priority_emoji = "🍰"
@@ -204,7 +205,7 @@ try:
             # C. 標準エフェクト
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
-            if any(word in msg_body for word in ["こら", "起きて", "びっくり", "地震", "怒"]):
+            if any(word in msg_body for word in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
 
 
