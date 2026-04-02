@@ -49,17 +49,30 @@ st.markdown(f"""
     /* メッセージ本文：M PLUS Rounded 1c 用に最適化 */
     .message-text {{ 
         font-family: 'M PLUS Rounded 1c', sans-serif !important;
-        font-feature-settings: "palt" 1; /* プロポーショナルメトリクスを有効化 */
-        font-size: 1.15rem; /* 丸ゴシックは少し大きめが可愛いです */
+        font-feature-settings: "palt" 1; 
+        font-size: 1.15rem; 
         line-height: 1.35; 
         font-weight: 500 !important; 
-        letter-spacing: -0.04rem; /* 文字間を少し詰める設定 */
+        letter-spacing: -0.04rem; 
         max-width: 80%; 
         white-space: pre-wrap; 
         word-wrap: break-word; 
         color: {text_main_color} !important; 
         background-color: transparent !important;
         padding: 0; 
+    }}
+
+    /* 入力エリア（chat_input）のカスタマイズ */
+    .stChatInput textarea {{
+        font-family: 'M PLUS Rounded 1c', sans-serif !important;
+        font-feature-settings: "palt" 1 !important;
+        letter-spacing: -0.02rem !important;
+        font-size: 1rem !important;
+    }}
+    /* 入力待ちプレースホルダーのフォント */
+    .stChatInput textarea::placeholder {{
+        font-family: 'M PLUS Rounded 1c', sans-serif !important;
+        opacity: 0.7;
     }}
 
     /* 右寄せ（Hide） */
