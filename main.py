@@ -8,6 +8,62 @@ import random
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
+# 【トドメ1】CSSによる強制非表示（アプリの内側用）
+st.markdown("""
+    <style>
+    /* 王冠、メニュー、ヘッダー、フッターを物理的に抹殺 */
+    header, footer, .stAppDeployButton, [data-testid="bundle-viewer-container"], 
+    [data-testid="stHeader"], [data-testid="stStatusWidget"], #MainMenu {
+        display: none !important;
+        visibility: hidden !important;
+        width: 0 !important;
+        height: 0 !important;
+        pointer-events: none !important;
+    }
+    /* 画面上部の余白を削る */
+    .stApp { margin-top: -60px !important; }
+    </style>
+""", unsafe_allow_html=True)
+
+# 【トドメ2】JavaScriptによる親階層へのスタイル注入（アプリの外側用）
+# これが「他のアプリへ辿る道」を物理的に断つ核になります
+components.html("""
+<script>
+    const hidePlatformElements = () => {
+        try {
+            const targetDoc = window.parent.document;
+            const styleId = 'm25-hide-style';
+            if (!targetDoc.getElementById(styleId)) {
+                const style = targetDoc.createElement('style');
+                style.id = styleId;
+                style.innerHTML = `
+                    header, footer, .stAppDeployButton, 
+                    [data-testid="bundle-viewer-container"], 
+                    [data-testid="stHeader"], #MainMenu { 
+                        display: none !important; 
+                        visibility: hidden !important; 
+                    }
+                `;
+                targetDoc.head.appendChild(style);
+            }
+        } catch (e) {
+            // セキュリティ制限で親に触れない場合のバックアップ
+            const selectors = ['.stAppDeployButton', 'header', 'footer', '#MainMenu'];
+            selectors.forEach(s => {
+                const el = window.parent.document.querySelector(s);
+                if (el) el.style.display = 'none';
+            });
+        }
+    };
+    
+    // 執拗に実行して消し続ける
+    hidePlatformElements();
+    setInterval(hidePlatformElements, 500);
+    const observer = new MutationObserver(hidePlatformElements);
+    observer.observe(window.parent.document.body, { childList: true, subtree: true });
+</script>
+""", height=0)
+
 # --- 2. データベース(Supabase)接続設定 ---
 table_name = st.secrets.get("TABLE_NAME", "messages")
 
@@ -23,21 +79,8 @@ else:
     status_label = ""
     input_placeholder = "メッセージを入力..."
 
-# --- 強力な非表示設定 (CSS + JS) ---
 st.markdown(f"""
     <style>
-    /* CSSで先手を打って隠す */
-    [data-testid="stHeader"], 
-    header, 
-    footer, 
-    .stAppDeployButton, 
-    [data-testid="stStatusWidget"],
-    [data-testid="bundle-viewer-container"],
-    #MainMenu {{
-        display: none !important;
-        visibility: hidden !important;
-    }}
-
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
 
     .stApp {{ 
@@ -78,33 +121,6 @@ st.markdown(f"""
     .emoji-item {{ position: absolute; animation: rise linear forwards; }}
     </style>
 """, unsafe_allow_html=True)
-
-# 【トドメ】JavaScriptで要素を監視し、出現した瞬間に「削除」する
-components.html("""
-<script>
-    const removeElements = () => {
-        const selectors = [
-            '.stAppDeployButton', 
-            'header', 
-            'footer', 
-            '[data-testid="stHeader"]', 
-            '[data-testid="bundle-viewer-container"]',
-            '#MainMenu'
-        ];
-        selectors.forEach(s => {
-            const el = window.parent.document.querySelector(s);
-            if (el) el.remove(); 
-        });
-    };
-    // 起動時と定期的に実行
-    removeElements();
-    setInterval(removeElements, 500);
-    
-    // 画面全体を監視して、後から生えてくる要素も消す
-    const observer = new MutationObserver(removeElements);
-    observer.observe(window.parent.document.body, { childList: true, subtree: true });
-</script>
-""", height=0)
 
 # --- 4. 認証機能 ---
 if "password_correct" not in st.session_state:
