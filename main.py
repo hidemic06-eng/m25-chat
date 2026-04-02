@@ -12,7 +12,7 @@ st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 # --- 2. データベース(Supabase)接続設定 ---
 table_name = st.secrets.get("TABLE_NAME", "messages")
 
-# --- 3. デザイン設定 ---
+# --- 3. デザイン設定（ここが崩れの原因でした） ---
 app_bg_color = "#313338"
 text_main_color = "#dbdee1"
 sub_text_color = "#949ba4"
@@ -41,6 +41,7 @@ st.markdown(f"""
     
     .block-container {{ padding-top: 1rem; padding-bottom: 100px !important; max-width: 100% !important; }}
     
+    /* チャット行の基本設定 */
     .chat-row {{
         display: flex;
         flex-direction: column;
@@ -50,6 +51,7 @@ st.markdown(f"""
     .align-right {{ align-items: flex-end; text-align: right; }}
     .align-left {{ align-items: flex-start; text-align: left; }}
     
+    /* メッセージテキスト */
     .message-text {{ 
         font-family: 'M PLUS Rounded 1c', sans-serif !important;
         font-feature-settings: "palt" 1; 
@@ -66,7 +68,7 @@ st.markdown(f"""
 
     .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; font-size: 0.85rem; }}
     .name-maki {{ color: #ffa657 !important; font-weight: 700; }}
-    .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
+    .name-hide {{ color: #58a6ff !important; font-weight: 700; }} /* Hideの青色 */
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
 
     /* --- アニメーション設定 --- */
@@ -92,36 +94,12 @@ st.markdown(f"""
     }}
     .peek-item {{ position: fixed; z-index: 9999; pointer-events: none; font-size: 4rem; }}
 
-    /* 画面全体アクション */
     @keyframes shake {{
         0% {{ transform: translate(1px, 1px) rotate(0deg); }}
         10% {{ transform: translate(-1px, -2px) rotate(-1deg); }}
         100% {{ transform: translate(1px, 1px) rotate(0deg); }}
     }}
     .shake-screen {{ animation: shake 0.5s; animation-iteration-count: 4; }}
-
-    @keyframes fade-dark {{
-        0% {{ filter: brightness(1); }}
-        20% {{ filter: brightness(0.4) sepia(0.6); }}
-        80% {{ filter: brightness(0.4) sepia(0.6); }}
-        100% {{ filter: brightness(1); }}
-    }}
-    .mood-dark {{ animation: fade-dark 3.5s ease-in-out; }}
-
-    @keyframes bounce-screen {{
-        0%, 20%, 50%, 80%, 100% {{ transform: translateY(0); }}
-        40% {{ transform: translateY(-40px) scaleY(1.05); }}
-        60% {{ transform: translateY(-20px) scaleY(1.02); }}
-    }}
-    .bounce-screen {{ animation: bounce-screen 0.8s ease; }}
-
-    @keyframes flash-white {{
-        0% {{ filter: brightness(1); }}
-        10% {{ filter: brightness(2.5) contrast(1.2); }}
-        100% {{ filter: brightness(1); }}
-    }}
-    .flash-screen {{ animation: flash-white 0.6s ease-out; }}
-
     </style>
 """, unsafe_allow_html=True)
 
@@ -210,6 +188,7 @@ try:
                     effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{priority_emoji}</div>'
                 st.markdown(effect_html + '</div>', unsafe_allow_html=True)
             
+            # B. ひょっこり演出（優先ワードなし、かつ絵文字ありの時）
             elif emoji_in_text:
                 target_emoji = emoji_in_text[-1]
                 peek_html = '<div>'
@@ -222,33 +201,22 @@ try:
                     peek_html += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
                 st.markdown(peek_html + '</div>', unsafe_allow_html=True)
 
-            # C. 標準・追加エフェクト
+            # C. 標準エフェクト
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
-            
-            # --- 画面全体のアクション ---
             if any(word in msg_body for word in ["こら", "起きて", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
-            
-            # 1. 暗転演出
-            if any(word in msg_body for word in ["おやすみ", "エモい", "内緒", "静かに"]):
-                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("mood-dark"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("mood-dark"); }, 3500);</script>', height=0)
-            
-            # 2. バウンド演出
-            if any(word in msg_body for word in ["やった", "さすが", "それだ", "納得"]):
-                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("bounce-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("bounce-screen"); }, 1000);</script>', height=0)
-            
-            # 3. フラッシュ演出
-            if any(word in msg_body for word in ["わかった", "すごい", "閃いた", "注目"]):
-                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
 
             st.session_state["last_effect_id"] = msg_id
 
+    # メッセージのレンダリング
     for m in messages:
         utc_time = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
         jst_time = utc_time + timedelta(hours=9)
         time_display = jst_time.strftime('%H:%M')
         s_up = m['sender_name'].upper()
+        
+        # ユーザー判定
         is_me = (s_up == current_user_upper)
         align = "align-right" if is_me else "align-left"
         h_style = "flex-direction: row-reverse;" if is_me else ""
