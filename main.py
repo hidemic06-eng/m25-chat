@@ -162,7 +162,7 @@ try:
             # A. 指定ワード判定（昇る演出用）
             priority_emoji = None
             if any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
-            elif any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💞"
+            elif any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
             elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
             elif "おにぎり" in msg_body: priority_emoji = "🍙"
             elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]): priority_emoji = "🏸"
