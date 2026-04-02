@@ -74,14 +74,25 @@ st.markdown(f"""
     .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
     .emoji-item {{ position: absolute; animation: rise linear forwards; }}
 
-    /* アニメーション：さりげないキラキラ（絵文字単体用） */
-    @keyframes gentle-fade {{
-        0% {{ opacity: 0; transform: scale(0.8) translateY(10px); }}
-        20% {{ opacity: 0.6; transform: scale(1.0) translateY(0px); }}
-        80% {{ opacity: 0.6; transform: scale(1.0); }}
-        100% {{ opacity: 0; transform: scale(1.1) translateY(-10px); }}
+    /* アニメーション：横からひょっこり（絵文字単体用） */
+    @keyframes peek-left {{
+        0% {{ left: -60px; opacity: 0; }}
+        20% {{ left: 10px; opacity: 1; }}
+        80% {{ left: 10px; opacity: 1; }}
+        100% {{ left: -60px; opacity: 0; }}
     }}
-    .flash-item {{ position: fixed; z-index: 9999; pointer-events: none; animation: gentle-fade 4s forwards; }}
+    @keyframes peek-right {{
+        0% {{ right: -60px; opacity: 0; }}
+        20% {{ right: 10px; opacity: 1; }}
+        80% {{ right: 10px; opacity: 1; }}
+        100% {{ right: -60px; opacity: 0; }}
+    }}
+    .peek-item {{ 
+        position: fixed; 
+        z-index: 9999; 
+        pointer-events: none; 
+        font-size: 3rem;
+    }}
 
     @keyframes shake {{
         0% {{ transform: translate(1px, 1px) rotate(0deg); }}
@@ -149,7 +160,7 @@ try:
         if msg_id != st.session_state["last_effect_id"]:
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             
-            # A. 指定ワード判定
+            # A. 指定ワード判定（昇る演出）
             priority_emoji = None
             if any(word in msg_body for word in ["大好き", "好き", "ありがとう", "感謝", "愛してる", "ラブラブ"]): priority_emoji = "❤️"
             elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "乾杯", "酒"]): priority_emoji = "🍺"
@@ -180,14 +191,17 @@ try:
                 st.markdown(effect_html + '</div>', unsafe_allow_html=True)
             
             elif emoji_in_text:
-                # さりげないキラキラ演出（8個）
+                # 横からひょっこり演出（5個）
                 target_emoji = emoji_in_text[-1]
-                flash_html = '<div>'
-                for i in range(8):
-                    top, left = random.randint(15, 85), random.randint(5, 95)
-                    size, delay = random.uniform(1.2, 2.2), random.uniform(0, 1.5)
-                    flash_html += f'<div class="flash-item" style="top:{top}%; left:{left}%; font-size:{size}rem; animation-delay:{delay}s;">{target_emoji}</div>'
-                st.markdown(flash_html + '</div>', unsafe_allow_html=True)
+                peek_html = '<div>'
+                for i in range(5):
+                    side = random.choice(["left", "right"])
+                    top = random.randint(20, 80)
+                    delay = random.uniform(0, 3.0)
+                    duration = random.uniform(2.5, 3.5)
+                    anim_name = "peek-left" if side == "left" else "peek-right"
+                    peek_html += f'<div class="peek-item" style="{side}:-60px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
+                st.markdown(peek_html + '</div>', unsafe_allow_html=True)
 
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
