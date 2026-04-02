@@ -23,30 +23,21 @@ else:
     status_label = ""
     input_placeholder = "メッセージを入力..."
 
+# --- 強力な非表示設定 (CSS + JS) ---
 st.markdown(f"""
     <style>
-    /* 【重要】プラットフォームのパーツ（王冠・メニュー）を物理的に消す 
-    */
-    /* 右下の王冠マーク (Deployボタン) */
-    .stAppDeployButton {{
-        display: none !important;
-    }}
-    /* 右下の Manage app メニューを含むフッター */
-    footer {{
-        display: none !important;
-        visibility: hidden !important;
-    }}
-    /* 右上のハンバーガーメニューやヘッダー */
-    header {{
+    /* CSSで先手を打って隠す */
+    [data-testid="stHeader"], 
+    header, 
+    footer, 
+    .stAppDeployButton, 
+    [data-testid="stStatusWidget"],
+    [data-testid="bundle-viewer-container"],
+    #MainMenu {{
         display: none !important;
         visibility: hidden !important;
-    }}
-    /* 開発者用ツールバーのコンテナ */
-    [data-testid="bundle-viewer-container"], [data-testid="stStatusWidget"] {{
-        display: none !important;
     }}
 
-    /* M PLUS Rounded 1c の読み込み */
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
 
     .stApp {{ 
@@ -55,77 +46,65 @@ st.markdown(f"""
         font-family: 'M PLUS Rounded 1c', sans-serif !important; 
     }}
     
-    .block-container {{ padding-top: 1rem; padding-bottom: 80px !important; max-width: 100% !important; }}
+    .block-container {{ padding-top: 0rem !important; padding-bottom: 80px !important; max-width: 100% !important; }}
     
-    /* レイアウト：左右の振り分け */
-    .chat-row {{ 
-        display: flex; 
-        flex-direction: column; 
-        margin-bottom: 16px; 
-        width: 100%; 
-    }}
-    
-    /* メッセージ本文：M PLUS Rounded 1c 用に最適化 */
+    .chat-row {{ display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }}
     .message-text {{ 
         font-family: 'M PLUS Rounded 1c', sans-serif !important;
-        font-feature-settings: "palt" 1; 
-        font-size: 1.15rem; 
-        line-height: 1.35; 
-        font-weight: 500 !important; 
-        letter-spacing: -0.04rem; 
-        max-width: 80%; 
-        white-space: pre-wrap; 
-        word-wrap: break-word; 
-        color: {text_main_color} !important; 
-        background-color: transparent !important;
-        padding: 0; 
+        font-feature-settings: "palt" 1; font-size: 1.15rem; line-height: 1.35; 
+        font-weight: 500 !important; letter-spacing: -0.04rem; max-width: 80%; 
+        white-space: pre-wrap; word-wrap: break-word; color: {text_main_color} !important; 
     }}
-
-    /* 入力エリア（chat_input）のカスタマイズ */
-    .stChatInput textarea {{
-        font-family: 'M PLUS Rounded 1c', sans-serif !important;
-        font-feature-settings: "palt" 1 !important;
-        letter-spacing: -0.02rem !important;
-        font-size: 1rem !important;
-    }}
-    /* 入力待ちプレースホルダーのフォント */
-    .stChatInput textarea::placeholder {{
-        font-family: 'M PLUS Rounded 1c', sans-serif !important;
-        opacity: 0.7;
-    }}
-
-    /* 右寄せ（Hide） */
+    .stChatInput textarea {{ font-family: 'M PLUS Rounded 1c', sans-serif !important; }}
     .align-right {{ align-items: flex-end; text-align: right; }}
-    .align-right .message-text {{ text-align: right; }}
-
-    /* 左寄せ（Maki） */
     .align-left {{ align-items: flex-start; text-align: left; }}
-    .align-left .message-text {{ text-align: left; }}
-    
     .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }}
     .name-maki {{ color: #ffa657 !important; font-weight: 700; }}
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* アニメーション設定 */
     @keyframes shake {{
         0% {{ transform: translate(1px, 1px) rotate(0deg); }}
         10% {{ transform: translate(-1px, -2px) rotate(-1deg); }}
-        30% {{ transform: translate(3px, 2px) rotate(0deg); }}
-        50% {{ transform: translate(-1px, 2px) rotate(-1deg); }}
         100% {{ transform: translate(1px, 1px) rotate(0deg); }}
     }}
     .shake-screen {{ animation: shake 0.5s; animation-iteration-count: 4; }}
     @keyframes rise {{
         0% {{ transform: translateY(0); opacity: 0; }}
         5% {{ opacity: 1; }}
-        85% {{ opacity: 1; }}
         100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }}
     }}
     .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
     .emoji-item {{ position: absolute; animation: rise linear forwards; }}
     </style>
 """, unsafe_allow_html=True)
+
+# 【トドメ】JavaScriptで要素を監視し、出現した瞬間に「削除」する
+components.html("""
+<script>
+    const removeElements = () => {
+        const selectors = [
+            '.stAppDeployButton', 
+            'header', 
+            'footer', 
+            '[data-testid="stHeader"]', 
+            '[data-testid="bundle-viewer-container"]',
+            '#MainMenu'
+        ];
+        selectors.forEach(s => {
+            const el = window.parent.document.querySelector(s);
+            if (el) el.remove(); 
+        });
+    };
+    // 起動時と定期的に実行
+    removeElements();
+    setInterval(removeElements, 500);
+    
+    // 画面全体を監視して、後から生えてくる要素も消す
+    const observer = new MutationObserver(removeElements);
+    observer.observe(window.parent.document.body, { childList: true, subtree: true });
+</script>
+""", height=0)
 
 # --- 4. 認証機能 ---
 if "password_correct" not in st.session_state:
