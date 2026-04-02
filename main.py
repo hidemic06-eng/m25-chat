@@ -8,62 +8,6 @@ import random
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
-# 【トドメ1】CSSによる強制非表示（アプリの内側用）
-st.markdown("""
-    <style>
-    /* 王冠、メニュー、ヘッダー、フッターを物理的に抹殺 */
-    header, footer, .stAppDeployButton, [data-testid="bundle-viewer-container"], 
-    [data-testid="stHeader"], [data-testid="stStatusWidget"], #MainMenu {
-        display: none !important;
-        visibility: hidden !important;
-        width: 0 !important;
-        height: 0 !important;
-        pointer-events: none !important;
-    }
-    /* 画面上部の余白を削る */
-    .stApp { margin-top: -60px !important; }
-    </style>
-""", unsafe_allow_html=True)
-
-# 【トドメ2】JavaScriptによる親階層へのスタイル注入（アプリの外側用）
-# これが「他のアプリへ辿る道」を物理的に断つ核になります
-components.html("""
-<script>
-    const hidePlatformElements = () => {
-        try {
-            const targetDoc = window.parent.document;
-            const styleId = 'm25-hide-style';
-            if (!targetDoc.getElementById(styleId)) {
-                const style = targetDoc.createElement('style');
-                style.id = styleId;
-                style.innerHTML = `
-                    header, footer, .stAppDeployButton, 
-                    [data-testid="bundle-viewer-container"], 
-                    [data-testid="stHeader"], #MainMenu { 
-                        display: none !important; 
-                        visibility: hidden !important; 
-                    }
-                `;
-                targetDoc.head.appendChild(style);
-            }
-        } catch (e) {
-            // セキュリティ制限で親に触れない場合のバックアップ
-            const selectors = ['.stAppDeployButton', 'header', 'footer', '#MainMenu'];
-            selectors.forEach(s => {
-                const el = window.parent.document.querySelector(s);
-                if (el) el.style.display = 'none';
-            });
-        }
-    };
-    
-    // 執拗に実行して消し続ける
-    hidePlatformElements();
-    setInterval(hidePlatformElements, 500);
-    const observer = new MutationObserver(hidePlatformElements);
-    observer.observe(window.parent.document.body, { childList: true, subtree: true });
-</script>
-""", height=0)
-
 # --- 2. データベース(Supabase)接続設定 ---
 table_name = st.secrets.get("TABLE_NAME", "messages")
 
@@ -81,6 +25,7 @@ else:
 
 st.markdown(f"""
     <style>
+    /* M PLUS Rounded 1c の読み込み */
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
 
     .stApp {{ 
@@ -88,33 +33,74 @@ st.markdown(f"""
         color: {text_main_color}; 
         font-family: 'M PLUS Rounded 1c', sans-serif !important; 
     }}
+    #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
+    .stAppDeployButton {{display:none;}}
+    [data-testid="bundle-viewer-container"] {{display: none !important;}}
+    .block-container {{ padding-top: 1rem; padding-bottom: 80px !important; max-width: 100% !important; }}
     
-    .block-container {{ padding-top: 0rem !important; padding-bottom: 80px !important; max-width: 100% !important; }}
+    /* レイアウト：左右の振り分け */
+    .chat-row {{ 
+        display: flex; 
+        flex-direction: column; 
+        margin-bottom: 16px; 
+        width: 100%; 
+    }}
     
-    .chat-row {{ display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }}
+    /* メッセージ本文：M PLUS Rounded 1c 用に最適化 */
     .message-text {{ 
         font-family: 'M PLUS Rounded 1c', sans-serif !important;
-        font-feature-settings: "palt" 1; font-size: 1.15rem; line-height: 1.35; 
-        font-weight: 500 !important; letter-spacing: -0.04rem; max-width: 80%; 
-        white-space: pre-wrap; word-wrap: break-word; color: {text_main_color} !important; 
+        font-feature-settings: "palt" 1; 
+        font-size: 1.15rem; 
+        line-height: 1.35; 
+        font-weight: 500 !important; 
+        letter-spacing: -0.04rem; 
+        max-width: 80%; 
+        white-space: pre-wrap; 
+        word-wrap: break-word; 
+        color: {text_main_color} !important; 
+        background-color: transparent !important;
+        padding: 0; 
     }}
-    .stChatInput textarea {{ font-family: 'M PLUS Rounded 1c', sans-serif !important; }}
+
+    /* 入力エリア（chat_input）のカスタマイズ */
+    .stChatInput textarea {{
+        font-family: 'M PLUS Rounded 1c', sans-serif !important;
+        font-feature-settings: "palt" 1 !important;
+        letter-spacing: -0.02rem !important;
+        font-size: 1rem !important;
+    }}
+    /* 入力待ちプレースホルダーのフォント */
+    .stChatInput textarea::placeholder {{
+        font-family: 'M PLUS Rounded 1c', sans-serif !important;
+        opacity: 0.7;
+    }}
+
+    /* 右寄せ（Hide） */
     .align-right {{ align-items: flex-end; text-align: right; }}
+    .align-right .message-text {{ text-align: right; }}
+
+    /* 左寄せ（Maki） */
     .align-left {{ align-items: flex-start; text-align: left; }}
+    .align-left .message-text {{ text-align: left; }}
+    
     .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }}
     .name-maki {{ color: #ffa657 !important; font-weight: 700; }}
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
+    /* アニメーション設定 */
     @keyframes shake {{
         0% {{ transform: translate(1px, 1px) rotate(0deg); }}
         10% {{ transform: translate(-1px, -2px) rotate(-1deg); }}
+        30% {{ transform: translate(3px, 2px) rotate(0deg); }}
+        50% {{ transform: translate(-1px, 2px) rotate(-1deg); }}
         100% {{ transform: translate(1px, 1px) rotate(0deg); }}
     }}
     .shake-screen {{ animation: shake 0.5s; animation-iteration-count: 4; }}
     @keyframes rise {{
         0% {{ transform: translateY(0); opacity: 0; }}
         5% {{ opacity: 1; }}
+        85% {{ opacity: 1; }}
         100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }}
     }}
     .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
