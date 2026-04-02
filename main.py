@@ -25,60 +25,73 @@ else:
 
 st.markdown(f"""
     <style>
-    .stApp {{ background-color: {app_bg_color}; color: {text_main_color}; }}
+    /* M PLUS Rounded 1c の読み込み */
+    @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
+
+    .stApp {{ 
+        background-color: {app_bg_color}; 
+        color: {text_main_color}; 
+        font-family: 'M PLUS Rounded 1c', sans-serif !important; 
+    }}
     #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
     .stAppDeployButton {{display:none;}}
     [data-testid="bundle-viewer-container"] {{display: none !important;}}
     .block-container {{ padding-top: 1rem; padding-bottom: 80px !important; max-width: 100% !important; }}
-    .chat-row {{ display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }}
-    .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }}
-    .message-text {{ font-size: 1.18rem; line-height: 1.5; font-weight: 450; white-space: pre-wrap; word-wrap: break-word; color: {text_main_color} !important; }}
+    
+    /* レイアウト：左右の振り分け */
+    .chat-row {{ 
+        display: flex; 
+        flex-direction: column; 
+        margin-bottom: 16px; 
+        width: 100%; 
+    }}
+    
+    /* メッセージ本文：M PLUS Rounded 1c 用に最適化 */
+    .message-text {{ 
+        font-family: 'M PLUS Rounded 1c', sans-serif !important;
+        font-feature-settings: "palt" 1; /* プロポーショナルメトリクスを有効化 */
+        font-size: 1.15rem; /* 丸ゴシックは少し大きめが可愛いです */
+        line-height: 1.35; 
+        font-weight: 500 !important; 
+        letter-spacing: -0.04rem; /* 文字間を少し詰める設定 */
+        max-width: 80%; 
+        white-space: pre-wrap; 
+        word-wrap: break-word; 
+        color: {text_main_color} !important; 
+        background-color: transparent !important;
+        padding: 0; 
+    }}
+
+    /* 右寄せ（Hide） */
     .align-right {{ align-items: flex-end; text-align: right; }}
+    .align-right .message-text {{ text-align: right; }}
+
+    /* 左寄せ（Maki） */
     .align-left {{ align-items: flex-start; text-align: left; }}
-    .name-maki {{ color: #ffa657 !important; font-weight: bold; }}
-    .name-hide {{ color: #58a6ff !important; font-weight: bold; }}
+    .align-left .message-text {{ text-align: left; }}
+    
+    .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }}
+    .name-maki {{ color: #ffa657 !important; font-weight: 700; }}
+    .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* アニメーション：昇る絵文字 */
+    /* アニメーション設定 */
+    @keyframes shake {{
+        0% {{ transform: translate(1px, 1px) rotate(0deg); }}
+        10% {{ transform: translate(-1px, -2px) rotate(-1deg); }}
+        30% {{ transform: translate(3px, 2px) rotate(0deg); }}
+        50% {{ transform: translate(-1px, 2px) rotate(-1deg); }}
+        100% {{ transform: translate(1px, 1px) rotate(0deg); }}
+    }}
+    .shake-screen {{ animation: shake 0.5s; animation-iteration-count: 4; }}
     @keyframes rise {{
         0% {{ transform: translateY(0); opacity: 0; }}
         5% {{ opacity: 1; }}
         85% {{ opacity: 1; }}
         100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }}
     }}
-    
-    /* 【追加】アニメーション：画面を揺らす(Shake) */
-    @keyframes shake {{
-        0% {{ transform: translate(1px, 1px) rotate(0deg); }}
-        10% {{ transform: translate(-1px, -2px) rotate(-1deg); }}
-        20% {{ transform: translate(-3px, 0px) rotate(1deg); }}
-        30% {{ transform: translate(3px, 2px) rotate(0deg); }}
-        40% {{ transform: translate(1px, -1px) rotate(1deg); }}
-        50% {{ transform: translate(-1px, 2px) rotate(-1deg); }}
-        60% {{ transform: translate(-3px, 1px) rotate(0deg); }}
-        70% {{ transform: translate(3px, 1px) rotate(-1deg); }}
-        80% {{ transform: translate(-1px, -1px) rotate(1deg); }}
-        90% {{ transform: translate(1px, 2px) rotate(0deg); }}
-        100% {{ transform: translate(1px, -2px) rotate(-1deg); }}
-    }}
-    .shake-screen {{
-        animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
-        animation-iteration-count: 4; /* 合計2秒間揺れる */
-    }}
-
-    .rising-emoji {{
-        position: fixed;
-        bottom: -12vh;
-        left: 0;
-        width: 100%;
-        height: 0;
-        z-index: 9999;
-        pointer-events: none;
-    }}
-    .emoji-item {{
-        position: absolute;
-        animation: rise linear forwards;
-    }}
+    .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
+    .emoji-item {{ position: absolute; animation: rise linear forwards; }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -135,47 +148,26 @@ try:
         
         if msg_id != st.session_state["last_effect_id"]:
             emoji = None
-            # 絵文字判定
-            if any(word in msg_body for word in ["大好き", "好き", "ありがとう", "感謝", "愛してる", "ラブラブ"]):
-                emoji = "❤️"
-            elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み"]):
-                emoji = "🍺"
-            elif "おにぎり" in msg_body:
-                emoji = "🍙"
-            elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]):
-                emoji = "🏸"
-            elif any(word in msg_body for word in ["ラーメン", "山岡家"]):
-                emoji = "🍜"
-            elif any(word in msg_body for word in ["野菜", "サラダ", "レタス"]):
-                emoji = "🥬"
-            elif any(word in msg_body for word in ["おやすみ", "眠い", "寝る"]):
-                emoji = "💤"
-            elif any(word in msg_body for word in ["綺麗", "きれい", "すごい", "最高"]):
-                emoji = "✨"
-            elif any(word in msg_body for word in ["コーヒー", "カフェ", "休憩"]):
-                emoji = "☕️"
-            elif any(word in msg_body for word in ["ドライブ"]):
-                emoji = "🚗"
-            elif any(word in msg_body for word in ["乾杯", "ワイン", "ハイボール"]):
-                emoji = "🥂"
-            elif any(word in msg_body for word in ["花見", "さくら", "桜"]):
-                emoji = "🌸"
-            elif any(word in msg_body for word in ["楽しみ", "ルンルン", "うれしい"]):
-                emoji = "🎶"
-            elif any(word in msg_body for word in ["ケーキ", "スイーツ", "甘いもの"]):
-                emoji = "🍰"
-            elif any(word in msg_body for word in ["ラッキー", "幸せ", "しあわせ", "ハッピー"]):
-                emoji = "🍀"
-            elif any(word in msg_body for word in ["熊", "困った"]):
-                emoji = "🐻"
+            if any(word in msg_body for word in ["大好き", "好き", "ありがとう", "感謝", "愛してる", "ラブラブ"]): emoji = "❤️"
+            elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み"]): emoji = "🍺"
+            elif "おにぎり" in msg_body: emoji = "🍙"
+            elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]): emoji = "🏸"
+            elif any(word in msg_body for word in ["ラーメン", "山岡家"]): emoji = "🍜"
+            elif any(word in msg_body for word in ["野菜", "サラダ", "レタス"]): emoji = "🥬"
+            elif any(word in msg_body for word in ["おやすみ", "眠い", "寝る"]): emoji = "💤"
+            elif any(word in msg_body for word in ["綺麗", "きれい", "すごい", "最高"]): emoji = "✨"
+            elif any(word in msg_body for word in ["コーヒー", "カフェ", "休憩"]): emoji = "☕️"
+            elif any(word in msg_body for word in ["ドライブ"]): emoji = "🚗"
+            elif any(word in msg_body for word in ["乾杯", "ワイン", "ハイボール"]): emoji = "🥂"
+            elif any(word in msg_body for word in ["花見", "さくら", "桜"]): emoji = "🌸"
+            elif any(word in msg_body for word in ["楽しみ", "ルンルン", "うれしい"]): emoji = "🎶"
+            elif any(word in msg_body for word in ["ケーキ", "スイーツ", "甘いもの"]): emoji = "🍰"
+            elif any(word in msg_body for word in ["ラッキー", "幸せ", "しあわせ", "ハッピー"]): emoji = "🍀"
+            elif any(word in msg_body for word in ["熊", "困った"]): emoji = "🐻"
 
-            # 特別アクション
-            if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]):
-                st.balloons()
-            if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]):
-                st.snow()
+            if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]): st.balloons()
+            if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             
-            # 【追加】画面揺らしアクション
             if any(word in msg_body for word in ["こら", "起きて", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
 
