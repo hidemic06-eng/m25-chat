@@ -25,6 +25,27 @@ else:
 
 st.markdown(f"""
     <style>
+    /* 【重要】プラットフォームのパーツ（王冠・メニュー）を物理的に消す 
+    */
+    /* 右下の王冠マーク (Deployボタン) */
+    .stAppDeployButton {{
+        display: none !important;
+    }}
+    /* 右下の Manage app メニューを含むフッター */
+    footer {{
+        display: none !important;
+        visibility: hidden !important;
+    }}
+    /* 右上のハンバーガーメニューやヘッダー */
+    header {{
+        display: none !important;
+        visibility: hidden !important;
+    }}
+    /* 開発者用ツールバーのコンテナ */
+    [data-testid="bundle-viewer-container"], [data-testid="stStatusWidget"] {{
+        display: none !important;
+    }}
+
     /* M PLUS Rounded 1c の読み込み */
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
 
@@ -33,9 +54,7 @@ st.markdown(f"""
         color: {text_main_color}; 
         font-family: 'M PLUS Rounded 1c', sans-serif !important; 
     }}
-    #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
-    .stAppDeployButton {{display:none;}}
-    [data-testid="bundle-viewer-container"] {{display: none !important;}}
+    
     .block-container {{ padding-top: 1rem; padding-bottom: 80px !important; max-width: 100% !important; }}
     
     /* レイアウト：左右の振り分け */
