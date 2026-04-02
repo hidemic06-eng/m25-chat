@@ -174,6 +174,7 @@ try:
             elif any(word in msg_body for word in ["ラッキー", "幸せ", "しあわせ", "ハッピー"]): priority_emoji = "🍀"
             elif any(word in msg_body for word in ["熊", "困った"]): priority_emoji = "🐻"
             elif any(word in msg_body for word in ["おやつ", "プリン"]): priority_emoji = "🍮"
+            elif any(word in msg_body for word in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
 
             # 演出実行
             if priority_emoji:
