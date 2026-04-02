@@ -25,13 +25,13 @@ else:
 
 st.markdown(f"""
     <style>
-    /* Google Fonts: Kiwi Maru (かわいい丸文字) を読み込み */
-    @import url('https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@500;700&display=swap');
+    /* Zen Maru Gothic (読みやすくプロポーショナルな丸ゴシック) を読み込み */
+    @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
 
     .stApp {{ 
         background-color: {app_bg_color}; 
         color: {text_main_color}; 
-        font-family: 'Kiwi Maru', serif; /* アプリ全体のフォント */
+        font-family: 'Zen Maru Gothic', sans-serif !important; 
     }}
     #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
     .stAppDeployButton {{display:none;}}
@@ -41,12 +41,13 @@ st.markdown(f"""
     .chat-row {{ display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }}
     .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }}
     
-    /* メッセージ本文：フォント指定、サイズ微調整、太字(700)化 */
+    /* メッセージ本文：サイズを整え、太さを中太(500)に。行間と文字間を最適化 */
     .message-text {{ 
-        font-family: 'Kiwi Maru', serif;
-        font-size: 1.2rem; 
-        line-height: 1.5; 
-        font-weight: 700; 
+        font-family: 'Zen Maru Gothic', sans-serif !important;
+        font-size: 1.1rem; 
+        line-height: 1.4; 
+        font-weight: 500 !important; 
+        letter-spacing: -0.01rem;
         white-space: pre-wrap; 
         word-wrap: break-word; 
         color: {text_main_color} !important; 
@@ -54,8 +55,8 @@ st.markdown(f"""
     
     .align-right {{ align-items: flex-end; text-align: right; }}
     .align-left {{ align-items: flex-start; text-align: left; }}
-    .name-maki {{ color: #ffa657 !important; font-weight: bold; }}
-    .name-hide {{ color: #58a6ff !important; font-weight: bold; }}
+    .name-maki {{ color: #ffa657 !important; font-weight: 700; }}
+    .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
     /* アニメーション：画面を揺らす(Shake) */
@@ -236,9 +237,7 @@ prompt = st.chat_input(input_placeholder)
 if prompt:
     try:
         supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
-        # 送信後は確実に先頭（最新）に戻す
         st.session_state["page_offset"] = 0
-        # 反映されない問題を解決するため、書き込み直後に一度だけ即時rerunをかける
         st.rerun()
     except Exception as e:
         st.error(f"送信エラー: {e}")
