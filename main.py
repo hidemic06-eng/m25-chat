@@ -234,16 +234,16 @@ try:
                 st.markdown(peek_html + '</div>', unsafe_allow_html=True)
 
             # C. 画面全体のアクション（独立判定）
-            if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]): st.balloons()
+            if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             
             if any(word in msg_body for word in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
-            if any(word in msg_body for word in ["おやすみ", "エモい", "内緒", "静かに"]):
+            if any(word in msg_body for word in ["さみしい", "淋しい", "悲しい", "疲れた"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("mood-dark"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("mood-dark"); }, 3500);</script>', height=0)
-            if any(word in msg_body for word in ["やった", "さすが", "それだ", "納得"]):
+            if any(word in msg_body for word in ["マジで", "えー", "正解", "おー"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("bounce-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("bounce-screen"); }, 1000);</script>', height=0)
-            if any(word in msg_body for word in ["わかった", "すごい", "閃いた", "注目"]):
+            if any(word in msg_body for word in ["びっくり", "すごい", "光る", "指輪"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
 
             st.session_state["last_effect_id"] = msg_id
