@@ -25,29 +25,40 @@ else:
 
 st.markdown(f"""
     <style>
-    .stApp {{ background-color: {app_bg_color}; color: {text_main_color}; }}
+    /* Google Fonts: Kiwi Maru (かわいい丸文字) を読み込み */
+    @import url('https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@500;700&display=swap');
+
+    .stApp {{ 
+        background-color: {app_bg_color}; 
+        color: {text_main_color}; 
+        font-family: 'Kiwi Maru', serif; /* アプリ全体のフォント */
+    }}
     #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
     .stAppDeployButton {{display:none;}}
     [data-testid="bundle-viewer-container"] {{display: none !important;}}
     .block-container {{ padding-top: 1rem; padding-bottom: 80px !important; max-width: 100% !important; }}
+    
     .chat-row {{ display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }}
     .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }}
-    .message-text {{ font-size: 1.18rem; line-height: 1.5; font-weight: 450; white-space: pre-wrap; word-wrap: break-word; color: {text_main_color} !important; }}
+    
+    /* メッセージ本文：フォント指定、サイズ微調整、太字(700)化 */
+    .message-text {{ 
+        font-family: 'Kiwi Maru', serif;
+        font-size: 1.2rem; 
+        line-height: 1.5; 
+        font-weight: 700; 
+        white-space: pre-wrap; 
+        word-wrap: break-word; 
+        color: {text_main_color} !important; 
+    }}
+    
     .align-right {{ align-items: flex-end; text-align: right; }}
     .align-left {{ align-items: flex-start; text-align: left; }}
     .name-maki {{ color: #ffa657 !important; font-weight: bold; }}
     .name-hide {{ color: #58a6ff !important; font-weight: bold; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* アニメーション：昇る絵文字 */
-    @keyframes rise {{
-        0% {{ transform: translateY(0); opacity: 0; }}
-        5% {{ opacity: 1; }}
-        85% {{ opacity: 1; }}
-        100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }}
-    }}
-    
-    /* 【追加】アニメーション：画面を揺らす(Shake) */
+    /* アニメーション：画面を揺らす(Shake) */
     @keyframes shake {{
         0% {{ transform: translate(1px, 1px) rotate(0deg); }}
         10% {{ transform: translate(-1px, -2px) rotate(-1deg); }}
@@ -63,9 +74,16 @@ st.markdown(f"""
     }}
     .shake-screen {{
         animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
-        animation-iteration-count: 4; /* 合計2秒間揺れる */
+        animation-iteration-count: 4;
     }}
 
+    /* アニメーション：昇る絵文字 */
+    @keyframes rise {{
+        0% {{ transform: translateY(0); opacity: 0; }}
+        5% {{ opacity: 1; }}
+        85% {{ opacity: 1; }}
+        100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }}
+    }}
     .rising-emoji {{
         position: fixed;
         bottom: -12vh;
@@ -175,7 +193,7 @@ try:
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]):
                 st.snow()
             
-            # 【追加】画面揺らしアクション
+            # 【画面揺らし】
             if any(word in msg_body for word in ["こら", "起きて", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
 
@@ -218,7 +236,9 @@ prompt = st.chat_input(input_placeholder)
 if prompt:
     try:
         supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
+        # 送信後は確実に先頭（最新）に戻す
         st.session_state["page_offset"] = 0
+        # 反映されない問題を解決するため、書き込み直後に一度だけ即時rerunをかける
         st.rerun()
     except Exception as e:
         st.error(f"送信エラー: {e}")
