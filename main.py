@@ -38,7 +38,7 @@ st.markdown(f"""
     [data-testid="bundle-viewer-container"] {{display: none !important;}}
     .block-container {{ padding-top: 1rem; padding-bottom: 80px !important; max-width: 100% !important; }}
     
-    /* レイアウト：メッセージを行ごとに管理 */
+    /* レイアウト：左右の振り分け */
     .chat-row {{ 
         display: flex; 
         flex-direction: column; 
@@ -46,81 +46,53 @@ st.markdown(f"""
         width: 100%; 
     }}
     
-    /* 共通のメッセージ本文設定 */
+    /* メッセージ本文：背景なし・幅80%制限 */
     .message-text {{ 
         font-family: 'Zen Maru Gothic', sans-serif !important;
-        font-feature-settings: "palt"; /* 自動カーニングで文字間を最適化 */
+        font-feature-settings: "palt"; /* 自動カーニング */
         font-size: 1.1rem; 
         line-height: 1.4; 
         font-weight: 500 !important; 
         letter-spacing: -0.01rem;
-        max-width: 80%; /* 幅を80%に制限 */
-        padding: 8px 14px;
-        border-radius: 15px;
+        max-width: 80%; 
         white-space: pre-wrap; 
         word-wrap: break-word; 
         color: {text_main_color} !important; 
+        /* 背景と枠線を削除 */
+        background-color: transparent !important;
+        padding: 0; 
     }}
 
-    /* 右寄せ（自分側のスタイル） */
+    /* 右寄せ（Hide） */
     .align-right {{ align-items: flex-end; text-align: right; }}
-    .align-right .message-text {{ 
-        background-color: #404249; /* 自分の吹き出し背景 */
-        text-align: left; 
-        border-bottom-right-radius: 4px; /* 右下だけ角を少し尖らせて吹き出し風に */
-    }}
+    .align-right .message-text {{ text-align: right; }}
 
-    /* 左寄せ（相手側のスタイル） */
+    /* 左寄せ（Maki） */
     .align-left {{ align-items: flex-start; text-align: left; }}
-    .align-left .message-text {{ 
-        background-color: #383a40; /* 相手の吹き出し背景 */
-        border-bottom-left-radius: 4px;
-    }}
+    .align-left .message-text {{ text-align: left; }}
     
     .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }}
     .name-maki {{ color: #ffa657 !important; font-weight: 700; }}
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* アニメーション：画面を揺らす(Shake) */
+    /* アニメーション設定はそのまま維持 */
     @keyframes shake {{
         0% {{ transform: translate(1px, 1px) rotate(0deg); }}
         10% {{ transform: translate(-1px, -2px) rotate(-1deg); }}
-        20% {{ transform: translate(-3px, 0px) rotate(1deg); }}
         30% {{ transform: translate(3px, 2px) rotate(0deg); }}
-        40% {{ transform: translate(1px, -1px) rotate(1deg); }}
         50% {{ transform: translate(-1px, 2px) rotate(-1deg); }}
-        60% {{ transform: translate(-3px, 1px) rotate(0deg); }}
-        70% {{ transform: translate(3px, 1px) rotate(-1deg); }}
-        80% {{ transform: translate(-1px, -1px) rotate(1deg); }}
-        90% {{ transform: translate(1px, 2px) rotate(0deg); }}
-        100% {{ transform: translate(1px, -2px) rotate(-1deg); }}
+        100% {{ transform: translate(1px, 1px) rotate(0deg); }}
     }}
-    .shake-screen {{
-        animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
-        animation-iteration-count: 4;
-    }}
-
-    /* アニメーション：昇る絵文字 */
+    .shake-screen {{ animation: shake 0.5s; animation-iteration-count: 4; }}
     @keyframes rise {{
         0% {{ transform: translateY(0); opacity: 0; }}
         5% {{ opacity: 1; }}
         85% {{ opacity: 1; }}
         100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }}
     }}
-    .rising-emoji {{
-        position: fixed;
-        bottom: -12vh;
-        left: 0;
-        width: 100%;
-        height: 0;
-        z-index: 9999;
-        pointer-events: none;
-    }}
-    .emoji-item {{
-        position: absolute;
-        animation: rise linear forwards;
-    }}
+    .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
+    .emoji-item {{ position: absolute; animation: rise linear forwards; }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -177,7 +149,6 @@ try:
         
         if msg_id != st.session_state["last_effect_id"]:
             emoji = None
-            # 絵文字判定 (既存のリストを維持)
             if any(word in msg_body for word in ["大好き", "好き", "ありがとう", "感謝", "愛してる", "ラブラブ"]): emoji = "❤️"
             elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み"]): emoji = "🍺"
             elif "おにぎり" in msg_body: emoji = "🍙"
@@ -195,11 +166,9 @@ try:
             elif any(word in msg_body for word in ["ラッキー", "幸せ", "しあわせ", "ハッピー"]): emoji = "🍀"
             elif any(word in msg_body for word in ["熊", "困った"]): emoji = "🐻"
 
-            # 特別アクション
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             
-            # 【画面揺らし】
             if any(word in msg_body for word in ["こら", "起きて", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
 
