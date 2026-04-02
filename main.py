@@ -207,6 +207,19 @@ try:
             if any(word in msg_body for word in ["こら", "起きて", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
 
+            # 3. 暗転演出（追加分）
+            if any(word in msg_body for word in ["おやすみ", "エモい", "内緒", "静かに"]):
+                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("mood-dark"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("mood-dark"); }, 3500);</script>', height=0)
+            
+            # 4. バウンド演出（追加分）
+            if any(word in msg_body for word in ["やった", "さすが", "それだ", "納得"]):
+                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("bounce-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("bounce-screen"); }, 1000);</script>', height=0)
+            
+            # 5. フラッシュ演出（追加分）
+            if any(word in msg_body for word in ["わかった", "すごい", "閃いた", "注目"]):
+                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
+
+
             st.session_state["last_effect_id"] = msg_id
 
     # メッセージのレンダリング
