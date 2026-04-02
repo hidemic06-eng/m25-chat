@@ -4,7 +4,7 @@ from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
 from datetime import datetime, timedelta
 import random
-import re  # 絵文字抽出用に追加
+import re  # 絵文字抽出用
 
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
@@ -35,16 +35,12 @@ st.markdown(f"""
         font-family: 'M PLUS Rounded 1c', sans-serif !important; 
     }}
     
-    /* 強力な非表示設定（王冠、メニュー、ヘッダー） */
     #MainMenu, footer, header, .stAppDeployButton, [data-testid="bundle-viewer-container"] {{
         visibility: hidden !important;
         display: none !important;
     }}
     
     .block-container {{ padding-top: 1rem; padding-bottom: 80px !important; max-width: 100% !important; }}
-    
-    /* レイアウト：左右の振り分け */
-    .chat-row {{ display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }}
     
     .message-text {{ 
         font-family: 'M PLUS Rounded 1c', sans-serif !important;
@@ -59,9 +55,7 @@ st.markdown(f"""
         color: {text_main_color} !important; 
     }}
 
-    .stChatInput textarea {{
-        font-family: 'M PLUS Rounded 1c', sans-serif !important;
-    }}
+    .stChatInput textarea {{ font-family: 'M PLUS Rounded 1c', sans-serif !important; }}
 
     .align-right {{ align-items: flex-end; text-align: right; }}
     .align-left {{ align-items: flex-start; text-align: left; }}
@@ -71,7 +65,7 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* アニメーション：昇る */
+    /* アニメーション：昇る（指定ワード用） */
     @keyframes rise {{
         0% {{ transform: translateY(0); opacity: 0; }}
         5% {{ opacity: 1; }}
@@ -80,13 +74,14 @@ st.markdown(f"""
     .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
     .emoji-item {{ position: absolute; animation: rise linear forwards; }}
 
-    /* アニメーション：キラキラ */
-    @keyframes flash-pop {{
-        0% {{ opacity: 0; transform: scale(0.5); }}
-        50% {{ opacity: 1; transform: scale(1.2); }}
-        100% {{ opacity: 0; transform: scale(1); }}
+    /* アニメーション：さりげないキラキラ（絵文字単体用） */
+    @keyframes gentle-fade {{
+        0% {{ opacity: 0; transform: scale(0.8) translateY(10px); }}
+        20% {{ opacity: 0.6; transform: scale(1.0) translateY(0px); }}
+        80% {{ opacity: 0.6; transform: scale(1.0); }}
+        100% {{ opacity: 0; transform: scale(1.1) translateY(-10px); }}
     }}
-    .flash-item {{ position: fixed; z-index: 9999; pointer-events: none; animation: flash-pop 3s forwards; }}
+    .flash-item {{ position: fixed; z-index: 9999; pointer-events: none; animation: gentle-fade 4s forwards; }}
 
     @keyframes shake {{
         0% {{ transform: translate(1px, 1px) rotate(0deg); }}
@@ -97,7 +92,7 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. 認証機能 (セッション保持版) ---
+# --- 4. 認証機能 ---
 if "password_correct" not in st.session_state:
     st.session_state["password_correct"] = False
 
@@ -152,10 +147,9 @@ try:
         msg_body = latest_msg["message_body"]
         
         if msg_id != st.session_state["last_effect_id"]:
-            # 絵文字抽出
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             
-            # A. 指定ワード判定（昇る演出）
+            # A. 指定ワード判定
             priority_emoji = None
             if any(word in msg_body for word in ["大好き", "好き", "ありがとう", "感謝", "愛してる", "ラブラブ"]): priority_emoji = "❤️"
             elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "乾杯", "酒"]): priority_emoji = "🍺"
@@ -176,9 +170,8 @@ try:
             elif any(word in msg_body for word in ["おやつ", "プリン"]): priority_emoji = "🍮"
             elif any(word in msg_body for word in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
 
-            # 演出実行
             if priority_emoji:
-                # 指定ワード優先演出：昇る（25個）
+                # 昇る演出（25個）
                 effect_html = '<div class="rising-emoji">'
                 for i in range(25):
                     left, size = random.randint(5, 95), random.uniform(2.5, 4.5)
@@ -187,16 +180,15 @@ try:
                 st.markdown(effect_html + '</div>', unsafe_allow_html=True)
             
             elif emoji_in_text:
-                # 指定ワードなし ＋ 絵文字あり：キラキラ（40個）
+                # さりげないキラキラ演出（8個）
                 target_emoji = emoji_in_text[-1]
                 flash_html = '<div>'
-                for i in range(40):
-                    top, left = random.randint(10, 80), random.randint(5, 90)
-                    size, delay = random.uniform(1.5, 3.5), random.uniform(0, 2.0)
+                for i in range(8):
+                    top, left = random.randint(15, 85), random.randint(5, 95)
+                    size, delay = random.uniform(1.2, 2.2), random.uniform(0, 1.5)
                     flash_html += f'<div class="flash-item" style="top:{top}%; left:{left}%; font-size:{size}rem; animation-delay:{delay}s;">{target_emoji}</div>'
                 st.markdown(flash_html + '</div>', unsafe_allow_html=True)
 
-            # 特殊効果（風船・雪・シェイク）
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             if any(word in msg_body for word in ["こら", "起きて", "びっくり", "地震", "怒"]):
