@@ -55,16 +55,6 @@ st.markdown(f"""
         color: {text_main_color} !important; 
     }}
 
-    .stChatInput textarea {{ font-family: 'M PLUS Rounded 1c', sans-serif !important; }}
-
-    .align-right {{ align-items: flex-end; text-align: right; }}
-    .align-left {{ align-items: flex-start; text-align: left; }}
-    
-    .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }}
-    .name-maki {{ color: #ffa657 !important; font-weight: 700; }}
-    .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
-    .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
-    
     /* アニメーション：昇る */
     @keyframes rise {{
         0% {{ transform: translateY(0); opacity: 0; }}
@@ -74,24 +64,24 @@ st.markdown(f"""
     .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
     .emoji-item {{ position: absolute; animation: rise linear forwards; }}
 
-    /* アニメーション：横からひょっこり */
+    /* ★修正点：横からひょっこり（peek）のアニメーション定義★ */
     @keyframes peek-left {{
-        0% {{ left: -60px; opacity: 0; }}
-        20% {{ left: 10px; opacity: 1; }}
-        80% {{ left: 10px; opacity: 1; }}
-        100% {{ left: -60px; opacity: 0; }}
+        0% {{ left: -80px; opacity: 0; transform: scale(0.5); }}
+        20% {{ left: 20px; opacity: 1; transform: scale(1.2); }}
+        80% {{ left: 20px; opacity: 1; transform: scale(1.2); }}
+        100% {{ left: -80px; opacity: 0; transform: scale(0.5); }}
     }}
     @keyframes peek-right {{
-        0% {{ right: -60px; opacity: 0; }}
-        20% {{ right: 10px; opacity: 1; }}
-        80% {{ right: 10px; opacity: 1; }}
-        100% {{ right: -60px; opacity: 0; }}
+        0% {{ right: -80px; opacity: 0; transform: scale(0.5); }}
+        20% {{ right: 20px; opacity: 1; transform: scale(1.2); }}
+        80% {{ right: 20px; opacity: 1; transform: scale(1.2); }}
+        100% {{ right: -80px; opacity: 0; transform: scale(0.5); }}
     }}
     .peek-item {{ 
         position: fixed; 
         z-index: 9999; 
         pointer-events: none; 
-        font-size: 3rem;
+        font-size: 4rem; /* 少し大きくして目立たせます */
     }}
 
     @keyframes shake {{
@@ -160,7 +150,7 @@ try:
         if msg_id != st.session_state["last_effect_id"]:
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             
-            # 優先ワードの判定
+            # 優先ワードの判定（昇る演出用）
             priority_emoji = None
             if any(word in msg_body for word in ["大好き", "好き", "ありがとう", "感謝", "愛してる", "ラブラブ"]): priority_emoji = "❤️"
             elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "乾杯", "酒"]): priority_emoji = "🍺"
@@ -181,12 +171,7 @@ try:
             elif any(word in msg_body for word in ["おやつ", "プリン"]): priority_emoji = "🍮"
             elif any(word in msg_body for word in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
 
-            # 特殊エフェクト条件の判定
-            is_balloons = any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"])
-            is_snow = any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"])
-            is_shake = any(word in msg_body for word in ["こら", "起きて", "びっくり", "地震", "怒"])
-
-            # 演出の実行
+            # 演出の振り分け（判定順序はそのまま）
             if priority_emoji:
                 effect_html = '<div class="rising-emoji">'
                 for i in range(25):
@@ -195,27 +180,28 @@ try:
                     effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{priority_emoji}</div>'
                 st.markdown(effect_html + '</div>', unsafe_allow_html=True)
             
-            if is_balloons: st.balloons()
-            if is_snow: st.snow()
-            if is_shake:
-                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
+            # ★修正点：絵文字のみ、または特殊ワード以外の時の「ひょっこり」★
+            elif emoji_in_text:
+                target_emoji = emoji_in_text[-1]
+                peek_html = '<div>'
+                for i in range(5):
+                    side = random.choice(["left", "right"])
+                    top = random.randint(15, 85) # 出現する高さ
+                    delay = random.uniform(0, 1.5) # 出現のタイミングをずらす
+                    duration = random.uniform(3.0, 4.0) # ひょっこりしている時間
+                    anim_name = "peek-left" if side == "left" else "peek-right"
+                    # クラス名が peek-item になっていることを確認
+                    peek_html += f'<div class="peek-item" style="{side}:-80px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
+                st.markdown(peek_html + '</div>', unsafe_allow_html=True)
 
-            # 【修正箇所】いずれの演出条件にも合致せず、かつ絵文字がある場合のみ「ひょっこり」
-            if not (priority_emoji or is_balloons or is_snow or is_shake):
-                if emoji_in_text:
-                    target_emoji = emoji_in_text[-1]
-                    peek_html = '<div>'
-                    for i in range(5):
-                        side = random.choice(["left", "right"])
-                        top = random.randint(20, 80)
-                        delay = random.uniform(0, 3.0)
-                        duration = random.uniform(2.5, 3.5)
-                        anim_name = "peek-left" if side == "left" else "peek-right"
-                        peek_html += f'<div class="peek-item" style="{side}:-60px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
-                    st.markdown(peek_html + '</div>', unsafe_allow_html=True)
+            if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]): st.balloons()
+            if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
+            if any(word in msg_body for word in ["こら", "起きて", "びっくり", "地震", "怒"]):
+                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
 
             st.session_state["last_effect_id"] = msg_id
 
+    # メッセージ表示部分は変更なし...
     for m in messages:
         utc_time = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
         jst_time = utc_time + timedelta(hours=9)
@@ -237,7 +223,7 @@ try:
 except Exception as e:
     st.error(f"表示エラー: {e}")
 
-# --- 9. 送信 ---
+# 送信・スクロール部分は変更なし
 prompt = st.chat_input(input_placeholder)
 if prompt:
     try:
@@ -247,6 +233,5 @@ if prompt:
     except Exception as e:
         st.error(f"送信エラー: {e}")
 
-# --- 10. スクロール ---
 if st.session_state["page_offset"] == 0:
     components.html('<script>window.parent.document.querySelector(".main").scrollTo(0, 99999);</script>', height=0)
