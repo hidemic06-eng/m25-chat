@@ -65,7 +65,7 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* アニメーション：昇る（指定ワード用） */
+    /* アニメーション：昇る */
     @keyframes rise {{
         0% {{ transform: translateY(0); opacity: 0; }}
         5% {{ opacity: 1; }}
@@ -74,7 +74,7 @@ st.markdown(f"""
     .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
     .emoji-item {{ position: absolute; animation: rise linear forwards; }}
 
-    /* アニメーション：横からひょっこり（絵文字単体用） */
+    /* アニメーション：横からひょっこり */
     @keyframes peek-left {{
         0% {{ left: -60px; opacity: 0; }}
         20% {{ left: 10px; opacity: 1; }}
@@ -160,7 +160,7 @@ try:
         if msg_id != st.session_state["last_effect_id"]:
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             
-            # A. 指定ワード判定（昇る演出）
+            # 優先ワードの判定
             priority_emoji = None
             if any(word in msg_body for word in ["大好き", "好き", "ありがとう", "感謝", "愛してる", "ラブラブ"]): priority_emoji = "❤️"
             elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "乾杯", "酒"]): priority_emoji = "🍺"
@@ -181,8 +181,13 @@ try:
             elif any(word in msg_body for word in ["おやつ", "プリン"]): priority_emoji = "🍮"
             elif any(word in msg_body for word in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
 
+            # 特殊エフェクト条件の判定
+            is_balloons = any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"])
+            is_snow = any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"])
+            is_shake = any(word in msg_body for word in ["こら", "起きて", "びっくり", "地震", "怒"])
+
+            # 演出の実行
             if priority_emoji:
-                # 昇る演出（25個）
                 effect_html = '<div class="rising-emoji">'
                 for i in range(25):
                     left, size = random.randint(5, 95), random.uniform(2.5, 4.5)
@@ -190,23 +195,24 @@ try:
                     effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{priority_emoji}</div>'
                 st.markdown(effect_html + '</div>', unsafe_allow_html=True)
             
-            elif emoji_in_text:
-                # 横からひょっこり演出（5個）
-                target_emoji = emoji_in_text[-1]
-                peek_html = '<div>'
-                for i in range(5):
-                    side = random.choice(["left", "right"])
-                    top = random.randint(20, 80)
-                    delay = random.uniform(0, 3.0)
-                    duration = random.uniform(2.5, 3.5)
-                    anim_name = "peek-left" if side == "left" else "peek-right"
-                    peek_html += f'<div class="peek-item" style="{side}:-60px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
-                st.markdown(peek_html + '</div>', unsafe_allow_html=True)
-
-            if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]): st.balloons()
-            if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
-            if any(word in msg_body for word in ["こら", "起きて", "びっくり", "地震", "怒"]):
+            if is_balloons: st.balloons()
+            if is_snow: st.snow()
+            if is_shake:
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
+
+            # 【修正箇所】いずれの演出条件にも合致せず、かつ絵文字がある場合のみ「ひょっこり」
+            if not (priority_emoji or is_balloons or is_snow or is_shake):
+                if emoji_in_text:
+                    target_emoji = emoji_in_text[-1]
+                    peek_html = '<div>'
+                    for i in range(5):
+                        side = random.choice(["left", "right"])
+                        top = random.randint(20, 80)
+                        delay = random.uniform(0, 3.0)
+                        duration = random.uniform(2.5, 3.5)
+                        anim_name = "peek-left" if side == "left" else "peek-right"
+                        peek_html += f'<div class="peek-item" style="{side}:-60px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
+                    st.markdown(peek_html + '</div>', unsafe_allow_html=True)
 
             st.session_state["last_effect_id"] = msg_id
 
