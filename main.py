@@ -25,13 +25,13 @@ else:
 
 st.markdown(f"""
     <style>
-    /* Zen Maru Gothic の読み込み */
-    @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
+    /* M PLUS Rounded 1c の読み込み */
+    @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
 
     .stApp {{ 
         background-color: {app_bg_color}; 
         color: {text_main_color}; 
-        font-family: 'Zen Maru Gothic', sans-serif !important; 
+        font-family: 'M PLUS Rounded 1c', sans-serif !important; 
     }}
     #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
     .stAppDeployButton {{display:none;}}
@@ -46,19 +46,18 @@ st.markdown(f"""
         width: 100%; 
     }}
     
-    /* メッセージ本文：背景なし・幅80%制限 */
+    /* メッセージ本文：M PLUS Rounded 1c 用に最適化 */
     .message-text {{ 
-        font-family: 'Zen Maru Gothic', sans-serif !important;
-        font-feature-settings: "palt"; /* 自動カーニング */
-        font-size: 1.1rem; 
-        line-height: 1.4; 
+        font-family: 'M PLUS Rounded 1c', sans-serif !important;
+        font-feature-settings: "palt" 1; /* プロポーショナルメトリクスを有効化 */
+        font-size: 1.15rem; /* 丸ゴシックは少し大きめが可愛いです */
+        line-height: 1.35; 
         font-weight: 500 !important; 
-        letter-spacing: -0.01rem;
+        letter-spacing: -0.04rem; /* 文字間を少し詰める設定 */
         max-width: 80%; 
         white-space: pre-wrap; 
         word-wrap: break-word; 
         color: {text_main_color} !important; 
-        /* 背景と枠線を削除 */
         background-color: transparent !important;
         padding: 0; 
     }}
@@ -76,7 +75,7 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* アニメーション設定はそのまま維持 */
+    /* アニメーション設定 */
     @keyframes shake {{
         0% {{ transform: translate(1px, 1px) rotate(0deg); }}
         10% {{ transform: translate(-1px, -2px) rotate(-1deg); }}
