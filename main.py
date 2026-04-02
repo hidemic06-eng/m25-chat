@@ -16,16 +16,8 @@ app_bg_color = "#313338"
 text_main_color = "#dbdee1"
 sub_text_color = "#949ba4"
 
-if table_name == "messages_test":
-    status_label = " 🧪 TEST"
-    input_placeholder = "テストメッセージを入力..."
-else:
-    status_label = ""
-    input_placeholder = "メッセージを入力..."
-
 st.markdown(f"""
     <style>
-    /* Zen Maru Gothic (読みやすくプロポーショナルな丸ゴシック) を読み込み */
     @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap');
 
     .stApp {{ 
@@ -33,16 +25,24 @@ st.markdown(f"""
         color: {text_main_color}; 
         font-family: 'Zen Maru Gothic', sans-serif !important; 
     }}
+    
     #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
     .stAppDeployButton {{display:none;}}
-    [data-testid="bundle-viewer-container"] {{display: none !important;}}
     .block-container {{ padding-top: 1rem; padding-bottom: 80px !important; max-width: 100% !important; }}
     
-    .chat-row {{ display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }}
-    .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }}
+    /* --- レイアウトの肝：ここを追加 --- */
+    .chat-row {{ 
+        display: flex; 
+        flex-direction: column; 
+        margin-bottom: 16px; 
+        width: 100%; 
+    }}
     
-    /* メッセージ本文：サイズを整え、太さを中太(500)に。行間と文字間を最適化 */
+    /* 共通：メッセージの最大幅を80%に制限 */
     .message-text {{ 
+        max-width: 80%; 
+        padding: 8px 12px;
+        border-radius: 12px;
         font-family: 'Zen Maru Gothic', sans-serif !important;
         font-size: 1.1rem; 
         line-height: 1.4; 
@@ -52,52 +52,42 @@ st.markdown(f"""
         word-wrap: break-word; 
         color: {text_main_color} !important; 
     }}
-    
+
+    /* 右寄せ（自分：Hide） */
     .align-right {{ align-items: flex-end; text-align: right; }}
+    .align-right .message-text {{ 
+        background-color: #404249; /* 自分の発言を少し明るくして区別 */
+        text-align: left; /* 文字自体は左揃え */
+    }}
+
+    /* 左寄せ（相手：Maki） */
     .align-left {{ align-items: flex-start; text-align: left; }}
+    .align-left .message-text {{ 
+        background-color: #383a40; 
+    }}
+
+    .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }}
     .name-maki {{ color: #ffa657 !important; font-weight: 700; }}
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* アニメーション：画面を揺らす(Shake) */
+    /* --- 以下、アニメーション設定（shake, riseなど） --- */
     @keyframes shake {{
         0% {{ transform: translate(1px, 1px) rotate(0deg); }}
         10% {{ transform: translate(-1px, -2px) rotate(-1deg); }}
-        20% {{ transform: translate(-3px, 0px) rotate(1deg); }}
         30% {{ transform: translate(3px, 2px) rotate(0deg); }}
-        40% {{ transform: translate(1px, -1px) rotate(1deg); }}
         50% {{ transform: translate(-1px, 2px) rotate(-1deg); }}
-        60% {{ transform: translate(-3px, 1px) rotate(0deg); }}
-        70% {{ transform: translate(3px, 1px) rotate(-1deg); }}
-        80% {{ transform: translate(-1px, -1px) rotate(1deg); }}
-        90% {{ transform: translate(1px, 2px) rotate(0deg); }}
-        100% {{ transform: translate(1px, -2px) rotate(-1deg); }}
+        100% {{ transform: translate(1px, 1px) rotate(0deg); }}
     }}
-    .shake-screen {{
-        animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
-        animation-iteration-count: 4;
-    }}
-
-    /* アニメーション：昇る絵文字 */
+    .shake-screen {{ animation: shake 0.5s; animation-iteration-count: 4; }}
     @keyframes rise {{
         0% {{ transform: translateY(0); opacity: 0; }}
         5% {{ opacity: 1; }}
         85% {{ opacity: 1; }}
         100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }}
     }}
-    .rising-emoji {{
-        position: fixed;
-        bottom: -12vh;
-        left: 0;
-        width: 100%;
-        height: 0;
-        z-index: 9999;
-        pointer-events: none;
-    }}
-    .emoji-item {{
-        position: absolute;
-        animation: rise linear forwards;
-    }}
+    .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
+    .emoji-item {{ position: absolute; animation: rise linear forwards; }}
     </style>
 """, unsafe_allow_html=True)
 
