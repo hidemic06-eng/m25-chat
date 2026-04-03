@@ -52,7 +52,7 @@ st.markdown(f"""
     [data-testid="bundle-viewer-container"] {{display: none !important;}}
     .block-container {{ padding-top: 1rem; padding-bottom: 80px !important; max-width: 100% !important; }}
     
-    /* ボタンの色を固定（前の20件ボタンと同じ設定） */
+    /* ボタンの色を固定（設定ボタン・前の20件ボタン共通） */
     .stButton > button {{
         background-color: #424549 !important;
         color: white !important;
@@ -60,8 +60,14 @@ st.markdown(f"""
         width: 100% !important;
     }}
 
+    /* 設定エリア内のウィジェットラベルを白く強制固定 */
+    [data-testid="stMarkdownContainer"] p, 
+    [data-testid="stWidgetLabel"] p,
+    [data-testid="stRadio"] label div p {{
+        color: {text_main_color} !important;
+    }}
+
     .chat-row {{ display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }}
-    
     .message-text {{ 
         font-family: 'M PLUS Rounded 1c', sans-serif !important;
         font-feature-settings: "palt" 1; 
@@ -77,16 +83,14 @@ st.markdown(f"""
     }}
 
     .stChatInput textarea {{ font-family: 'M PLUS Rounded 1c', sans-serif !important; }}
-
     .align-right {{ align-items: flex-end; text-align: right; }}
     .align-left {{ align-items: flex-start; text-align: left; }}
-    
     .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }}
     .name-maki {{ color: #ffa657 !important; font-weight: 700; }}
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* --- 演出用アニメーション --- */
+    /* 演出用アニメーション */
     @keyframes rise {{
         0% {{ transform: translateY(0); opacity: 0; }}
         5% {{ opacity: 1; }}
@@ -95,7 +99,6 @@ st.markdown(f"""
     }}
     .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
     .emoji-item {{ position: absolute; animation: rise linear forwards; }}
-
     @keyframes peek-left {{
         0% {{ left: -100px; opacity: 0; }}
         20% {{ left: 20px; opacity: 1; }}
@@ -109,7 +112,6 @@ st.markdown(f"""
         100% {{ right: -100px; opacity: 0; }}
     }}
     .peek-item {{ position: fixed; z-index: 9999; pointer-events: none; font-size: 4rem; }}
-
     @keyframes shake {{
         0% {{ transform: translate(1px, 1px) rotate(0deg); }}
         10% {{ transform: translate(-1px, -2px) rotate(-1deg); }}
@@ -117,7 +119,6 @@ st.markdown(f"""
         100% {{ transform: translate(1px, 1px) rotate(0deg); }}
     }}
     .shake-screen {{ animation: shake 0.5s; animation-iteration-count: 4; }}
-
     @keyframes fade-dark {{
         0% {{ filter: brightness(1); }}
         20% {{ filter: brightness(0.4) sepia(0.6); }}
@@ -125,20 +126,6 @@ st.markdown(f"""
         100% {{ filter: brightness(1); }}
     }}
     .mood-dark {{ animation: fade-dark 3.5s ease-in-out; }}
-
-    @keyframes bounce-screen {{
-        0%, 20%, 50%, 80%, 100% {{ transform: translateY(0); }}
-        40% {{ transform: translateY(-40px) scaleY(1.05); }}
-        60% {{ transform: translateY(-20px) scaleY(1.02); }}
-    }}
-    .bounce-screen {{ animation: bounce-screen 0.8s ease; }}
-
-    @keyframes flash-white {{
-        0% {{ filter: brightness(1); }}
-        10% {{ filter: brightness(2.5) contrast(1.2); }}
-        100% {{ filter: brightness(1); }}
-    }}
-    .flash-screen {{ animation: flash-white 0.6s ease-out; }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -151,7 +138,7 @@ if "password_correct" not in st.session_state:
         st.rerun()
     st.stop()
 
-# --- 5. セッション状態の初期化 ---
+# --- 5. セッション初期化 ---
 if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "show_settings" not in st.session_state: st.session_state["show_settings"] = False
@@ -161,7 +148,7 @@ current_user_raw = query_params.get("user", "Hide")
 current_user_upper = current_user_raw.upper()
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 
-# --- 6. ヘッダー（設定ボタンを普通の st.button に変更） ---
+# --- 6. ヘッダー ---
 h_col1, h_col2 = st.columns([4, 1])
 with h_col1:
     st.markdown(f"### 💬 M25-Chat{status_label}")
@@ -169,10 +156,10 @@ with h_col2:
     if st.button("⚙️"):
         st.session_state["show_settings"] = not st.session_state["show_settings"]
 
-# 設定パネルの表示
 if st.session_state["show_settings"]:
     with st.container():
-        st.info(f"🔧 アプリ設定 (Login: {current_user_raw})")
+        st.markdown(f'<div style="background-color: #3b3e43; padding: 15px; border-radius: 10px; border: 1px solid #4f545c; margin-bottom: 20px;">', unsafe_allow_html=True)
+        st.write(f"🔧 **アプリ設定** (Login: {current_user_raw})")
         user_list = ["Maki", "Hide"]
         default_idx = user_list.index(current_user_raw) if current_user_raw in user_list else 1
         selected_user = st.radio("表示ユーザー切替:", user_list, index=default_idx, horizontal=True)
@@ -180,7 +167,7 @@ if st.session_state["show_settings"]:
             st.query_params["user"] = selected_user
             st.rerun()
         auto_update = st.toggle("自動更新(8s)", value=True)
-        st.divider()
+        st.markdown('</div>', unsafe_allow_html=True)
 else:
     auto_update = True
 
@@ -202,7 +189,7 @@ with col_next:
             st.session_state["page_offset"] -= 20
             st.rerun()
 
-# --- 8. 表示 & 演出の判定 ---
+# --- 8. 表示 & 演出 ---
 try:
     res = supabase.table(table_name).select("*").order("created_at", desc=True).range(st.session_state["page_offset"], st.session_state["page_offset"] + 19).execute()
     messages = res.data[::-1]
@@ -214,14 +201,26 @@ try:
         if msg_id != st.session_state["last_effect_id"]:
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             priority_emoji = None
+            # 【復活・完全網羅版】Hideさんのこだわりをすべて維持
             if any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
             elif any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
-            elif any(word in msg_body for word in ["お疲れ様", "ビール", "酒"]): priority_emoji = "🍺"
+            elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
             elif "おにぎり" in msg_body: priority_emoji = "🍙"
-            elif "バドミントン" in msg_body: priority_emoji = "🏸"
-            elif "ラーメン" in msg_body: priority_emoji = "🍜"
-            elif "やすみ" in msg_body: priority_emoji = "💤"
-            elif any(word in msg_body for word in ["綺麗", "最高"]): priority_emoji = "✨"
+            elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]): priority_emoji = "🏸"
+            elif any(word in msg_body for word in ["ラーメン", "山岡家"]): priority_emoji = "🍜"
+            elif any(word in msg_body for word in ["野菜", "サラダ", "レタス"]): priority_emoji = "🥬"
+            elif any(word in msg_body for word in ["おやすみ", "眠い", "寝る"]): priority_emoji = "💤"
+            elif any(word in msg_body for word in ["綺麗", "きれい", "すごい", "最高"]): priority_emoji = "✨"
+            elif any(word in msg_body for word in ["コーヒー", "カフェ", "休憩"]): priority_emoji = "☕️"
+            elif any(word in msg_body for word in ["ドライブ"]): priority_emoji = "🚗"
+            elif any(word in msg_body for word in ["ワイン", "ハイボール", "乾杯"]): priority_emoji = "🥂"
+            elif any(word in msg_body for word in ["花見", "さくら", "桜"]): priority_emoji = "🌸"
+            elif any(word in msg_body for word in ["楽しみ", "ルンルン", "うれしい"]): priority_emoji = "🎶"
+            elif any(word in msg_body for word in ["ケーキ", "スイーツ", "甘いもの"]): priority_emoji = "🍰"
+            elif any(word in msg_body for word in ["ラッキー", "幸せ", "しあわせ", "ハッピー"]): priority_emoji = "🍀"
+            elif any(word in msg_body for word in ["熊", "困った"]): priority_emoji = "🐻"
+            elif any(word in msg_body for word in ["おやつ", "プリン"]): priority_emoji = "🍮"
+            elif any(word in msg_body for word in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
 
             if priority_emoji:
                 effect_html = '<div class="rising-emoji">'
@@ -240,12 +239,11 @@ try:
                     peek_html += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
                 st.markdown(peek_html + '</div>', unsafe_allow_html=True)
 
-            if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]): st.balloons()
-            if any(word in msg_body for word in ["雪", "寒い", "冬"]): st.snow()
-            
-            if any(word in msg_body for word in ["こら", "起きて", "びっくり", "地震"]):
+            if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
+            if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
+            if any(word in msg_body for word in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
-            if any(word in msg_body for word in ["さみしい", "悲しい", "疲れた"]):
+            if any(word in msg_body for word in ["さみしい", "淋しい", "悲しい", "疲れた"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("mood-dark"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("mood-dark"); }, 3500);</script>', height=0)
 
             st.session_state["last_effect_id"] = msg_id
