@@ -4,21 +4,18 @@ from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
 from datetime import datetime, timedelta
 import random
-import re  # 正規表現ライブラリを追加（絵文字抽出用）
+import re
 
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
-# 【PWA化設定：ホーム画面からの全画面起動を有効化】
+# 【PWA化設定】
 components.html("""
 <script>
-    // iOS/Androidでホーム画面に追加した際にアプリとして動作させる
     const metaApp = document.createElement('meta');
     metaApp.name = "apple-mobile-web-app-capable";
     metaApp.content = "yes";
     window.parent.document.getElementsByTagName('head')[0].appendChild(metaApp);
-
-    // ステータスバーのデザイン調整
     const metaStatus = document.createElement('meta');
     metaStatus.name = "apple-mobile-web-app-status-bar-style";
     metaStatus.content = "black-translucent";
@@ -26,7 +23,7 @@ components.html("""
 </script>
 """, height=0)
 
-# --- 2. データベース(Supabase)接続設定 ---
+# --- 2. データベース接続設定 ---
 table_name = st.secrets.get("TABLE_NAME", "messages")
 
 # --- 3. デザイン設定 ---
@@ -55,11 +52,19 @@ st.markdown(f"""
     [data-testid="bundle-viewer-container"] {{display: none !important;}}
     .block-container {{ padding-top: 1rem; padding-bottom: 80px !important; max-width: 100% !important; }}
     
-    /* ボタンの色を固定（ライトモード対策） */
-    .stButton > button {{
+    /* ⚙️ボタンと普通のボタンの色を固定 */
+    .stButton > button, [data-testid="stPopover"] > button {{
         background-color: #424549 !important;
         color: white !important;
         border: 1px solid #4f545c !important;
+        width: 100% !important;
+    }}
+    
+    /* ポップオーバーの中身の背景色をダークに固定 */
+    [data-testid="stPopoverBody"] {{
+        background-color: #2b2d31 !important;
+        border: 1px solid #4f545c !important;
+        color: {text_main_color} !important;
     }}
 
     .chat-row {{ display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }}
@@ -78,7 +83,6 @@ st.markdown(f"""
         padding: 0; 
     }}
 
-    /* 入力エリアのフォント設定 */
     .stChatInput textarea {{
         font-family: 'M PLUS Rounded 1c', sans-serif !important;
     }}
@@ -91,9 +95,7 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* --- 演出用アニメーション定義 --- */
-    
-    /* A. 昇る演出 */
+    /* --- 演出用アニメーション定義（そのまま維持） --- */
     @keyframes rise {{
         0% {{ transform: translateY(0); opacity: 0; }}
         5% {{ opacity: 1; }}
@@ -103,7 +105,6 @@ st.markdown(f"""
     .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
     .emoji-item {{ position: absolute; animation: rise linear forwards; }}
 
-    /* B. ひょっこり演出 */
     @keyframes peek-left {{
         0% {{ left: -100px; opacity: 0; }}
         20% {{ left: 20px; opacity: 1; }}
@@ -118,8 +119,6 @@ st.markdown(f"""
     }}
     .peek-item {{ position: fixed; z-index: 9999; pointer-events: none; font-size: 4rem; }}
 
-    /* C. 画面全体アクション */
-    /* シェイク（揺れる） */
     @keyframes shake {{
         0% {{ transform: translate(1px, 1px) rotate(0deg); }}
         10% {{ transform: translate(-1px, -2px) rotate(-1deg); }}
@@ -128,7 +127,6 @@ st.markdown(f"""
     }}
     .shake-screen {{ animation: shake 0.5s; animation-iteration-count: 4; }}
 
-    /* ムードダーク（暗くなる） */
     @keyframes fade-dark {{
         0% {{ filter: brightness(1); }}
         20% {{ filter: brightness(0.4) sepia(0.6); }}
@@ -137,7 +135,6 @@ st.markdown(f"""
     }}
     .mood-dark {{ animation: fade-dark 3.5s ease-in-out; }}
 
-    /* バウンス（跳ねる） */
     @keyframes bounce-screen {{
         0%, 20%, 50%, 80%, 100% {{ transform: translateY(0); }}
         40% {{ transform: translateY(-40px) scaleY(1.05); }}
@@ -145,14 +142,12 @@ st.markdown(f"""
     }}
     .bounce-screen {{ animation: bounce-screen 0.8s ease; }}
 
-    /* フラッシュ（光る） */
     @keyframes flash-white {{
         0% {{ filter: brightness(1); }}
         10% {{ filter: brightness(2.5) contrast(1.2); }}
         100% {{ filter: brightness(1); }}
     }}
     .flash-screen {{ animation: flash-white 0.6s ease-out; }}
-
     </style>
 """, unsafe_allow_html=True)
 
@@ -176,7 +171,7 @@ current_user_raw = query_params.get("user", "Hide")
 current_user_upper = current_user_raw.upper()
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 
-# --- 6. ヘッダー（⚙️ボタン追加版） ---
+# --- 6. ヘッダー（⚙️ボタンとユーザー切り替え） ---
 h_col1, h_col2 = st.columns([4, 1])
 with h_col1:
     st.markdown(f"### 💬 M25-Chat{status_label}")
@@ -184,8 +179,15 @@ with h_col1:
 with h_col2:
     with st.popover("⚙️"):
         st.write("🔧 アプリ設定")
-        auto_update = st.toggle("自動更新(8s)", value=True)
+        user_list = ["Maki", "Hide"]
+        default_idx = user_list.index(current_user_raw) if current_user_raw in user_list else 1
+        selected_user = st.radio("表示ユーザー:", user_list, index=default_idx, horizontal=True)
+        if selected_user != current_user_raw:
+            st.query_params["user"] = selected_user
+            st.rerun()
+        
         st.divider()
+        auto_update = st.toggle("自動更新(8s)", value=True)
         st.caption(f"Login as: {current_user_raw}")
 
 if auto_update and st.session_state["page_offset"] == 0:
@@ -206,7 +208,7 @@ with col_next:
             st.session_state["page_offset"] -= 20
             st.rerun()
 
-# --- 8. 表示 & 演出の判定（融合版） ---
+# --- 8. 表示 & 演出の判定（Hideさんのオリジナル版） ---
 try:
     res = supabase.table(table_name).select("*").order("created_at", desc=True).range(st.session_state["page_offset"], st.session_state["page_offset"] + 19).execute()
     messages = res.data[::-1]
@@ -217,10 +219,8 @@ try:
         msg_body = latest_msg["message_body"]
         
         if msg_id != st.session_state["last_effect_id"]:
-            # テキストから絵文字のみを抽出
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             
-            # A. 昇る演出（キーワード判定）
             priority_emoji = None
             if any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
             elif any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
@@ -249,8 +249,6 @@ try:
                     delay, duration = random.uniform(0, 0.5), random.uniform(5.5, 6.5)
                     effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{priority_emoji}</div>'
                 st.markdown(effect_html + '</div>', unsafe_allow_html=True)
-            
-            # B. ひょっこり演出（キーワードがなくても絵文字があれば実行）
             elif emoji_in_text:
                 target_emoji = emoji_in_text[-1]
                 peek_html = '<div>'
@@ -263,7 +261,6 @@ try:
                     peek_html += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
                 st.markdown(peek_html + '</div>', unsafe_allow_html=True)
 
-            # C. 画面全体のアクション
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             
@@ -278,11 +275,9 @@ try:
 
             st.session_state["last_effect_id"] = msg_id
 
-    # チャットログ表示
     for m in messages:
         utc_time = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
-        jst_time = utc_time + timedelta(hours=9)
-        time_display = jst_time.strftime('%H:%M')
+        time_display = (utc_time + timedelta(hours=9)).strftime('%H:%M')
         s_up = m['sender_name'].upper()
         align = "align-right" if s_up == current_user_upper else "align-left"
         h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
@@ -300,16 +295,11 @@ try:
 except Exception as e:
     st.error(f"表示エラー: {e}")
 
-# --- 9. 送信エリア ---
 prompt = st.chat_input(input_placeholder)
 if prompt:
-    try:
-        supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
-        st.session_state["page_offset"] = 0
-        st.rerun()
-    except Exception as e:
-        st.error(f"送信エラー: {e}")
+    supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
+    st.session_state["page_offset"] = 0
+    st.rerun()
 
-# --- 10. 自動スクロール ---
 if st.session_state["page_offset"] == 0:
     components.html('<script>window.parent.document.querySelector(".main").scrollTo(0, 99999);</script>', height=0)
