@@ -9,21 +9,22 @@ import re
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
-# 【PWA化 & LocalStorage保存ロジック】 # [修正]
-# JSでLocalStorageを確認し、必要ならURLに付与してリダイレクトする
+# 【LocalStorage 連携ロジック】
+# JSでLocalStorageを確認し、必要があればURLにパラメータを付与して1回だけ遷移させる
 components.html("""
 <script>
     const urlParams = new URLSearchParams(window.parent.location.search);
     const userParam = urlParams.get('user');
     const savedUser = localStorage.getItem('m25_user');
 
+    // URLにパラメータがある場合はLocalStorageを更新
     if (userParam) {
-        // URLにuserがあれば、LocalStorageを最新の状態に更新
         localStorage.setItem('m25_user', userParam);
-    } else if (savedUser) {
-        // URLになくLocalStorageにあれば、URLにくっつけて親画面をリロード
+    } 
+    // URLにパラメータがなく、保存された値がある場合はURLに付けてリダイレクト
+    else if (savedUser) {
         const newUrl = window.parent.location.origin + window.parent.location.pathname + '?user=' + savedUser;
-        window.parent.location.replace(newUrl);
+        window.parent.location.href = newUrl;
     }
     
     // PWA設定
@@ -31,17 +32,13 @@ components.html("""
     metaApp.name = "apple-mobile-web-app-capable";
     metaApp.content = "yes";
     window.parent.document.getElementsByTagName('head')[0].appendChild(metaApp);
-    const metaStatus = document.createElement('meta');
-    metaStatus.name = "apple-mobile-web-app-status-bar-style";
-    metaStatus.content = "black-translucent";
-    window.parent.document.getElementsByTagName('head')[0].appendChild(metaStatus);
 </script>
 """, height=0)
 
 # --- 2. データベース接続設定 ---
 table_name = st.secrets.get("TABLE_NAME", "messages")
 
-# --- 3. デザイン設定 ---
+# --- 3. デザイン設定 (CSS) ---
 app_bg_color = "#313338"
 text_main_color = "#dbdee1"
 sub_text_color = "#949ba4"
@@ -173,7 +170,7 @@ if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "show_settings" not in st.session_state: st.session_state["show_settings"] = False
 
-# [修正] 優先順位: URLパラメータ > デフォルト(Hide)
+# 現在のユーザー判定 (URL > デフォルト)
 current_user_raw = st.query_params.get("user", "Hide")
 current_user_upper = current_user_raw.upper()
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
@@ -187,23 +184,27 @@ with h_col2:
         st.session_state["show_settings"] = not st.session_state["show_settings"]
 
 if st.session_state["show_settings"]:
-    # 枠の中にすべての要素を正しく配置する形に修正しました
     with st.container(border=True):
-        st.write(f"🔧 **アプリ設定** (Login: {current_user_raw})")
+        st.write(f"🔧 **アプリ設定** (ログイン中: {current_user_raw})")
         
         user_list = ["Maki", "Hide"]
-        default_idx = user_list.index(current_user_raw) if current_user_raw in user_list else 1
+        # 現在のユーザーがリストになければHideをデフォルトに
+        try:
+            default_idx = user_list.index(current_user_raw)
+        except:
+            default_idx = 1
+            
         selected_user = st.radio("表示ユーザー切替:", user_list, index=default_idx, horizontal=True)
         
         if selected_user != current_user_raw:
-            # [修正] ユーザー切替時、LocalStorageを更新してリロード
+            # ユーザーが変更されたらLocalStorageを更新し、URLを書き換えてリロード
             components.html(f"""
                 <script>
                     localStorage.setItem('m25_user', '{selected_user}');
                     window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + '?user={selected_user}';
                 </script>
             """, height=0)
-            st.rerun()
+            st.stop() # リロードを待つ
         
         auto_update = st.toggle("自動更新(8s)", value=True)
 else:
@@ -239,6 +240,8 @@ try:
         if msg_id != st.session_state["last_effect_id"]:
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             priority_emoji = None
+            
+            # キーワード判定
             if any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
             elif any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
             elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
@@ -259,6 +262,7 @@ try:
             elif any(word in msg_body for word in ["おやつ", "プリン"]): priority_emoji = "🍮"
             elif any(word in msg_body for word in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
 
+            # 演出実行
             if priority_emoji:
                 effect_html = '<div class="rising-emoji">'
                 for i in range(25):
@@ -279,7 +283,6 @@ try:
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             
-            # 【演出ロジック】画面揺れ、暗転、バウンド、発光
             if any(word in msg_body for word in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
             if any(word in msg_body for word in ["さみしい", "淋しい", "悲しい", "疲れた"]):
@@ -291,6 +294,7 @@ try:
 
             st.session_state["last_effect_id"] = msg_id
 
+    # チャット描画
     for m in messages:
         utc_time = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
         time_display = (utc_time + timedelta(hours=9)).strftime('%H:%M')
