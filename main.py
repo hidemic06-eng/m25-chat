@@ -4,10 +4,34 @@ from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
 from datetime import datetime, timedelta
 import random
-import re  # 正規表現ライブラリを追加（絵文字抽出用）
+import re
 
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
+
+# 【追加点：PWA認識用コード】
+# このスクリプトがブラウザの裏側で「これはアプリだよ」と宣言します
+components.html("""
+<script>
+    // URLバーを隠す設定
+    const metaApp = document.createElement('meta');
+    metaApp.name = "apple-mobile-web-app-capable";
+    metaApp.content = "yes";
+    window.parent.document.getElementsByTagName('head')[0].appendChild(metaApp);
+
+    // ステータスバーのデザイン
+    const metaStatus = document.createElement('meta');
+    metaStatus.name = "apple-mobile-web-app-status-bar-style";
+    metaStatus.content = "black-translucent";
+    window.parent.document.getElementsByTagName('head')[0].appendChild(metaStatus);
+
+    // ホーム画面用アイコンの設定
+    const linkIcon = window.parent.document.createElement('link');
+    linkIcon.rel = 'apple-touch-icon';
+    linkIcon.href = 'https://cdn-icons-png.flaticon.com/512/5968/5968756.png'; 
+    window.parent.document.getElementsByTagName('head')[0].appendChild(linkIcon);
+</script>
+""", height=0)
 
 # --- 2. データベース(Supabase)接続設定 ---
 table_name = st.secrets.get("TABLE_NAME", "messages")
@@ -38,7 +62,6 @@ st.markdown(f"""
     [data-testid="bundle-viewer-container"] {{display: none !important;}}
     .block-container {{ padding-top: 1rem; padding-bottom: 80px !important; max-width: 100% !important; }}
     
-    /* ボタンの色を固定（ライトモード対策） */
     .stButton > button {{
         background-color: #424549 !important;
         color: white !important;
@@ -61,7 +84,6 @@ st.markdown(f"""
         padding: 0; 
     }}
 
-    /* 入力エリアのフォント設定 */
     .stChatInput textarea {{
         font-family: 'M PLUS Rounded 1c', sans-serif !important;
     }}
@@ -75,8 +97,6 @@ st.markdown(f"""
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
     /* --- 演出用アニメーション定義 --- */
-    
-    /* A. 昇る演出 */
     @keyframes rise {{
         0% {{ transform: translateY(0); opacity: 0; }}
         5% {{ opacity: 1; }}
@@ -86,7 +106,6 @@ st.markdown(f"""
     .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
     .emoji-item {{ position: absolute; animation: rise linear forwards; }}
 
-    /* B. ひょっこり演出 */
     @keyframes peek-left {{
         0% {{ left: -100px; opacity: 0; }}
         20% {{ left: 20px; opacity: 1; }}
@@ -101,8 +120,6 @@ st.markdown(f"""
     }}
     .peek-item {{ position: fixed; z-index: 9999; pointer-events: none; font-size: 4rem; }}
 
-    /* C. 画面全体アクション */
-    /* シェイク（揺れる） */
     @keyframes shake {{
         0% {{ transform: translate(1px, 1px) rotate(0deg); }}
         10% {{ transform: translate(-1px, -2px) rotate(-1deg); }}
@@ -111,7 +128,6 @@ st.markdown(f"""
     }}
     .shake-screen {{ animation: shake 0.5s; animation-iteration-count: 4; }}
 
-    /* ムードダーク（暗くなる） */
     @keyframes fade-dark {{
         0% {{ filter: brightness(1); }}
         20% {{ filter: brightness(0.4) sepia(0.6); }}
@@ -120,7 +136,6 @@ st.markdown(f"""
     }}
     .mood-dark {{ animation: fade-dark 3.5s ease-in-out; }}
 
-    /* バウンス（跳ねる） */
     @keyframes bounce-screen {{
         0%, 20%, 50%, 80%, 100% {{ transform: translateY(0); }}
         40% {{ transform: translateY(-40px) scaleY(1.05); }}
@@ -128,14 +143,12 @@ st.markdown(f"""
     }}
     .bounce-screen {{ animation: bounce-screen 0.8s ease; }}
 
-    /* フラッシュ（光る） */
     @keyframes flash-white {{
         0% {{ filter: brightness(1); }}
         10% {{ filter: brightness(2.5) contrast(1.2); }}
         100% {{ filter: brightness(1); }}
     }}
     .flash-screen {{ animation: flash-white 0.6s ease-out; }}
-
     </style>
 """, unsafe_allow_html=True)
 
@@ -180,7 +193,7 @@ with col_next:
             st.session_state["page_offset"] -= 20
             st.rerun()
 
-# --- 8. 表示 & 演出の判定（融合版） ---
+# --- 8. 表示 & 演出の判定 ---
 try:
     res = supabase.table(table_name).select("*").order("created_at", desc=True).range(st.session_state["page_offset"], st.session_state["page_offset"] + 19).execute()
     messages = res.data[::-1]
@@ -191,10 +204,9 @@ try:
         msg_body = latest_msg["message_body"]
         
         if msg_id != st.session_state["last_effect_id"]:
-            # テキストから絵文字のみを抽出
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             
-            # A. 昇る演出（キーワード判定）
+            # 昇る演出
             priority_emoji = None
             if any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
             elif any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
@@ -206,7 +218,7 @@ try:
             elif any(word in msg_body for word in ["おやすみ", "眠い", "寝る"]): priority_emoji = "💤"
             elif any(word in msg_body for word in ["綺麗", "きれい", "すごい", "最高"]): priority_emoji = "✨"
             elif any(word in msg_body for word in ["コーヒー", "カフェ", "休憩"]): priority_emoji = "☕️"
-            elif any(word in msg_body for word in ["ドライブ"]): priority_emoji = "🚗"
+            elif "ドライブ" in msg_body: priority_emoji = "🚗"
             elif any(word in msg_body for word in ["ワイン", "ハイボール", "乾杯"]): priority_emoji = "🥂"
             elif any(word in msg_body for word in ["花見", "さくら", "桜"]): priority_emoji = "🌸"
             elif any(word in msg_body for word in ["楽しみ", "ルンルン", "うれしい"]): priority_emoji = "🎶"
@@ -224,7 +236,7 @@ try:
                     effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{priority_emoji}</div>'
                 st.markdown(effect_html + '</div>', unsafe_allow_html=True)
             
-            # B. ひょっこり演出（キーワードがなくても絵文字があれば実行）
+            # ひょっこり演出
             elif emoji_in_text:
                 target_emoji = emoji_in_text[-1]
                 peek_html = '<div>'
@@ -237,7 +249,7 @@ try:
                     peek_html += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
                 st.markdown(peek_html + '</div>', unsafe_allow_html=True)
 
-            # C. 画面全体のアクション
+            # 画面全体アクション
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             
