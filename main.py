@@ -9,18 +9,27 @@ import re
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
+# URL変数を取得（HideかMakiかを判定）
+query_params = st.query_params
+current_user_raw = query_params.get("user", "Hide")
+current_user_upper = current_user_raw.upper()
+
 # 【URL変数を死守するPWA認識用コード】
-components.html("""
+# Python側の変数 current_user_raw をJSに埋め込むことで、Safariに起動URLを強制認識させます
+components.html(f"""
 <script>
-    // 1. 現在のURL（変数込み）を取得してアプリの開始URLに固定する
-    const currentFullUrl = window.parent.location.href;
-    const manifest = {
-        "start_url": currentFullUrl,
+    // 1. 現在の完全なURL（変数込み）をベースにマニフェストを生成
+    // window.parent.location.href がiframe制限で取れない場合に備え、直接組み立てます
+    const baseUrl = window.parent.location.origin + window.parent.location.pathname;
+    const startUrl = baseUrl + "?user={current_user_raw}";
+
+    const manifest = {{
+        "start_url": startUrl,
         "display": "standalone",
-        "name": "M25-Chat",
-        "short_name": "M25"
-    };
-    const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+        "name": "M25-Chat ({current_user_raw})",
+        "short_name": "M25-{current_user_raw}"
+    }};
+    const blob = new Blob([JSON.stringify(manifest)], {{type: 'application/json'}});
     const manifestURL = URL.createObjectURL(blob);
     
     const linkManifest = document.createElement('link');
@@ -50,6 +59,7 @@ components.html("""
 
 # --- 2. データベース(Supabase)接続設定 ---
 table_name = st.secrets.get("TABLE_NAME", "messages")
+supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 
 # --- 3. デザイン設定 ---
 app_bg_color = "#313338"
@@ -182,11 +192,6 @@ if "page_offset" not in st.session_state:
 if "last_effect_id" not in st.session_state:
     st.session_state["last_effect_id"] = None
 
-query_params = st.query_params
-current_user_raw = query_params.get("user", "Hide")
-current_user_upper = current_user_raw.upper()
-supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
-
 # --- 6. ヘッダー ---
 st.title(f"💬 M25-Chat{status_label}")
 auto_update = st.toggle("自動更新(8s)", value=True)
@@ -221,7 +226,7 @@ try:
         if msg_id != st.session_state["last_effect_id"]:
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             
-            # 昇る演出
+            # 演出ロジック（省略せずに元のコードを保持）
             priority_emoji = None
             if any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
             elif any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
@@ -251,7 +256,6 @@ try:
                     effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{priority_emoji}</div>'
                 st.markdown(effect_html + '</div>', unsafe_allow_html=True)
             
-            # ひょっこり演出
             elif emoji_in_text:
                 target_emoji = emoji_in_text[-1]
                 peek_html = '<div>'
@@ -264,7 +268,6 @@ try:
                     peek_html += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
                 st.markdown(peek_html + '</div>', unsafe_allow_html=True)
 
-            # 画面全体アクション
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             
