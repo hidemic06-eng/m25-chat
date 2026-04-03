@@ -9,11 +9,11 @@ import re
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
-# 【魔法のスクリプト：PWA設定 ＆ 名前の自動復元】
-# iPhoneのアイコンから起動してURLが削られていても、記憶から「?user=...」を復活させます
+# 【PWA化 ＆ 名前の自動復元】
+# localStorageを使用して、URLパラメータがなくても前回選んだユーザー(Hide/Maki)を維持します
 components.html("""
 <script>
-    // 1. PWA設定
+    // PWA用のメタタグ設定
     const metaApp = document.createElement('meta');
     metaApp.name = "apple-mobile-web-app-capable";
     metaApp.content = "yes";
@@ -24,22 +24,23 @@ components.html("""
     metaStatus.content = "black-translucent";
     window.parent.document.getElementsByTagName('head')[0].appendChild(metaStatus);
 
+    // ホーム画面アイコンの設定
     const linkIcon = window.parent.document.createElement('link');
     linkIcon.rel = 'apple-touch-icon';
     linkIcon.href = 'https://cdn-icons-png.flaticon.com/512/5968/5968756.png'; 
     window.parent.document.getElementsByTagName('head')[0].appendChild(linkIcon);
 
-    // 2. 名前の復元ロジック
+    // ユーザー情報の永続化（リロード対策）
     const urlParams = new URLSearchParams(window.parent.location.search);
     const userFromUrl = urlParams.get('user');
     const savedUser = localStorage.getItem('m25_persistent_user');
 
     if (!userFromUrl && savedUser) {
-        // アイコンから起動して名前が消えている場合、記憶を使ってリロード
+        // パラメータがないが保存データがある場合、自動でURLを補完してリロード
         const newUrl = window.parent.location.origin + window.parent.location.pathname + "?user=" + savedUser;
         window.parent.location.href = newUrl;
     } else if (userFromUrl) {
-        // URLに名前がある場合は、最新の状態を記憶に刻む
+        // パラメータがある場合、それを保存
         localStorage.setItem('m25_persistent_user', userFromUrl);
     }
 </script>
@@ -47,13 +48,15 @@ components.html("""
 
 # --- 2. データベース(Supabase)接続設定 ---
 table_name = st.secrets.get("TABLE_NAME", "messages")
+# 直接指定されていた本番URLとキーを維持
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 
-# --- 3. デザイン設定 ---
+# --- 3. デザイン設定（本番ソースのCSSを完全継承） ---
 app_bg_color = "#313338"
 text_main_color = "#dbdee1"
 sub_text_color = "#949ba4"
 
+# テスト環境ラベルの設定
 if table_name == "messages_test":
     status_label = " 🧪 TEST"
     input_placeholder = "テストメッセージを入力..."
@@ -66,79 +69,106 @@ st.markdown(f"""
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
 
     .stApp {{ background-color: {app_bg_color}; color: {text_main_color}; font-family: 'M PLUS Rounded 1c', sans-serif !important; }}
-    #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
-    .stAppDeployButton {{display:none;}}
-    .block-container {{ padding-top: 1rem; padding-bottom: 80px !important; max-width: 100% !important; }}
     
+    /* 標準メニューを非表示 */
+    #MainMenu, footer, header {{visibility: hidden;}}
+    .stAppDeployButton {{display:none;}}
+    [data-testid="bundle-viewer-container"] {{display: none !important;}}
+    [data-testid="stSidebar"] {{display: none !important;}} /* サイドバーを強制排除 */
+    
+    .block-container {{ padding-top: 0.5rem; padding-bottom: 80px !important; max-width: 100% !important; }}
+    
+    /* ⚙️ ポップアップボタンの装飾 */
+    div[data-testid="stPopover"] > button {{
+        background-color: #4f545c !important;
+        color: white !important;
+        border-radius: 20px !important;
+        border: none !important;
+        padding: 4px 12px !important;
+    }}
+
+    /* チャット行の基本設定 */
     .chat-row {{ display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }}
-    .message-text {{ font-family: 'M PLUS Rounded 1c', sans-serif !important; font-feature-settings: "palt" 1; font-size: 1.15rem; line-height: 1.35; font-weight: 500 !important; letter-spacing: -0.04rem; max-width: 80%; white-space: pre-wrap; word-wrap: break-word; color: {text_main_color} !important; }}
+    .message-text {{ 
+        font-family: 'M PLUS Rounded 1c', sans-serif !important;
+        font-feature-settings: "palt" 1; 
+        font-size: 1.15rem; 
+        line-height: 1.35; 
+        font-weight: 500 !important; 
+        letter-spacing: -0.04rem; 
+        max-width: 80%; 
+        white-space: pre-wrap; 
+        word-wrap: break-word; 
+        color: {text_main_color} !important; 
+    }}
+    
     .align-right {{ align-items: flex-end; text-align: right; }}
     .align-left {{ align-items: flex-start; text-align: left; }}
     .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }}
     .name-maki {{ color: #ffa657 !important; font-weight: 700; }}
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
-    
-    /* 演出アニメーション */
-    @keyframes rise {{ 0% {{ transform: translateY(0); opacity: 0; }} 5% {{ opacity: 1; }} 85% {{ opacity: 1; }} 100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }} }}
+
+    /* --- 本番の演出アニメーションを完全継承 --- */
+    @keyframes rise {{
+        0% {{ transform: translateY(0); opacity: 0; }}
+        5% {{ opacity: 1; }}
+        85% {{ opacity: 1; }}
+        100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }}
+    }}
     .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
     .emoji-item {{ position: absolute; animation: rise linear forwards; }}
+
     @keyframes peek-left {{ 0% {{ left: -100px; opacity: 0; }} 20% {{ left: 20px; opacity: 1; }} 80% {{ left: 20px; opacity: 1; }} 100% {{ left: -100px; opacity: 0; }} }}
     @keyframes peek-right {{ 0% {{ right: -100px; opacity: 0; }} 20% {{ right: 20px; opacity: 1; }} 80% {{ right: 20px; opacity: 1; }} 100% {{ right: -100px; opacity: 0; }} }}
     .peek-item {{ position: fixed; z-index: 9999; pointer-events: none; font-size: 4rem; }}
+
     @keyframes shake {{ 0% {{ transform: translate(1px, 1px) rotate(0deg); }} 10% {{ transform: translate(-1px, -2px) rotate(-1deg); }} 30% {{ transform: translate(3px, 2px) rotate(0deg); }} 100% {{ transform: translate(1px, 1px) rotate(0deg); }} }}
     .shake-screen {{ animation: shake 0.5s; animation-iteration-count: 4; }}
+    
     @keyframes fade-dark {{ 0% {{ filter: brightness(1); }} 20% {{ filter: brightness(0.4) sepia(0.6); }} 80% {{ filter: brightness(0.4) sepia(0.6); }} 100% {{ filter: brightness(1); }} }}
     .mood-dark {{ animation: fade-dark 3.5s ease-in-out; }}
+
     @keyframes bounce-screen {{ 0%, 20%, 50%, 80%, 100% {{ transform: translateY(0); }} 40% {{ transform: translateY(-40px) scaleY(1.05); }} 60% {{ transform: translateY(-20px) scaleY(1.02); }} }}
     .bounce-screen {{ animation: bounce-screen 0.8s ease; }}
+
     @keyframes flash-white {{ 0% {{ filter: brightness(1); }} 10% {{ filter: brightness(2.5) contrast(1.2); }} 100% {{ filter: brightness(1); }} }}
     .flash-screen {{ animation: flash-white 0.6s ease-out; }}
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. 認証 ＆ ユーザー選択 ---
-query_params = st.query_params
-initial_user = query_params.get("user", "Hide")
-
+# --- 4. 認証機能 ---
 if "password_correct" not in st.session_state:
-    st.write("🔒 Login")
-    # ここで名前を選択させることでlocalStorageに保存します
-    selected_user = st.radio("利用者はどちらですか？", ["Hide", "Maki"], index=0 if initial_user.upper() == "HIDE" else 1)
+    st.write("🔒 Enter Password")
     pw = st.text_input("Password", type="password", key="login")
-    if st.button("ログイン"):
-        if pw == "05250206":
-            # JSで記憶に刻み込み、URLを書き換えてリロード！
-            components.html(f"""
-            <script>
-                localStorage.setItem('m25_persistent_user', '{selected_user}');
-                window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + "?user={selected_user}";
-            </script>
-            """, height=0)
-            st.session_state["password_correct"] = True
-            st.rerun()
-        else:
-            st.error("パスワードが違います")
+    if pw == "05250206":
+        st.session_state["password_correct"] = True
+        st.rerun()
     st.stop()
 
-# --- 5. ユーザー確定 ---
-current_user_raw = query_params.get("user", "Hide")
-current_user_upper = current_user_raw.upper()
-
+# --- 5. ステート・ユーザー管理 ---
 if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 
-# --- 6. ヘッダー & サイドバー ---
-st.title(f"💬 M25-Chat ({current_user_raw}){status_label}")
-with st.sidebar:
-    st.markdown("### ⚙️ 端末設定")
-    if st.button("このスマホを Maki 用に固定"):
-        components.html("<script>localStorage.setItem('m25_persistent_user', 'Maki'); window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + '?user=Maki';</script>")
-    if st.button("このスマホを Hide 用に固定"):
-        components.html("<script>localStorage.setItem('m25_persistent_user', 'Hide'); window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + '?user=Hide';</script>")
-    st.divider()
-    auto_update = st.toggle("自動更新(8s)", value=True)
+query_params = st.query_params
+current_user_raw = query_params.get("user", "Hide")
+current_user_upper = current_user_raw.upper()
 
+# --- 6. ヘッダー（⚙️ ポップアップへの集約） ---
+h_col1, h_col2 = st.columns([3, 1])
+with h_col1:
+    st.markdown(f"### 💬 M25-Chat{status_label} ({current_user_raw})")
+with h_col2:
+    with st.popover("⚙️"):
+        st.write("🔧 設定")
+        if st.button("✨ Maki用に固定"):
+            components.html("<script>localStorage.setItem('m25_persistent_user', 'Maki'); window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + '?user=Maki';</script>")
+        if st.button("👤 Hide用に固定"):
+            components.html("<script>localStorage.setItem('m25_persistent_user', 'Hide'); window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + '?user=Hide';</script>")
+        st.divider()
+        auto_update = st.toggle("自動更新(8s)", value=True)
+
+# 自動更新の設定
 if auto_update and st.session_state["page_offset"] == 0:
     st_autorefresh(interval=8000, key="chat_ref")
 
@@ -156,7 +186,7 @@ with col_next:
             st.session_state["page_offset"] -= 20
             st.rerun()
 
-# --- 8. 表示 & 演出の判定 ---
+# --- 8. 表示 & 本番アクション完全継承（演出ロジック） ---
 try:
     res = supabase.table(table_name).select("*").order("created_at", desc=True).range(st.session_state["page_offset"], st.session_state["page_offset"] + 19).execute()
     messages = res.data[::-1]
@@ -168,69 +198,89 @@ try:
         if msg_id != st.session_state["last_effect_id"]:
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             
-            # 昇る演出判定（キーワード完全復活）
+            # --- 本番ソースのアクション判定をそのまま復元 ---
             priority_emoji = None
-            if any(w in msg_body for w in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
-            elif any(w in msg_body for w in ["大好き", "愛してる"]): priority_emoji = "💘"
-            elif any(w in msg_body for w in ["お疲れ", "ビール", "酒", "乾杯"]): priority_emoji = "🍺"
+            if any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
+            elif any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
+            elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
             elif "おにぎり" in msg_body: priority_emoji = "🍙"
-            elif any(w in msg_body for w in ["バドミントン", "練習", "試合"]): priority_emoji = "🏸"
-            elif any(w in msg_body for w in ["ラーメン", "山岡家"]): priority_emoji = "🍜"
-            elif any(w in msg_body for w in ["野菜", "サラダ", "レタス"]): priority_emoji = "🥬"
-            elif any(w in msg_body for w in ["おやすみ", "眠い", "寝る"]): priority_emoji = "💤"
-            elif any(w in msg_body for w in ["綺麗", "きれい", "すごい", "最高"]): priority_emoji = "✨"
-            elif any(w in msg_body for w in ["コーヒー", "カフェ", "休憩"]): priority_emoji = "☕️"
-            elif "ドライブ" in msg_body: priority_emoji = "🚗"
-            elif any(w in msg_body for w in ["花見", "さくら", "桜"]): priority_emoji = "🌸"
-            elif any(w in msg_body for w in ["楽しみ", "ルンルン", "うれしい"]): priority_emoji = "🎶"
-            elif any(w in msg_body for w in ["ケーキ", "スイーツ"]): priority_emoji = "🍰"
-            elif any(w in msg_body for w in ["幸せ", "しあわせ", "ハッピー"]): priority_emoji = "🍀"
+            elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]): priority_emoji = "🏸"
+            elif any(word in msg_body for word in ["ラーメン", "山岡家"]): priority_emoji = "🍜"
+            elif any(word in msg_body for word in ["野菜", "サラダ", "レタス"]): priority_emoji = "🥬"
+            elif any(word in msg_body for word in ["おやすみ", "眠い", "寝る"]): priority_emoji = "💤"
+            elif any(word in msg_body for word in ["綺麗", "きれい", "すごい", "最高"]): priority_emoji = "✨"
+            elif any(word in msg_body for word in ["コーヒー", "カフェ", "休憩"]): priority_emoji = "☕️"
+            elif any(word in msg_body for word in ["ドライブ"]): priority_emoji = "🚗"
+            elif any(word in msg_body for word in ["ワイン", "ハイボール", "乾杯"]): priority_emoji = "🥂"
+            elif any(word in msg_body for word in ["花見", "さくら", "桜"]): priority_emoji = "🌸"
+            elif any(word in msg_body for word in ["楽しみ", "ルンルン", "うれしい"]): priority_emoji = "🎶"
+            elif any(word in msg_body for word in ["ケーキ", "スイーツ", "甘いもの"]): priority_emoji = "🍰"
+            elif any(word in msg_body for word in ["ラッキー", "幸せ", "しあわせ", "ハッピー"]): priority_emoji = "🍀"
+            elif any(word in msg_body for word in ["熊", "困った"]): priority_emoji = "🐻"
+            elif any(word in msg_body for word in ["おやつ", "プリン"]): priority_emoji = "🍮"
+            elif any(word in msg_body for word in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
 
+            # A. 昇る演出（優先）
             if priority_emoji:
-                html = '<div class="rising-emoji">'
-                for _ in range(25):
+                eff = '<div class="rising-emoji">'
+                for i in range(25):
                     l, s = random.randint(5, 95), random.uniform(2.5, 4.5)
                     d, dur = random.uniform(0, 0.5), random.uniform(5.5, 6.5)
-                    html += f'<div class="emoji-item" style="left:{l}%; font-size:{s}rem; animation-delay:{d}s; animation-duration:{dur}s;">{priority_emoji}</div>'
-                st.markdown(html + '</div>', unsafe_allow_html=True)
+                    eff += f'<div class="emoji-item" style="left:{l}%; font-size:{s}rem; animation-delay:{d}s; animation-duration:{dur}s;">{priority_emoji}</div>'
+                st.markdown(eff + '</div>', unsafe_allow_html=True)
+            
+            # B. ひょっこり演出（キーワードなし、絵文字あり時）
             elif emoji_in_text:
                 target = emoji_in_text[-1]
-                side = random.choice(["left", "right"])
-                anim = "peek-left" if side == "left" else "peek-right"
-                st.markdown(f'<div class="peek-item" style="{side}:-100px; top:40%; animation:{anim} 3.5s forwards;">{target}</div>', unsafe_allow_html=True)
+                peek = '<div>'
+                for i in range(5):
+                    side = random.choice(["left", "right"])
+                    t, d, dur = random.randint(20, 80), random.uniform(0, 2.0), random.uniform(3.0, 4.0)
+                    anim = "peek-left" if side == "left" else "peek-right"
+                    peek += f'<div class="peek-item" style="{side}:-100px; top:{t}%; animation:{anim} {dur}s forwards; animation-delay:{d}s;">{target}</div>'
+                st.markdown(peek + '</div>', unsafe_allow_html=True)
 
-            # 画面全体アクション
+            # C. 画面全体アクション
             if any(w in msg_body for w in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
-            if any(w in msg_body for w in ["雪", "寒い", "冬"]): st.snow()
-            
+            if any(w in msg_body for w in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             if any(w in msg_body for w in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
             if any(w in msg_body for w in ["さみしい", "淋しい", "悲しい", "疲れた"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("mood-dark"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("mood-dark"); }, 3500);</script>', height=0)
             if any(w in msg_body for w in ["マジで", "えー", "正解", "おー"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("bounce-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("bounce-screen"); }, 1000);</script>', height=0)
+            if any(w in msg_body for w in ["びっくり", "すごい", "光る", "指輪"]):
+                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
 
             st.session_state["last_effect_id"] = msg_id
 
-    # チャット表示
+    # ログ表示
     for m in messages:
-        utc = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
-        jst = (utc + timedelta(hours=9)).strftime('%H:%M')
+        jst_time = (datetime.fromisoformat(m['created_at'].replace('Z', '+00:00')) + timedelta(hours=9)).strftime('%H:%M')
         s_up = m['sender_name'].upper()
         align = "align-right" if s_up == current_user_upper else "align-left"
         h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
         n_class = "name-maki" if "MAKI" in s_up else "name-hide" if "HIDE" in s_up else ""
-        st.markdown(f'<div class="chat-row {align}"><div class="chat-header" style="{h_style}"><span class="{n_class}">{m["sender_name"]}</span><span class="timestamp">{jst}</span></div><div class="message-text">{m["message_body"]}</div></div>', unsafe_allow_html=True)
-
-except Exception as e:
-    st.error(f"表示エラー: {e}")
+        
+        st.markdown(f"""
+            <div class="chat-row {align}">
+                <div class="chat-header" style="{h_style}">
+                    <span class="{n_class}">{m["sender_name"]}</span>
+                    <span class="timestamp">{jst_time}</span>
+                </div>
+                <div class="message-text">{m["message_body"]}</div>
+            </div>
+        """, unsafe_allow_html=True)
+except Exception as e: st.error(f"Error: {e}")
 
 # --- 9. 送信エリア ---
 prompt = st.chat_input(input_placeholder)
 if prompt:
-    supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
-    st.session_state["page_offset"] = 0
-    st.rerun()
+    try:
+        supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
+        st.session_state["page_offset"] = 0
+        st.rerun()
+    except Exception as e: st.error(f"Error: {e}")
 
 # --- 10. 自動スクロール ---
 if st.session_state["page_offset"] == 0:
