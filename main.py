@@ -9,22 +9,25 @@ import re
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
-# 【LocalStorage 連携ロジック】
-# JSでLocalStorageを確認し、URLにパラメータがなければ付与してリダイレクト
+# 【LocalStorage 永続化ロジック】
+# URLパラメータよりもLocalStorageに保存された「前回の設定」を優先して復元します
 components.html("""
 <script>
-    const urlParams = new URLSearchParams(window.parent.location.search);
-    const userParam = urlParams.get('user');
     const savedUser = localStorage.getItem('m25_user');
+    const urlParams = new URLSearchParams(window.parent.location.search);
+    const currentUserParam = urlParams.get('user');
 
-    if (userParam) {
-        localStorage.setItem('m25_user', userParam);
-    } else if (savedUser) {
+    // 1. URLに指定がある場合は、それを最優先して保存を更新
+    if (currentUserParam) {
+        localStorage.setItem('m25_user', currentUserParam);
+    } 
+    // 2. URLに指定がなく、LocalStorageに保存がある場合は、URLを書き換えて自分自身を呼び出す
+    else if (savedUser) {
         const newUrl = window.parent.location.origin + window.parent.location.pathname + '?user=' + savedUser;
         window.parent.location.href = newUrl;
     }
-    
-    // PWA設定
+
+    // PWA用の基本設定
     const metaApp = document.createElement('meta');
     metaApp.name = "apple-mobile-web-app-capable";
     metaApp.content = "yes";
@@ -40,12 +43,8 @@ app_bg_color = "#313338"
 text_main_color = "#dbdee1"
 sub_text_color = "#949ba4"
 
-if table_name == "messages_test":
-    status_label = " 🧪 TEST"
-    input_placeholder = "テストメッセージを入力..."
-else:
-    status_label = ""
-    input_placeholder = "メッセージを入力..."
+status_label = " 🧪 TEST" if table_name == "messages_test" else ""
+input_placeholder = "テストメッセージを入力..." if table_name == "messages_test" else "メッセージを入力..."
 
 st.markdown(f"""
     <style>
@@ -97,7 +96,7 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* --- 演出用アニメーション定義 --- */
+    /* --- 演出用アニメーション --- */
     @keyframes rise {{
         0% {{ transform: translateY(0); opacity: 0; }}
         5% {{ opacity: 1; }}
@@ -167,13 +166,13 @@ if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "show_settings" not in st.session_state: st.session_state["show_settings"] = False
 
-# 【重要】ユーザー判定の優先順位を整理
-# 1. URLパラメータがあればそれを最優先
+# 【重要】現在のユーザー判定
+# URLパラメータがあればそれを最優先し、session_stateに保存
 url_user = st.query_params.get("user")
-if url_user and "current_user" not in st.session_state:
+if url_user:
     st.session_state["current_user"] = url_user
 
-# 2. セッションになければデフォルト
+# session_stateにもURLにもなければデフォルトをHideに
 if "current_user" not in st.session_state:
     st.session_state["current_user"] = "Hide"
 
@@ -192,7 +191,7 @@ with h_col2:
 
 if st.session_state["show_settings"]:
     with st.container(border=True):
-        st.write(f"🔧 **アプリ設定** (現在: {current_user_raw})")
+        st.write(f"🔧 **アプリ設定** (ログイン: {current_user_raw})")
         
         user_list = ["Maki", "Hide"]
         try:
@@ -203,7 +202,7 @@ if st.session_state["show_settings"]:
         selected_user = st.radio("表示ユーザー切替:", user_list, index=default_idx, horizontal=True)
         
         if selected_user != current_user_raw:
-            # 変更があった場合、セッションを即座に更新し、JSで保存＆リダイレクト
+            # 切り替え時：session_stateを更新し、JSでLocalStorageを書き換えてリロード
             st.session_state["current_user"] = selected_user
             components.html(f"""
                 <script>
@@ -269,7 +268,6 @@ try:
             elif any(word in msg_body for word in ["おやつ", "プリン"]): priority_emoji = "🍮"
             elif any(word in msg_body for word in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
 
-            # 演出実行
             if priority_emoji:
                 effect_html = '<div class="rising-emoji">'
                 for i in range(25):
@@ -290,6 +288,7 @@ try:
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             
+            # 特殊演出
             if any(word in msg_body for word in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
             if any(word in msg_body for word in ["さみしい", "淋しい", "悲しい", "疲れた"]):
@@ -301,7 +300,7 @@ try:
 
             st.session_state["last_effect_id"] = msg_id
 
-    # チャット描画
+    # メッセージ一覧の表示
     for m in messages:
         utc_time = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
         time_display = (utc_time + timedelta(hours=9)).strftime('%H:%M')
