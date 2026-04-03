@@ -9,6 +9,23 @@ import re  # 正規表現ライブラリを追加（絵文字抽出用）
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
+# 【PWA化設定：ホーム画面からの全画面起動を有効化】
+components.html("""
+<script>
+    // iOS/Androidでホーム画面に追加した際にアプリとして動作させる
+    const metaApp = document.createElement('meta');
+    metaApp.name = "apple-mobile-web-app-capable";
+    metaApp.content = "yes";
+    window.parent.document.getElementsByTagName('head')[0].appendChild(metaApp);
+
+    // ステータスバーのデザイン調整
+    const metaStatus = document.createElement('meta');
+    metaStatus.name = "apple-mobile-web-app-status-bar-style";
+    metaStatus.content = "black-translucent";
+    window.parent.document.getElementsByTagName('head')[0].appendChild(metaStatus);
+</script>
+""", height=0)
+
 # --- 2. データベース(Supabase)接続設定 ---
 table_name = st.secrets.get("TABLE_NAME", "messages")
 
