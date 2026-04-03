@@ -9,25 +9,28 @@ import re
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
-# 【自己修復＆永続化ロジック】
-query_params = st.query_params
-user_from_url = query_params.get("user", None)
-
+# 【強化版：自己修復＆永続化ロジック】
+# Pythonが画面を作る前に、JSでURLをチェックして記憶(localStorage)から復元します
 components.html(f"""
 <script>
     const urlParams = new URLSearchParams(window.parent.location.search);
-    let user = urlParams.get('user');
-    
-    if (user) {{
-        localStorage.setItem('m25_persistent_user', user);
-    }} else {{
-        user = localStorage.getItem('m25_persistent_user');
+    let userFromUrl = urlParams.get('user');
+    const savedUser = localStorage.getItem('m25_persistent_user');
+
+    // 1. URLに名前がある場合は、記憶を最新に更新
+    if (userFromUrl) {{
+        if (savedUser !== userFromUrl) {{
+            localStorage.setItem('m25_persistent_user', userFromUrl);
+        }}
+    }} 
+    // 2. URLに名前がなく、かつ記憶がある場合、強制的にURLを修復してリロード
+    else if (savedUser) {{
+        const newUrl = window.parent.location.origin + window.parent.location.pathname + "?user=" + savedUser;
+        window.parent.location.href = newUrl;
     }}
 
-    if (window.navigator.standalone && user && !window.parent.location.search.includes('user=')) {{
-        window.parent.location.href = window.parent.location.pathname + "?user=" + user;
-    }}
-
+    // --- PWA用マニフェスト等の設定 ---
+    const user = userFromUrl || savedUser;
     const manifest = {{
         "start_url": window.parent.location.origin + window.parent.location.pathname + (user ? "?user=" + user : ""),
         "display": "standalone",
@@ -57,7 +60,9 @@ components.html(f"""
 </script>
 """, height=0)
 
-current_user_raw = user_from_url if user_from_url else "Hide"
+# Python側では、リロード後の正しいURLからユーザーを確定
+query_params = st.query_params
+current_user_raw = query_params.get("user", "Hide")
 current_user_upper = current_user_raw.upper()
 
 # --- 2. データベース(Supabase)接続設定 ---
@@ -256,7 +261,6 @@ try:
                 for i in range(25):
                     left, size = random.randint(5, 95), random.uniform(2.5, 4.5)
                     delay, duration = random.uniform(0, 0.5), random.uniform(5.5, 6.5)
-                    # f-stringエスケープ済み
                     effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{priority_emoji}</div>'
                 st.markdown(effect_html + '</div>', unsafe_allow_html=True)
             
@@ -269,7 +273,6 @@ try:
                     delay = random.uniform(0, 2.0)
                     duration = random.uniform(3.0, 4.0)
                     anim_name = "peek-left" if side == "left" else "peek-right"
-                    # f-stringエスケープ済み
                     peek_html += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
                 st.markdown(peek_html + '</div>', unsafe_allow_html=True)
 
