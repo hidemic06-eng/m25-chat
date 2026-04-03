@@ -4,7 +4,6 @@ from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
 from datetime import datetime, timedelta
 import random
-import re
 
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
@@ -13,10 +12,9 @@ st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 table_name = st.secrets.get("TABLE_NAME", "messages")
 
 # --- 3. デザイン設定 ---
-app_bg_color = "#313338"     # 全体の背景色
-text_main_color = "#dbdee1"  # メイン文字色
-sub_text_color = "#949ba4"   # サブ文字（時間など）
-input_box_color = "#383a40"  # 入力欄自体の色
+app_bg_color = "#313338"
+text_main_color = "#dbdee1"
+sub_text_color = "#949ba4"
 
 if table_name == "messages_test":
     status_label = " 🧪 TEST"
@@ -27,151 +25,93 @@ else:
 
 st.markdown(f"""
     <style>
+    /* M PLUS Rounded 1c の読み込み */
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
 
-    /* 1. アプリ全体の背景を完全固定（昼の白を抹殺） */
-    .stApp, .main, .stAppHeader, [data-testid="stHeader"], [data-testid="stAppViewContainer"] {{ 
-        background-color: {app_bg_color} !important; 
-        color: {text_main_color} !important; 
+    .stApp {{ 
+        background-color: {app_bg_color}; 
+        color: {text_main_color}; 
         font-family: 'M PLUS Rounded 1c', sans-serif !important; 
     }}
+    #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
+    .stAppDeployButton {{display:none;}}
+    [data-testid="bundle-viewer-container"] {{display: none !important;}}
+    .block-container {{ padding-top: 1rem; padding-bottom: 80px !important; max-width: 100% !important; }}
     
-    /* 余計なメニュー等を非表示 */
-    #MainMenu, footer, header, .stAppDeployButton, [data-testid="bundle-viewer-container"] {{
-        visibility: hidden !important;
-        display: none !important;
+    /* レイアウト：左右の振り分け */
+    .chat-row {{ 
+        display: flex; 
+        flex-direction: column; 
+        margin-bottom: 16px; 
+        width: 100%; 
     }}
     
-    /* コンテナの余白調整 */
-    .block-container {{ padding-top: 1rem; padding-bottom: 120px !important; max-width: 100% !important; }}
-    
-    /* 2. 入力エリアのデザイン改修（スクショの「かっこ悪さ」を解消） */
-    
-    /* 入力欄を囲む外枠の白い背景と線を消す */
-    div[data-testid="stChatInput"] {{
-        background-color: transparent !important;
-        border: none !important;
-        padding-bottom: 40px !important; /* スマホのバーを避ける余白 */
-    }}
-
-    /* 入力ボックス本体（textarea）をダーク仕様に */
-    div[data-testid="stChatInput"] textarea {{
-        font-family: 'M PLUS Rounded 1c', sans-serif !important;
-        background-color: {input_box_color} !important;
-        color: {text_main_color} !important;
-        border: 1px solid #404249 !important; /* さりげない境界線 */
-        border-radius: 12px !important;
-        padding: 12px !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important; /* 浮遊感を出して高級感を */
-    }}
-
-    /* 入力欄の内部コンテナの背景も透明化 */
-    div[data-testid="stChatInput"] > div {{
-        background-color: transparent !important;
-        border: none !important;
-    }}
-
-    /* 送信ボタン（↑）のデザイン調整 */
-    div[data-testid="stChatInput"] button {{
-        background-color: transparent !important;
-        border: none !important;
-        color: {text_main_color} !important;
-    }}
-
-    /* プレースホルダー */
-    div[data-testid="stChatInput"] textarea::placeholder {{
-        color: {sub_text_color} !important;
-        font-family: 'M PLUS Rounded 1c', sans-serif !important;
-    }}
-
-    /* 3. メッセージ表示エリア */
-    .chat-row {{
-        display: flex;
-        flex-direction: column;
-        margin-bottom: 1.2rem;
-        width: 100%;
-    }}
-    .align-right {{ align-items: flex-end; text-align: right; }}
-    .align-left {{ align-items: flex-start; text-align: left; }}
-    
+    /* メッセージ本文：M PLUS Rounded 1c 用に最適化 */
     .message-text {{ 
         font-family: 'M PLUS Rounded 1c', sans-serif !important;
         font-feature-settings: "palt" 1; 
         font-size: 1.15rem; 
         line-height: 1.35; 
         font-weight: 500 !important; 
+        letter-spacing: -0.04rem; 
+        max-width: 80%; 
+        white-space: pre-wrap; 
+        word-wrap: break-word; 
         color: {text_main_color} !important; 
-        max-width: 85%;
-        word-wrap: break-word;
+        background-color: transparent !important;
+        padding: 0; 
     }}
 
-    .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; font-size: 0.85rem; }}
+    /* 入力エリア（chat_input）のカスタマイズ */
+    .stChatInput textarea {{
+        font-family: 'M PLUS Rounded 1c', sans-serif !important;
+        font-feature-settings: "palt" 1 !important;
+        letter-spacing: -0.02rem !important;
+        font-size: 1rem !important;
+    }}
+    /* 入力待ちプレースホルダーのフォント */
+    .stChatInput textarea::placeholder {{
+        font-family: 'M PLUS Rounded 1c', sans-serif !important;
+        opacity: 0.7;
+    }}
+
+    /* 右寄せ（Hide） */
+    .align-right {{ align-items: flex-end; text-align: right; }}
+    .align-right .message-text {{ text-align: right; }}
+
+    /* 左寄せ（Maki） */
+    .align-left {{ align-items: flex-start; text-align: left; }}
+    .align-left .message-text {{ text-align: left; }}
+    
+    .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }}
     .name-maki {{ color: #ffa657 !important; font-weight: 700; }}
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
-
-    /* --- アニメーション設定（以下、前回と同じため省略可能ですが、そのまま貼ってください） --- */
-    /* --- アニメーション設定 --- */
+    
+    /* アニメーション設定 */
+    @keyframes shake {{
+        0% {{ transform: translate(1px, 1px) rotate(0deg); }}
+        10% {{ transform: translate(-1px, -2px) rotate(-1deg); }}
+        30% {{ transform: translate(3px, 2px) rotate(0deg); }}
+        50% {{ transform: translate(-1px, 2px) rotate(-1deg); }}
+        100% {{ transform: translate(1px, 1px) rotate(0deg); }}
+    }}
+    .shake-screen {{ animation: shake 0.5s; animation-iteration-count: 4; }}
     @keyframes rise {{
         0% {{ transform: translateY(0); opacity: 0; }}
         5% {{ opacity: 1; }}
+        85% {{ opacity: 1; }}
         100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }}
     }}
     .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
     .emoji-item {{ position: absolute; animation: rise linear forwards; }}
-
-    @keyframes peek-left {{
-        0% {{ left: -100px; opacity: 0; }}
-        20% {{ left: 20px; opacity: 1; }}
-        80% {{ left: 20px; opacity: 1; }}
-        100% {{ left: -100px; opacity: 0; }}
-    }}
-    @keyframes peek-right {{
-        0% {{ right: -100px; opacity: 0; }}
-        20% {{ right: 20px; opacity: 1; }}
-        80% {{ right: 20px; opacity: 1; }}
-        100% {{ right: -100px; opacity: 0; }}
-    }}
-    .peek-item {{ position: fixed; z-index: 9999; pointer-events: none; font-size: 4rem; }}
-
-    @keyframes shake {{
-        0% {{ transform: translate(1px, 1px) rotate(0deg); }}
-        10% {{ transform: translate(-1px, -2px) rotate(-1deg); }}
-        100% {{ transform: translate(1px, 1px) rotate(0deg); }}
-    }}
-    .shake-screen {{ animation: shake 0.5s; animation-iteration-count: 4; }}
-
-    @keyframes fade-dark {{
-        0% {{ filter: brightness(1); }}
-        20% {{ filter: brightness(0.4) sepia(0.6); }}
-        80% {{ filter: brightness(0.4) sepia(0.6); }}
-        100% {{ filter: brightness(1); }}
-    }}
-    .mood-dark {{ animation: fade-dark 3.5s ease-in-out; }}
-
-    @keyframes bounce-screen {{
-        0%, 20%, 50%, 80%, 100% {{ transform: translateY(0); }}
-        40% {{ transform: translateY(-40px) scaleY(1.05); }}
-        60% {{ transform: translateY(-20px) scaleY(1.02); }}
-    }}
-    .bounce-screen {{ animation: bounce-screen 0.8s ease; }}
-
-    @keyframes flash-white {{
-        0% {{ filter: brightness(1); }}
-        10% {{ filter: brightness(2.5) contrast(1.2); }}
-        100% {{ filter: brightness(1); }}
-    }}
-    .flash-screen {{ animation: flash-white 0.6s ease-out; }}
-
     </style>
 """, unsafe_allow_html=True)
 
 # --- 4. 認証機能 ---
 if "password_correct" not in st.session_state:
-    st.session_state["password_correct"] = False
-
-if not st.session_state["password_correct"]:
-    pw = st.text_input("Password", type="password")
+    st.write("🔒 Enter Password")
+    pw = st.text_input("Password", type="password", key="login")
     if pw == "05250206":
         st.session_state["password_correct"] = True
         st.rerun()
@@ -278,6 +218,17 @@ try:
             if any(word in msg_body for word in ["びっくり", "すごい", "光る", "指輪"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
 
+            if emoji:
+                effect_html = '<div class="rising-emoji">'
+                for i in range(25):
+                    left = random.randint(5, 95)
+                    size = random.uniform(2.5, 4.5)
+                    delay = random.uniform(0, 0.5)
+                    duration = random.uniform(5.5, 6.5)
+                    effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{emoji}</div>'
+                effect_html += '</div>'
+                st.markdown(effect_html, unsafe_allow_html=True)
+
             st.session_state["last_effect_id"] = msg_id
 
     for m in messages:
@@ -285,9 +236,8 @@ try:
         jst_time = utc_time + timedelta(hours=9)
         time_display = jst_time.strftime('%H:%M')
         s_up = m['sender_name'].upper()
-        is_me = (s_up == current_user_upper)
-        align = "align-right" if is_me else "align-left"
-        h_style = "flex-direction: row-reverse;" if is_me else ""
+        align = "align-right" if s_up == current_user_upper else "align-left"
+        h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
         n_class = "name-maki" if "MAKI" in s_up else "name-hide" if "HIDE" in s_up else ""
         
         st.markdown(f"""
@@ -302,6 +252,7 @@ try:
 except Exception as e:
     st.error(f"表示エラー: {e}")
 
+# --- 9. 送信 ---
 prompt = st.chat_input(input_placeholder)
 if prompt:
     try:
@@ -311,5 +262,6 @@ if prompt:
     except Exception as e:
         st.error(f"送信エラー: {e}")
 
+# --- 10. スクロール ---
 if st.session_state["page_offset"] == 0:
     components.html('<script>window.parent.document.querySelector(".main").scrollTo(0, 99999);</script>', height=0)
