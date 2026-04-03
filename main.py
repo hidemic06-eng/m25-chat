@@ -176,9 +176,18 @@ current_user_raw = query_params.get("user", "Hide")
 current_user_upper = current_user_raw.upper()
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 
-# --- 6. ヘッダー ---
-st.title(f"💬 M25-Chat{status_label}")
-auto_update = st.toggle("自動更新(8s)", value=True)
+# --- 6. ヘッダー（⚙️ボタン追加版） ---
+h_col1, h_col2 = st.columns([4, 1])
+with h_col1:
+    st.markdown(f"### 💬 M25-Chat{status_label}")
+
+with h_col2:
+    with st.popover("⚙️"):
+        st.write("🔧 アプリ設定")
+        auto_update = st.toggle("自動更新(8s)", value=True)
+        st.divider()
+        st.caption(f"Login as: {current_user_raw}")
+
 if auto_update and st.session_state["page_offset"] == 0:
     st_autorefresh(interval=8000, key="chat_ref")
 st.divider()
