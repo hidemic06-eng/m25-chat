@@ -52,19 +52,12 @@ st.markdown(f"""
     [data-testid="bundle-viewer-container"] {{display: none !important;}}
     .block-container {{ padding-top: 1rem; padding-bottom: 80px !important; max-width: 100% !important; }}
     
-    /* ⚙️ボタンと普通のボタンの色を固定 */
-    .stButton > button, [data-testid="stPopover"] > button {{
+    /* ボタンの色を固定（前の20件ボタンと同じ設定） */
+    .stButton > button {{
         background-color: #424549 !important;
         color: white !important;
         border: 1px solid #4f545c !important;
         width: 100% !important;
-    }}
-    
-    /* ポップオーバーの中身の背景色をダークに固定 */
-    [data-testid="stPopoverBody"] {{
-        background-color: #2b2d31 !important;
-        border: 1px solid #4f545c !important;
-        color: {text_main_color} !important;
     }}
 
     .chat-row {{ display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }}
@@ -83,9 +76,7 @@ st.markdown(f"""
         padding: 0; 
     }}
 
-    .stChatInput textarea {{
-        font-family: 'M PLUS Rounded 1c', sans-serif !important;
-    }}
+    .stChatInput textarea {{ font-family: 'M PLUS Rounded 1c', sans-serif !important; }}
 
     .align-right {{ align-items: flex-end; text-align: right; }}
     .align-left {{ align-items: flex-start; text-align: left; }}
@@ -95,7 +86,7 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* --- 演出用アニメーション定義（そのまま維持） --- */
+    /* --- 演出用アニメーション --- */
     @keyframes rise {{
         0% {{ transform: translateY(0); opacity: 0; }}
         5% {{ opacity: 1; }}
@@ -160,35 +151,38 @@ if "password_correct" not in st.session_state:
         st.rerun()
     st.stop()
 
-# --- 5. 設定 ---
-if "page_offset" not in st.session_state:
-    st.session_state["page_offset"] = 0
-if "last_effect_id" not in st.session_state:
-    st.session_state["last_effect_id"] = None
+# --- 5. セッション状態の初期化 ---
+if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
+if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
+if "show_settings" not in st.session_state: st.session_state["show_settings"] = False
 
 query_params = st.query_params
 current_user_raw = query_params.get("user", "Hide")
 current_user_upper = current_user_raw.upper()
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 
-# --- 6. ヘッダー（⚙️ボタンとユーザー切り替え） ---
+# --- 6. ヘッダー（設定ボタンを普通の st.button に変更） ---
 h_col1, h_col2 = st.columns([4, 1])
 with h_col1:
     st.markdown(f"### 💬 M25-Chat{status_label}")
-
 with h_col2:
-    with st.popover("⚙️"):
-        st.write("🔧 アプリ設定")
+    if st.button("⚙️"):
+        st.session_state["show_settings"] = not st.session_state["show_settings"]
+
+# 設定パネルの表示
+if st.session_state["show_settings"]:
+    with st.container():
+        st.info(f"🔧 アプリ設定 (Login: {current_user_raw})")
         user_list = ["Maki", "Hide"]
         default_idx = user_list.index(current_user_raw) if current_user_raw in user_list else 1
-        selected_user = st.radio("表示ユーザー:", user_list, index=default_idx, horizontal=True)
+        selected_user = st.radio("表示ユーザー切替:", user_list, index=default_idx, horizontal=True)
         if selected_user != current_user_raw:
             st.query_params["user"] = selected_user
             st.rerun()
-        
-        st.divider()
         auto_update = st.toggle("自動更新(8s)", value=True)
-        st.caption(f"Login as: {current_user_raw}")
+        st.divider()
+else:
+    auto_update = True
 
 if auto_update and st.session_state["page_offset"] == 0:
     st_autorefresh(interval=8000, key="chat_ref")
@@ -208,39 +202,26 @@ with col_next:
             st.session_state["page_offset"] -= 20
             st.rerun()
 
-# --- 8. 表示 & 演出の判定（Hideさんのオリジナル版） ---
+# --- 8. 表示 & 演出の判定 ---
 try:
     res = supabase.table(table_name).select("*").order("created_at", desc=True).range(st.session_state["page_offset"], st.session_state["page_offset"] + 19).execute()
     messages = res.data[::-1]
     
     if messages and st.session_state["page_offset"] == 0:
         latest_msg = messages[-1]
-        msg_id = latest_msg.get("id")
-        msg_body = latest_msg["message_body"]
+        msg_id, msg_body = latest_msg.get("id"), latest_msg["message_body"]
         
         if msg_id != st.session_state["last_effect_id"]:
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
-            
             priority_emoji = None
             if any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
             elif any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
-            elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
+            elif any(word in msg_body for word in ["お疲れ様", "ビール", "酒"]): priority_emoji = "🍺"
             elif "おにぎり" in msg_body: priority_emoji = "🍙"
-            elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]): priority_emoji = "🏸"
-            elif any(word in msg_body for word in ["ラーメン", "山岡家"]): priority_emoji = "🍜"
-            elif any(word in msg_body for word in ["野菜", "サラダ", "レタス"]): priority_emoji = "🥬"
-            elif any(word in msg_body for word in ["おやすみ", "眠い", "寝る"]): priority_emoji = "💤"
-            elif any(word in msg_body for word in ["綺麗", "きれい", "すごい", "最高"]): priority_emoji = "✨"
-            elif any(word in msg_body for word in ["コーヒー", "カフェ", "休憩"]): priority_emoji = "☕️"
-            elif any(word in msg_body for word in ["ドライブ"]): priority_emoji = "🚗"
-            elif any(word in msg_body for word in ["ワイン", "ハイボール", "乾杯"]): priority_emoji = "🥂"
-            elif any(word in msg_body for word in ["花見", "さくら", "桜"]): priority_emoji = "🌸"
-            elif any(word in msg_body for word in ["楽しみ", "ルンルン", "うれしい"]): priority_emoji = "🎶"
-            elif any(word in msg_body for word in ["ケーキ", "スイーツ", "甘いもの"]): priority_emoji = "🍰"
-            elif any(word in msg_body for word in ["ラッキー", "幸せ", "しあわせ", "ハッピー"]): priority_emoji = "🍀"
-            elif any(word in msg_body for word in ["熊", "困った"]): priority_emoji = "🐻"
-            elif any(word in msg_body for word in ["おやつ", "プリン"]): priority_emoji = "🍮"
-            elif any(word in msg_body for word in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
+            elif "バドミントン" in msg_body: priority_emoji = "🏸"
+            elif "ラーメン" in msg_body: priority_emoji = "🍜"
+            elif "やすみ" in msg_body: priority_emoji = "💤"
+            elif any(word in msg_body for word in ["綺麗", "最高"]): priority_emoji = "✨"
 
             if priority_emoji:
                 effect_html = '<div class="rising-emoji">'
@@ -253,25 +234,19 @@ try:
                 target_emoji = emoji_in_text[-1]
                 peek_html = '<div>'
                 for i in range(5):
-                    side = random.choice(["left", "right"])
-                    top = random.randint(20, 80)
-                    delay = random.uniform(0, 2.0)
-                    duration = random.uniform(3.0, 4.0)
+                    side, top = random.choice(["left", "right"]), random.randint(20, 80)
+                    delay, duration = random.uniform(0, 2.0), random.uniform(3.0, 4.0)
                     anim_name = "peek-left" if side == "left" else "peek-right"
                     peek_html += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
                 st.markdown(peek_html + '</div>', unsafe_allow_html=True)
 
-            if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
-            if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
+            if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]): st.balloons()
+            if any(word in msg_body for word in ["雪", "寒い", "冬"]): st.snow()
             
-            if any(word in msg_body for word in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
+            if any(word in msg_body for word in ["こら", "起きて", "びっくり", "地震"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
-            if any(word in msg_body for word in ["さみしい", "淋しい", "悲しい", "疲れた"]):
+            if any(word in msg_body for word in ["さみしい", "悲しい", "疲れた"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("mood-dark"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("mood-dark"); }, 3500);</script>', height=0)
-            if any(word in msg_body for word in ["マジで", "えー", "正解", "おー"]):
-                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("bounce-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("bounce-screen"); }, 1000);</script>', height=0)
-            if any(word in msg_body for word in ["びっくり", "すごい", "光る", "指輪"]):
-                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
 
             st.session_state["last_effect_id"] = msg_id
 
@@ -282,19 +257,11 @@ try:
         align = "align-right" if s_up == current_user_upper else "align-left"
         h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
         n_class = "name-maki" if "MAKI" in s_up else "name-hide" if "HIDE" in s_up else ""
-        
-        st.markdown(f"""
-            <div class="chat-row {align}">
-                <div class="chat-header" style="{h_style}">
-                    <span class="{n_class}">{m["sender_name"]}</span>
-                    <span class="timestamp">{time_display}</span>
-                </div>
-                <div class="message-text">{m["message_body"]}</div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f'<div class="chat-row {align}"><div class="chat-header" style="{h_style}"><span class="{n_class}">{m["sender_name"]}</span><span class="timestamp">{time_display}</span></div><div class="message-text">{m["message_body"]}</div></div>', unsafe_allow_html=True)
 except Exception as e:
     st.error(f"表示エラー: {e}")
 
+# --- 9. 送信エリア ---
 prompt = st.chat_input(input_placeholder)
 if prompt:
     supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
