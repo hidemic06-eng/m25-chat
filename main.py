@@ -16,6 +16,7 @@ table_name = st.secrets.get("TABLE_NAME", "messages")
 app_bg_color = "#313338"
 text_main_color = "#dbdee1"
 sub_text_color = "#949ba4"
+input_bg_color = "#383a40"  # 入力欄の背景（少しだけ明るいグレー）
 
 if table_name == "messages_test":
     status_label = " 🧪 TEST"
@@ -28,9 +29,10 @@ st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
 
+    /* アプリ全体の背景を固定 */
     .stApp {{ 
-        background-color: {app_bg_color}; 
-        color: {text_main_color}; 
+        background-color: {app_bg_color} !important; 
+        color: {text_main_color} !important; 
         font-family: 'M PLUS Rounded 1c', sans-serif !important; 
     }}
     
@@ -41,6 +43,28 @@ st.markdown(f"""
     
     .block-container {{ padding-top: 1rem; padding-bottom: 100px !important; max-width: 100% !important; }}
     
+    /* チャット入力エリアの背景色を固定（昼でも白くならないように） */
+    div[data-testid="stChatInput"] {{
+        background-color: {app_bg_color} !important;
+        padding-bottom: 30px !important;
+    }}
+
+    div[data-testid="stChatInput"] textarea {{
+        font-family: 'M PLUS Rounded 1c', sans-serif !important;
+        font-size: 1rem !important;
+        color: {text_main_color} !important;
+        background-color: {input_bg_color} !important;
+        border: 1px solid #404249 !important;
+        border-radius: 10px !important;
+    }}
+
+    /* プレースホルダー（文字を入力...）の色 */
+    div[data-testid="stChatInput"] textarea::placeholder {{
+        font-family: 'M PLUS Rounded 1c', sans-serif !important;
+        color: {sub_text_color} !important;
+    }}
+
+    /* メッセージ表示部分 */
     .chat-row {{
         display: flex;
         flex-direction: column;
@@ -69,15 +93,6 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
 
-    /* 入力エリアのフォント設定 */
-    .stChatInput textarea {{
-        font-family: 'M PLUS Rounded 1c', sans-serif !important;
-        font-size: 1rem !important;
-        color: {text_main_color} !important;
-    }}
-    .stChatInput textarea::placeholder {{
-        font-family: 'M PLUS Rounded 1c', sans-serif !important;
-    }}
 
     /* --- アニメーション設定 --- */
     @keyframes rise {{
