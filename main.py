@@ -10,19 +10,16 @@ import re
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
 # 【LocalStorage 連携ロジック】
-# JSでLocalStorageを確認し、必要があればURLにパラメータを付与して1回だけ遷移させる
+# JSでLocalStorageを確認し、URLにパラメータがなければ付与してリダイレクト
 components.html("""
 <script>
     const urlParams = new URLSearchParams(window.parent.location.search);
     const userParam = urlParams.get('user');
     const savedUser = localStorage.getItem('m25_user');
 
-    // URLにパラメータがある場合はLocalStorageを更新
     if (userParam) {
         localStorage.setItem('m25_user', userParam);
-    } 
-    // URLにパラメータがなく、保存された値がある場合はURLに付けてリダイレクト
-    else if (savedUser) {
+    } else if (savedUser) {
         const newUrl = window.parent.location.origin + window.parent.location.pathname + '?user=' + savedUser;
         window.parent.location.href = newUrl;
     }
@@ -170,9 +167,19 @@ if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "show_settings" not in st.session_state: st.session_state["show_settings"] = False
 
-# 現在のユーザー判定 (URL > デフォルト)
-current_user_raw = st.query_params.get("user", "Hide")
+# 【重要】ユーザー判定の優先順位を整理
+# 1. URLパラメータがあればそれを最優先
+url_user = st.query_params.get("user")
+if url_user and "current_user" not in st.session_state:
+    st.session_state["current_user"] = url_user
+
+# 2. セッションになければデフォルト
+if "current_user" not in st.session_state:
+    st.session_state["current_user"] = "Hide"
+
+current_user_raw = st.session_state["current_user"]
 current_user_upper = current_user_raw.upper()
+
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 
 # --- 6. ヘッダー ---
@@ -185,10 +192,9 @@ with h_col2:
 
 if st.session_state["show_settings"]:
     with st.container(border=True):
-        st.write(f"🔧 **アプリ設定** (ログイン中: {current_user_raw})")
+        st.write(f"🔧 **アプリ設定** (現在: {current_user_raw})")
         
         user_list = ["Maki", "Hide"]
-        # 現在のユーザーがリストになければHideをデフォルトに
         try:
             default_idx = user_list.index(current_user_raw)
         except:
@@ -197,14 +203,15 @@ if st.session_state["show_settings"]:
         selected_user = st.radio("表示ユーザー切替:", user_list, index=default_idx, horizontal=True)
         
         if selected_user != current_user_raw:
-            # ユーザーが変更されたらLocalStorageを更新し、URLを書き換えてリロード
+            # 変更があった場合、セッションを即座に更新し、JSで保存＆リダイレクト
+            st.session_state["current_user"] = selected_user
             components.html(f"""
                 <script>
                     localStorage.setItem('m25_user', '{selected_user}');
                     window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + '?user={selected_user}';
                 </script>
             """, height=0)
-            st.stop() # リロードを待つ
+            st.rerun()
         
         auto_update = st.toggle("自動更新(8s)", value=True)
 else:
