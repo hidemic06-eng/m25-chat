@@ -160,63 +160,29 @@ try:
         msg_body = latest_msg["message_body"]
         
         if msg_id != st.session_state["last_effect_id"]:
-            emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
-            
-            # A. 昇る演出
-            priority_emoji = None
-            if any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
-            elif any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
-            elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
-            elif "おにぎり" in msg_body: priority_emoji = "🍙"
-            elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]): priority_emoji = "🏸"
-            elif any(word in msg_body for word in ["ラーメン", "山岡家"]): priority_emoji = "🍜"
-            elif any(word in msg_body for word in ["野菜", "サラダ", "レタス"]): priority_emoji = "🥬"
-            elif any(word in msg_body for word in ["おやすみ", "眠い", "寝る"]): priority_emoji = "💤"
-            elif any(word in msg_body for word in ["綺麗", "きれい", "すごい", "最高"]): priority_emoji = "✨"
-            elif any(word in msg_body for word in ["コーヒー", "カフェ", "休憩"]): priority_emoji = "☕️"
-            elif any(word in msg_body for word in ["ドライブ"]): priority_emoji = "🚗"
-            elif any(word in msg_body for word in ["ワイン", "ハイボール", "乾杯"]): priority_emoji = "🥂"
-            elif any(word in msg_body for word in ["花見", "さくら", "桜"]): priority_emoji = "🌸"
-            elif any(word in msg_body for word in ["楽しみ", "ルンルン", "うれしい"]): priority_emoji = "🎶"
-            elif any(word in msg_body for word in ["ケーキ", "スイーツ", "甘いもの"]): priority_emoji = "🍰"
-            elif any(word in msg_body for word in ["ラッキー", "幸せ", "しあわせ", "ハッピー"]): priority_emoji = "🍀"
-            elif any(word in msg_body for word in ["熊", "困った"]): priority_emoji = "🐻"
-            elif any(word in msg_body for word in ["おやつ", "プリン"]): priority_emoji = "🍮"
-            elif any(word in msg_body for word in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
+            emoji = None
+            if any(word in msg_body for word in ["大好き", "好き", "ありがとう", "感謝", "愛してる", "ラブラブ"]): emoji = "❤️"
+            elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み"]): emoji = "🍺"
+            elif "おにぎり" in msg_body: emoji = "🍙"
+            elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]): emoji = "🏸"
+            elif any(word in msg_body for word in ["ラーメン", "山岡家"]): emoji = "🍜"
+            elif any(word in msg_body for word in ["野菜", "サラダ", "レタス"]): emoji = "🥬"
+            elif any(word in msg_body for word in ["おやすみ", "眠い", "寝る"]): emoji = "💤"
+            elif any(word in msg_body for word in ["綺麗", "きれい", "すごい", "最高"]): emoji = "✨"
+            elif any(word in msg_body for word in ["コーヒー", "カフェ", "休憩"]): emoji = "☕️"
+            elif any(word in msg_body for word in ["ドライブ"]): emoji = "🚗"
+            elif any(word in msg_body for word in ["乾杯", "ワイン", "ハイボール"]): emoji = "🥂"
+            elif any(word in msg_body for word in ["花見", "さくら", "桜"]): emoji = "🌸"
+            elif any(word in msg_body for word in ["楽しみ", "ルンルン", "うれしい"]): emoji = "🎶"
+            elif any(word in msg_body for word in ["ケーキ", "スイーツ", "甘いもの"]): emoji = "🍰"
+            elif any(word in msg_body for word in ["ラッキー", "幸せ", "しあわせ", "ハッピー"]): emoji = "🍀"
+            elif any(word in msg_body for word in ["熊", "困った"]): emoji = "🐻"
 
-            if priority_emoji:
-                effect_html = '<div class="rising-emoji">'
-                for i in range(25):
-                    left, size = random.randint(5, 95), random.uniform(2.5, 4.5)
-                    delay, duration = random.uniform(0, 0.5), random.uniform(5.5, 6.5)
-                    effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{priority_emoji}</div>'
-                st.markdown(effect_html + '</div>', unsafe_allow_html=True)
-            
-            # B. ひょっこり演出（独立）
-            elif emoji_in_text:
-                target_emoji = emoji_in_text[-1]
-                peek_html = '<div>'
-                for i in range(5):
-                    side = random.choice(["left", "right"])
-                    top = random.randint(20, 80)
-                    delay = random.uniform(0, 2.0)
-                    duration = random.uniform(3.0, 4.0)
-                    anim_name = "peek-left" if side == "left" else "peek-right"
-                    peek_html += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
-                st.markdown(peek_html + '</div>', unsafe_allow_html=True)
-
-            # C. 画面全体のアクション（独立判定）
-            if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
+            if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             
-            if any(word in msg_body for word in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
+            if any(word in msg_body for word in ["こら", "起きて", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
-            if any(word in msg_body for word in ["さみしい", "淋しい", "悲しい", "疲れた"]):
-                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("mood-dark"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("mood-dark"); }, 3500);</script>', height=0)
-            if any(word in msg_body for word in ["マジで", "えー", "正解", "おー"]):
-                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("bounce-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("bounce-screen"); }, 1000);</script>', height=0)
-            if any(word in msg_body for word in ["びっくり", "すごい", "光る", "指輪"]):
-                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
 
             if emoji:
                 effect_html = '<div class="rising-emoji">'
