@@ -4,7 +4,6 @@ from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
 from datetime import datetime, timedelta
 import random
-import re
 
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
@@ -26,6 +25,7 @@ else:
 
 st.markdown(f"""
     <style>
+    /* M PLUS Rounded 1c の読み込み */
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
 
     .stApp {{ 
@@ -33,23 +33,20 @@ st.markdown(f"""
         color: {text_main_color}; 
         font-family: 'M PLUS Rounded 1c', sans-serif !important; 
     }}
+    #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
+    .stAppDeployButton {{display:none;}}
+    [data-testid="bundle-viewer-container"] {{display: none !important;}}
+    .block-container {{ padding-top: 1rem; padding-bottom: 80px !important; max-width: 100% !important; }}
     
-    #MainMenu, footer, header, .stAppDeployButton, [data-testid="bundle-viewer-container"] {{
-        visibility: hidden !important;
-        display: none !important;
+    /* レイアウト：左右の振り分け */
+    .chat-row {{ 
+        display: flex; 
+        flex-direction: column; 
+        margin-bottom: 16px; 
+        width: 100%; 
     }}
     
-    .block-container {{ padding-top: 1rem; padding-bottom: 100px !important; max-width: 100% !important; }}
-    
-    .chat-row {{
-        display: flex;
-        flex-direction: column;
-        margin-bottom: 1.2rem;
-        width: 100%;
-    }}
-    .align-right {{ align-items: flex-end; text-align: right; }}
-    .align-left {{ align-items: flex-start; text-align: left; }}
-    
+    /* メッセージ本文：M PLUS Rounded 1c 用に最適化 */
     .message-text {{ 
         font-family: 'M PLUS Rounded 1c', sans-serif !important;
         font-feature-settings: "palt" 1; 
@@ -57,89 +54,64 @@ st.markdown(f"""
         line-height: 1.35; 
         font-weight: 500 !important; 
         letter-spacing: -0.04rem; 
-        max-width: 85%; 
+        max-width: 80%; 
         white-space: pre-wrap; 
         word-wrap: break-word; 
         color: {text_main_color} !important; 
-        padding: 4px 0;
+        background-color: transparent !important;
+        padding: 0; 
     }}
 
-    .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; font-size: 0.85rem; }}
+    /* 入力エリア（chat_input）のカスタマイズ */
+    .stChatInput textarea {{
+        font-family: 'M PLUS Rounded 1c', sans-serif !important;
+        font-feature-settings: "palt" 1 !important;
+        letter-spacing: -0.02rem !important;
+        font-size: 1rem !important;
+    }}
+    /* 入力待ちプレースホルダーのフォント */
+    .stChatInput textarea::placeholder {{
+        font-family: 'M PLUS Rounded 1c', sans-serif !important;
+        opacity: 0.7;
+    }}
+
+    /* 右寄せ（Hide） */
+    .align-right {{ align-items: flex-end; text-align: right; }}
+    .align-right .message-text {{ text-align: right; }}
+
+    /* 左寄せ（Maki） */
+    .align-left {{ align-items: flex-start; text-align: left; }}
+    .align-left .message-text {{ text-align: left; }}
+    
+    .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }}
     .name-maki {{ color: #ffa657 !important; font-weight: 700; }}
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
-
-    /* 入力エリアのフォント設定 */
-    .stChatInput textarea {{
-        font-family: 'M PLUS Rounded 1c', sans-serif !important;
-        font-size: 1rem !important;
-        color: {text_main_color} !important;
+    
+    /* アニメーション設定 */
+    @keyframes shake {{
+        0% {{ transform: translate(1px, 1px) rotate(0deg); }}
+        10% {{ transform: translate(-1px, -2px) rotate(-1deg); }}
+        30% {{ transform: translate(3px, 2px) rotate(0deg); }}
+        50% {{ transform: translate(-1px, 2px) rotate(-1deg); }}
+        100% {{ transform: translate(1px, 1px) rotate(0deg); }}
     }}
-    .stChatInput textarea::placeholder {{
-        font-family: 'M PLUS Rounded 1c', sans-serif !important;
-    }}
-
-    /* --- アニメーション設定 --- */
+    .shake-screen {{ animation: shake 0.5s; animation-iteration-count: 4; }}
     @keyframes rise {{
         0% {{ transform: translateY(0); opacity: 0; }}
         5% {{ opacity: 1; }}
+        85% {{ opacity: 1; }}
         100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }}
     }}
     .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
     .emoji-item {{ position: absolute; animation: rise linear forwards; }}
-
-    @keyframes peek-left {{
-        0% {{ left: -100px; opacity: 0; }}
-        20% {{ left: 20px; opacity: 1; }}
-        80% {{ left: 20px; opacity: 1; }}
-        100% {{ left: -100px; opacity: 0; }}
-    }}
-    @keyframes peek-right {{
-        0% {{ right: -100px; opacity: 0; }}
-        20% {{ right: 20px; opacity: 1; }}
-        80% {{ right: 20px; opacity: 1; }}
-        100% {{ right: -100px; opacity: 0; }}
-    }}
-    .peek-item {{ position: fixed; z-index: 9999; pointer-events: none; font-size: 4rem; }}
-
-    @keyframes shake {{
-        0% {{ transform: translate(1px, 1px) rotate(0deg); }}
-        10% {{ transform: translate(-1px, -2px) rotate(-1deg); }}
-        100% {{ transform: translate(1px, 1px) rotate(0deg); }}
-    }}
-    .shake-screen {{ animation: shake 0.5s; animation-iteration-count: 4; }}
-
-    @keyframes fade-dark {{
-        0% {{ filter: brightness(1); }}
-        20% {{ filter: brightness(0.4) sepia(0.6); }}
-        80% {{ filter: brightness(0.4) sepia(0.6); }}
-        100% {{ filter: brightness(1); }}
-    }}
-    .mood-dark {{ animation: fade-dark 3.5s ease-in-out; }}
-
-    @keyframes bounce-screen {{
-        0%, 20%, 50%, 80%, 100% {{ transform: translateY(0); }}
-        40% {{ transform: translateY(-40px) scaleY(1.05); }}
-        60% {{ transform: translateY(-20px) scaleY(1.02); }}
-    }}
-    .bounce-screen {{ animation: bounce-screen 0.8s ease; }}
-
-    @keyframes flash-white {{
-        0% {{ filter: brightness(1); }}
-        10% {{ filter: brightness(2.5) contrast(1.2); }}
-        100% {{ filter: brightness(1); }}
-    }}
-    .flash-screen {{ animation: flash-white 0.6s ease-out; }}
-
     </style>
 """, unsafe_allow_html=True)
 
 # --- 4. 認証機能 ---
 if "password_correct" not in st.session_state:
-    st.session_state["password_correct"] = False
-
-if not st.session_state["password_correct"]:
-    pw = st.text_input("Password", type="password")
+    st.write("🔒 Enter Password")
+    pw = st.text_input("Password", type="password", key="login")
     if pw == "05250206":
         st.session_state["password_correct"] = True
         st.rerun()
@@ -188,63 +160,40 @@ try:
         msg_body = latest_msg["message_body"]
         
         if msg_id != st.session_state["last_effect_id"]:
-            emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
-            
-            # A. 昇る演出
-            priority_emoji = None
-            if any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
-            elif any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
-            elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
-            elif "おにぎり" in msg_body: priority_emoji = "🍙"
-            elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]): priority_emoji = "🏸"
-            elif any(word in msg_body for word in ["ラーメン", "山岡家"]): priority_emoji = "🍜"
-            elif any(word in msg_body for word in ["野菜", "サラダ", "レタス"]): priority_emoji = "🥬"
-            elif any(word in msg_body for word in ["おやすみ", "眠い", "寝る"]): priority_emoji = "💤"
-            elif any(word in msg_body for word in ["綺麗", "きれい", "すごい", "最高"]): priority_emoji = "✨"
-            elif any(word in msg_body for word in ["コーヒー", "カフェ", "休憩"]): priority_emoji = "☕️"
-            elif any(word in msg_body for word in ["ドライブ"]): priority_emoji = "🚗"
-            elif any(word in msg_body for word in ["ワイン", "ハイボール", "乾杯"]): priority_emoji = "🥂"
-            elif any(word in msg_body for word in ["花見", "さくら", "桜"]): priority_emoji = "🌸"
-            elif any(word in msg_body for word in ["楽しみ", "ルンルン", "うれしい"]): priority_emoji = "🎶"
-            elif any(word in msg_body for word in ["ケーキ", "スイーツ", "甘いもの"]): priority_emoji = "🍰"
-            elif any(word in msg_body for word in ["ラッキー", "幸せ", "しあわせ", "ハッピー"]): priority_emoji = "🍀"
-            elif any(word in msg_body for word in ["熊", "困った"]): priority_emoji = "🐻"
-            elif any(word in msg_body for word in ["おやつ", "プリン"]): priority_emoji = "🍮"
-            elif any(word in msg_body for word in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
+            emoji = None
+            if any(word in msg_body for word in ["大好き", "好き", "ありがとう", "感謝", "愛してる", "ラブラブ"]): emoji = "❤️"
+            elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み"]): emoji = "🍺"
+            elif "おにぎり" in msg_body: emoji = "🍙"
+            elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]): emoji = "🏸"
+            elif any(word in msg_body for word in ["ラーメン", "山岡家"]): emoji = "🍜"
+            elif any(word in msg_body for word in ["野菜", "サラダ", "レタス"]): emoji = "🥬"
+            elif any(word in msg_body for word in ["おやすみ", "眠い", "寝る"]): emoji = "💤"
+            elif any(word in msg_body for word in ["綺麗", "きれい", "すごい", "最高"]): emoji = "✨"
+            elif any(word in msg_body for word in ["コーヒー", "カフェ", "休憩"]): emoji = "☕️"
+            elif any(word in msg_body for word in ["ドライブ"]): emoji = "🚗"
+            elif any(word in msg_body for word in ["乾杯", "ワイン", "ハイボール"]): emoji = "🥂"
+            elif any(word in msg_body for word in ["花見", "さくら", "桜"]): emoji = "🌸"
+            elif any(word in msg_body for word in ["楽しみ", "ルンルン", "うれしい"]): emoji = "🎶"
+            elif any(word in msg_body for word in ["ケーキ", "スイーツ", "甘いもの"]): emoji = "🍰"
+            elif any(word in msg_body for word in ["ラッキー", "幸せ", "しあわせ", "ハッピー"]): emoji = "🍀"
+            elif any(word in msg_body for word in ["熊", "困った"]): emoji = "🐻"
 
-            if priority_emoji:
-                effect_html = '<div class="rising-emoji">'
-                for i in range(25):
-                    left, size = random.randint(5, 95), random.uniform(2.5, 4.5)
-                    delay, duration = random.uniform(0, 0.5), random.uniform(5.5, 6.5)
-                    effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{priority_emoji}</div>'
-                st.markdown(effect_html + '</div>', unsafe_allow_html=True)
-            
-            # B. ひょっこり演出（独立）
-            elif emoji_in_text:
-                target_emoji = emoji_in_text[-1]
-                peek_html = '<div>'
-                for i in range(5):
-                    side = random.choice(["left", "right"])
-                    top = random.randint(20, 80)
-                    delay = random.uniform(0, 2.0)
-                    duration = random.uniform(3.0, 4.0)
-                    anim_name = "peek-left" if side == "left" else "peek-right"
-                    peek_html += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
-                st.markdown(peek_html + '</div>', unsafe_allow_html=True)
-
-            # C. 画面全体のアクション（独立判定）
-            if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
+            if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             
-            if any(word in msg_body for word in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
+            if any(word in msg_body for word in ["こら", "起きて", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
-            if any(word in msg_body for word in ["さみしい", "淋しい", "悲しい", "疲れた"]):
-                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("mood-dark"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("mood-dark"); }, 3500);</script>', height=0)
-            if any(word in msg_body for word in ["マジで", "えー", "正解", "おー"]):
-                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("bounce-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("bounce-screen"); }, 1000);</script>', height=0)
-            if any(word in msg_body for word in ["びっくり", "すごい", "光る", "指輪"]):
-                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
+
+            if emoji:
+                effect_html = '<div class="rising-emoji">'
+                for i in range(25):
+                    left = random.randint(5, 95)
+                    size = random.uniform(2.5, 4.5)
+                    delay = random.uniform(0, 0.5)
+                    duration = random.uniform(5.5, 6.5)
+                    effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{emoji}</div>'
+                effect_html += '</div>'
+                st.markdown(effect_html, unsafe_allow_html=True)
 
             st.session_state["last_effect_id"] = msg_id
 
@@ -253,9 +202,8 @@ try:
         jst_time = utc_time + timedelta(hours=9)
         time_display = jst_time.strftime('%H:%M')
         s_up = m['sender_name'].upper()
-        is_me = (s_up == current_user_upper)
-        align = "align-right" if is_me else "align-left"
-        h_style = "flex-direction: row-reverse;" if is_me else ""
+        align = "align-right" if s_up == current_user_upper else "align-left"
+        h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
         n_class = "name-maki" if "MAKI" in s_up else "name-hide" if "HIDE" in s_up else ""
         
         st.markdown(f"""
@@ -270,6 +218,7 @@ try:
 except Exception as e:
     st.error(f"表示エラー: {e}")
 
+# --- 9. 送信 ---
 prompt = st.chat_input(input_placeholder)
 if prompt:
     try:
@@ -279,5 +228,6 @@ if prompt:
     except Exception as e:
         st.error(f"送信エラー: {e}")
 
+# --- 10. スクロール ---
 if st.session_state["page_offset"] == 0:
     components.html('<script>window.parent.document.querySelector(".main").scrollTo(0, 99999);</script>', height=0)
