@@ -167,41 +167,48 @@ supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publish
 st.markdown(f"### 💬 M25-Chat{status_label}")
 
 # --- 7. ナビゲーション & 設定ボタン ---
-# スマホでも強制的に横並びにするためのスタイルを追加
 st.markdown("""
     <style>
     [data-testid="column"] {
         flex-direction: row !important;
         align-items: center !important;
         min-width: 0px !important;
+        flex: 1 1 auto !important;
     }
     div[data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
         align-items: center !important;
+        gap: 5px !important;
+    }
+    .stButton > button {
+        width: 100% !important;
+        padding: 5px !important;
+        min-height: 40px !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# 比率を少し調整して、ボタンが押しやすいようにします
-col_prev, col_page, col_next, col_set = st.columns([1.5, 1.5, 1.5, 0.8])
+# 並び順を [⬅️, ➡️, ページ数, ⚙️] に変更して右端の消失を防ぎます
+col_prev, col_next, col_page, col_set = st.columns([1, 1, 1.5, 0.8])
 
 with col_prev:
-    if st.button("⬅️"):  # 文字を短くしてスペースを稼ぎます
+    if st.button("⬅️"):
         st.session_state["page_offset"] += 20
         st.rerun()
-with col_page:
-    # フォントサイズを少し調整
-    st.write(f"<div style='text-align:center; font-size:0.7rem; color:#949ba4;'>{st.session_state['page_offset']+1}〜</div>", unsafe_allow_html=True)
+
 with col_next:
     if st.session_state["page_offset"] >= 20:
         if st.button("➡️"):
             st.session_state["page_offset"] -= 20
             st.rerun()
     else:
-        # ボタンがない時もスペースを維持
         st.write("")
+
+with col_page:
+    st.markdown(f"<div style='text-align:center; font-size:0.75rem; color:#949ba4; line-height:40px; white-space:nowrap;'>{st.session_state['page_offset']+1}〜</div>", unsafe_allow_html=True)
+
 with col_set:
     if st.button("⚙️"):
         st.session_state["show_settings"] = not st.session_state["show_settings"]
