@@ -172,20 +172,19 @@ with h_col2:
         st.session_state["show_settings"] = not st.session_state["show_settings"]
 
 if st.session_state["show_settings"]:
-    # 枠の作り方を変更し、中身のない空箱が表示されないように修正しました
-    st.markdown(f'<div style="background-color: #3b3e43; padding: 15px; border-radius: 10px; border: 1px solid #4f545c; margin-bottom: 20px;">', unsafe_allow_html=True)
-    st.write(f"🔧 **アプリ設定** (Login: {current_user_raw})")
-    
-    user_list = ["Maki", "Hide"]
-    default_idx = user_list.index(current_user_raw) if current_user_raw in user_list else 1
-    selected_user = st.radio("表示ユーザー切替:", user_list, index=default_idx, horizontal=True)
-    
-    if selected_user != current_user_raw:
-        st.query_params["user"] = selected_user
-        st.rerun()
-    
-    auto_update = st.toggle("自動更新(8s)", value=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    # 枠の中にすべての要素を正しく配置する形に修正しました
+    with st.container(border=True):
+        st.write(f"🔧 **アプリ設定** (Login: {current_user_raw})")
+        
+        user_list = ["Maki", "Hide"]
+        default_idx = user_list.index(current_user_raw) if current_user_raw in user_list else 1
+        selected_user = st.radio("表示ユーザー切替:", user_list, index=default_idx, horizontal=True)
+        
+        if selected_user != current_user_raw:
+            st.query_params["user"] = selected_user
+            st.rerun()
+        
+        auto_update = st.toggle("自動更新(8s)", value=True)
 else:
     auto_update = True
 
@@ -236,7 +235,7 @@ try:
             elif any(word in msg_body for word in ["ケーキ", "スイーツ", "甘いもの"]): priority_emoji = "🍰"
             elif any(word in msg_body for word in ["ラッキー", "幸せ", "しあわせ", "ハッピー"]): priority_emoji = "🍀"
             elif any(word in msg_body for word in ["熊", "困った"]): priority_emoji = "🐻"
-            elif any(word in msg_body for word in ["おやつ", "プリン"]): priority_emoji = "プリン"
+            elif any(word in msg_body for word in ["おやつ", "プリン"]): priority_emoji = "🍮"
             elif any(word in msg_body for word in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
 
             if priority_emoji:
