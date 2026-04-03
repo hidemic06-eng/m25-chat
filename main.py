@@ -13,10 +13,10 @@ st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 table_name = st.secrets.get("TABLE_NAME", "messages")
 
 # --- 3. デザイン設定 ---
-app_bg_color = "#313338"
-text_main_color = "#dbdee1"
-sub_text_color = "#949ba4"
-input_bg_color = "#383a40"  # 入力欄の背景（少しだけ明るいグレー）
+app_bg_color = "#313338"     # 全体の背景色
+text_main_color = "#dbdee1"  # メイン文字色
+sub_text_color = "#949ba4"   # サブ文字（時間など）
+input_box_color = "#383a40"  # 入力欄自体の色
 
 if table_name == "messages_test":
     status_label = " 🧪 TEST"
@@ -29,42 +29,62 @@ st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
 
-    /* アプリ全体の背景を固定 */
-    .stApp {{ 
+    /* 1. アプリ全体の背景を完全固定（昼の白を抹殺） */
+    .stApp, .main, .stAppHeader, [data-testid="stHeader"], [data-testid="stAppViewContainer"] {{ 
         background-color: {app_bg_color} !important; 
         color: {text_main_color} !important; 
         font-family: 'M PLUS Rounded 1c', sans-serif !important; 
     }}
     
+    /* 余計なメニュー等を非表示 */
     #MainMenu, footer, header, .stAppDeployButton, [data-testid="bundle-viewer-container"] {{
         visibility: hidden !important;
         display: none !important;
     }}
     
-    .block-container {{ padding-top: 1rem; padding-bottom: 100px !important; max-width: 100% !important; }}
+    /* コンテナの余白調整 */
+    .block-container {{ padding-top: 1rem; padding-bottom: 120px !important; max-width: 100% !important; }}
     
-    /* チャット入力エリアの背景色を固定（昼でも白くならないように） */
+    /* 2. 入力エリアのデザイン改修（スクショの「かっこ悪さ」を解消） */
+    
+    /* 入力欄を囲む外枠の白い背景と線を消す */
     div[data-testid="stChatInput"] {{
-        background-color: {app_bg_color} !important;
-        padding-bottom: 30px !important;
+        background-color: transparent !important;
+        border: none !important;
+        padding-bottom: 40px !important; /* スマホのバーを避ける余白 */
     }}
 
+    /* 入力ボックス本体（textarea）をダーク仕様に */
     div[data-testid="stChatInput"] textarea {{
         font-family: 'M PLUS Rounded 1c', sans-serif !important;
-        font-size: 1rem !important;
+        background-color: {input_box_color} !important;
         color: {text_main_color} !important;
-        background-color: {input_bg_color} !important;
-        border: 1px solid #404249 !important;
-        border-radius: 10px !important;
+        border: 1px solid #404249 !important; /* さりげない境界線 */
+        border-radius: 12px !important;
+        padding: 12px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important; /* 浮遊感を出して高級感を */
     }}
 
-    /* プレースホルダー（文字を入力...）の色 */
+    /* 入力欄の内部コンテナの背景も透明化 */
+    div[data-testid="stChatInput"] > div {{
+        background-color: transparent !important;
+        border: none !important;
+    }}
+
+    /* 送信ボタン（↑）のデザイン調整 */
+    div[data-testid="stChatInput"] button {{
+        background-color: transparent !important;
+        border: none !important;
+        color: {text_main_color} !important;
+    }}
+
+    /* プレースホルダー */
     div[data-testid="stChatInput"] textarea::placeholder {{
-        font-family: 'M PLUS Rounded 1c', sans-serif !important;
         color: {sub_text_color} !important;
+        font-family: 'M PLUS Rounded 1c', sans-serif !important;
     }}
 
-    /* メッセージ表示部分 */
+    /* 3. メッセージ表示エリア */
     .chat-row {{
         display: flex;
         flex-direction: column;
@@ -80,12 +100,9 @@ st.markdown(f"""
         font-size: 1.15rem; 
         line-height: 1.35; 
         font-weight: 500 !important; 
-        letter-spacing: -0.04rem; 
-        max-width: 85%; 
-        white-space: pre-wrap; 
-        word-wrap: break-word; 
         color: {text_main_color} !important; 
-        padding: 4px 0;
+        max-width: 85%;
+        word-wrap: break-word;
     }}
 
     .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; font-size: 0.85rem; }}
@@ -93,7 +110,7 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
 
-
+    /* --- アニメーション設定（以下、前回と同じため省略可能ですが、そのまま貼ってください） --- */
     /* --- アニメーション設定 --- */
     @keyframes rise {{
         0% {{ transform: translateY(0); opacity: 0; }}
