@@ -164,26 +164,35 @@ current_user_upper = current_user_raw.upper()
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 
 # --- 6. ヘッダー ---
-h_col1, h_col2 = st.columns([4, 1])
-with h_col1:
-    st.markdown(f"### 💬 M25-Chat{status_label}")
-with h_col2:
+st.markdown(f"### 💬 M25-Chat{status_label}")
+
+# --- 7. ナビゲーション & 設定ボタン ---
+col_prev, col_page, col_next, col_set = st.columns([1.5, 2, 1.5, 0.5])
+with col_prev:
+    if st.button("⬅️ 前の20件"):
+        st.session_state["page_offset"] += 20
+        st.rerun()
+with col_page:
+    st.write(f"<div style='text-align:center; font-size:0.8rem; margin-top:8px;'>{st.session_state['page_offset']+1}〜件目</div>", unsafe_allow_html=True)
+with col_next:
+    if st.session_state["page_offset"] >= 20:
+        if st.button("次の20件 ➡️"):
+            st.session_state["page_offset"] -= 20
+            st.rerun()
+with col_set:
     if st.button("⚙️"):
         st.session_state["show_settings"] = not st.session_state["show_settings"]
 
+# 設定パネルの表示
 if st.session_state["show_settings"]:
-    # 枠の中にすべての要素を正しく配置する形に修正しました
     with st.container(border=True):
         st.write(f"🔧 **アプリ設定** (Login: {current_user_raw})")
-        
         user_list = ["Maki", "Hide"]
         default_idx = user_list.index(current_user_raw) if current_user_raw in user_list else 1
         selected_user = st.radio("表示ユーザー切替:", user_list, index=default_idx, horizontal=True)
-        
         if selected_user != current_user_raw:
             st.query_params["user"] = selected_user
             st.rerun()
-        
         auto_update = st.toggle("自動更新(8s)", value=True)
 else:
     auto_update = True
@@ -191,20 +200,6 @@ else:
 if auto_update and st.session_state["page_offset"] == 0:
     st_autorefresh(interval=8000, key="chat_ref")
 st.divider()
-
-# --- 7. ナビゲーション ---
-col_prev, col_page, col_next = st.columns([1, 2, 1])
-with col_prev:
-    if st.button("⬅️ 前の20件"):
-        st.session_state["page_offset"] += 20
-        st.rerun()
-with col_page:
-    st.write(f"<div style='text-align:center; font-size:0.8rem;'>{st.session_state['page_offset']+1}〜件目</div>", unsafe_allow_html=True)
-with col_next:
-    if st.session_state["page_offset"] >= 20:
-        if st.button("次の20件 ➡️"):
-            st.session_state["page_offset"] -= 20
-            st.rerun()
 
 # --- 8. 表示 & 演出 ---
 try:
