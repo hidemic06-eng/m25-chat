@@ -9,9 +9,12 @@ import re
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
-# 【PWA化 & LocalStorage保存ロジック】 # [追加/変更]
-# ブラウザのLocalStorageからユーザー名を取得し、Streamlit側に渡すスクリプト
-components.html("""
+# 【PWA化 & LocalStorage保存ロジック】 # [追加/修正]
+# セッション内で一度だけLocalStorageを確認するフラグ
+if "ls_checked" not in st.session_state:
+    st.session_state["ls_checked"] = False
+
+components.html(f"""
 <script>
     // PWA設定
     const metaApp = document.createElement('meta');
@@ -26,19 +29,16 @@ components.html("""
     // LocalStorage保存ロジック
     const urlParams = new URLSearchParams(window.parent.location.search);
     const userParam = urlParams.get('user');
-    
-    if (userParam) {
-        // URLに?user=があれば、LocalStorageを更新
+    const savedUser = localStorage.getItem('m25_user');
+
+    if (userParam) {{
+        // URLに指定がある場合はLocalStorageを更新して終了
         localStorage.setItem('m25_user', userParam);
-    } else {
-        // URLになければLocalStorageから取得し、なければデフォルトをセット
-        const savedUser = localStorage.getItem('m25_user');
-        if (savedUser) {
-            // Streamlit側に値を戻すためにURLを書き換えてリロード（初回のみ）
-            const newUrl = window.parent.location.pathname + '?user=' + savedUser;
-            window.parent.location.href = newUrl;
-        }
-    }
+    }} else if (savedUser) {{
+        // URLにないが保存記録がある場合、URLを書き換えてリロード（Python側に渡す）
+        const newUrl = window.parent.location.pathname + '?user=' + savedUser;
+        window.parent.location.href = newUrl;
+    }}
 </script>
 """, height=0)
 
@@ -177,7 +177,7 @@ if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "show_settings" not in st.session_state: st.session_state["show_settings"] = False
 
-# [変更] 優先順位に基づいたユーザー判定
+# [修正] ユーザー判定
 current_user_raw = st.query_params.get("user", "Hide")
 current_user_upper = current_user_raw.upper()
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
@@ -199,8 +199,7 @@ if st.session_state["show_settings"]:
         selected_user = st.radio("表示ユーザー切替:", user_list, index=default_idx, horizontal=True)
         
         if selected_user != current_user_raw:
-            # [変更] ユーザー切替時にURL更新とLocalStorage保存を同時に行う
-            st.query_params["user"] = selected_user
+            # URL更新とLocalStorage保存をJS経由で行いリロード
             components.html(f"""
                 <script>
                     localStorage.setItem('m25_user', '{selected_user}');
@@ -283,7 +282,6 @@ try:
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             
-            # 【復活ロジック】画面揺れ、暗転、バウンド、発光
             if any(word in msg_body for word in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
             if any(word in msg_body for word in ["さみしい", "淋しい", "悲しい", "疲れた"]):
