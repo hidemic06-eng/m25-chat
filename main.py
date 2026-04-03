@@ -52,7 +52,6 @@ st.markdown(f"""
     [data-testid="bundle-viewer-container"] {{display: none !important;}}
     .block-container {{ padding-top: 1rem; padding-bottom: 80px !important; max-width: 100% !important; }}
     
-    /* ボタンの色を固定（設定ボタン・前の20件ボタン共通） */
     .stButton > button {{
         background-color: #424549 !important;
         color: white !important;
@@ -60,7 +59,6 @@ st.markdown(f"""
         width: 100% !important;
     }}
 
-    /* 設定エリア内のウィジェットラベルを白く強制固定 */
     [data-testid="stMarkdownContainer"] p, 
     [data-testid="stWidgetLabel"] p,
     [data-testid="stRadio"] label div p {{
@@ -90,7 +88,7 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* 演出用アニメーション */
+    /* --- 演出用アニメーション定義 --- */
     @keyframes rise {{
         0% {{ transform: translateY(0); opacity: 0; }}
         5% {{ opacity: 1; }}
@@ -99,6 +97,7 @@ st.markdown(f"""
     }}
     .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
     .emoji-item {{ position: absolute; animation: rise linear forwards; }}
+
     @keyframes peek-left {{
         0% {{ left: -100px; opacity: 0; }}
         20% {{ left: 20px; opacity: 1; }}
@@ -112,6 +111,7 @@ st.markdown(f"""
         100% {{ right: -100px; opacity: 0; }}
     }}
     .peek-item {{ position: fixed; z-index: 9999; pointer-events: none; font-size: 4rem; }}
+
     @keyframes shake {{
         0% {{ transform: translate(1px, 1px) rotate(0deg); }}
         10% {{ transform: translate(-1px, -2px) rotate(-1deg); }}
@@ -119,6 +119,7 @@ st.markdown(f"""
         100% {{ transform: translate(1px, 1px) rotate(0deg); }}
     }}
     .shake-screen {{ animation: shake 0.5s; animation-iteration-count: 4; }}
+
     @keyframes fade-dark {{
         0% {{ filter: brightness(1); }}
         20% {{ filter: brightness(0.4) sepia(0.6); }}
@@ -126,6 +127,20 @@ st.markdown(f"""
         100% {{ filter: brightness(1); }}
     }}
     .mood-dark {{ animation: fade-dark 3.5s ease-in-out; }}
+
+    @keyframes bounce-screen {{
+        0%, 20%, 50%, 80%, 100% {{ transform: translateY(0); }}
+        40% {{ transform: translateY(-40px) scaleY(1.05); }}
+        60% {{ transform: translateY(-20px) scaleY(1.02); }}
+    }}
+    .bounce-screen {{ animation: bounce-screen 0.8s ease; }}
+
+    @keyframes flash-white {{
+        0% {{ filter: brightness(1); }}
+        10% {{ filter: brightness(2.5) contrast(1.2); }}
+        100% {{ filter: brightness(1); }}
+    }}
+    .flash-screen {{ animation: flash-white 0.6s ease-out; }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -201,7 +216,6 @@ try:
         if msg_id != st.session_state["last_effect_id"]:
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             priority_emoji = None
-            # 【復活・完全網羅版】Hideさんのこだわりをすべて維持
             if any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
             elif any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
             elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
@@ -241,10 +255,16 @@ try:
 
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
+            
+            # 【復活ロジック】画面揺れ、暗転、バウンド、発光
             if any(word in msg_body for word in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
             if any(word in msg_body for word in ["さみしい", "淋しい", "悲しい", "疲れた"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("mood-dark"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("mood-dark"); }, 3500);</script>', height=0)
+            if any(word in msg_body for word in ["マジで", "えー", "正解", "おー"]):
+                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("bounce-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("bounce-screen"); }, 1000);</script>', height=0)
+            if any(word in msg_body for word in ["びっくり", "すごい", "光る", "指輪"]):
+                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
 
             st.session_state["last_effect_id"] = msg_id
 
