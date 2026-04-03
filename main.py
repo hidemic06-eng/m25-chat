@@ -167,12 +167,10 @@ if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] 
 if "show_settings" not in st.session_state: st.session_state["show_settings"] = False
 
 # 【重要】現在のユーザー判定
-# URLパラメータがあればそれを最優先し、session_stateに保存
 url_user = st.query_params.get("user")
 if url_user:
     st.session_state["current_user"] = url_user
 
-# session_stateにもURLにもなければデフォルトをHideに
 if "current_user" not in st.session_state:
     st.session_state["current_user"] = "Hide"
 
@@ -192,7 +190,6 @@ with h_col2:
 if st.session_state["show_settings"]:
     with st.container(border=True):
         st.write(f"🔧 **アプリ設定** (ログイン: {current_user_raw})")
-        
         user_list = ["Maki", "Hide"]
         try:
             default_idx = user_list.index(current_user_raw)
@@ -202,7 +199,6 @@ if st.session_state["show_settings"]:
         selected_user = st.radio("表示ユーザー切替:", user_list, index=default_idx, horizontal=True)
         
         if selected_user != current_user_raw:
-            # 切り替え時：session_stateを更新し、JSでLocalStorageを書き換えてリロード
             st.session_state["current_user"] = selected_user
             components.html(f"""
                 <script>
