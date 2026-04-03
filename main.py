@@ -9,9 +9,11 @@ import re
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
-# 【PWA化設定】
+# 【PWA化 & LocalStorage保存ロジック】 # [追加/変更]
+# ブラウザのLocalStorageからユーザー名を取得し、Streamlit側に渡すスクリプト
 components.html("""
 <script>
+    // PWA設定
     const metaApp = document.createElement('meta');
     metaApp.name = "apple-mobile-web-app-capable";
     metaApp.content = "yes";
@@ -20,6 +22,23 @@ components.html("""
     metaStatus.name = "apple-mobile-web-app-status-bar-style";
     metaStatus.content = "black-translucent";
     window.parent.document.getElementsByTagName('head')[0].appendChild(metaStatus);
+
+    // LocalStorage保存ロジック
+    const urlParams = new URLSearchParams(window.parent.location.search);
+    const userParam = urlParams.get('user');
+    
+    if (userParam) {
+        // URLに?user=があれば、LocalStorageを更新
+        localStorage.setItem('m25_user', userParam);
+    } else {
+        // URLになければLocalStorageから取得し、なければデフォルトをセット
+        const savedUser = localStorage.getItem('m25_user');
+        if (savedUser) {
+            // Streamlit側に値を戻すためにURLを書き換えてリロード（初回のみ）
+            const newUrl = window.parent.location.pathname + '?user=' + savedUser;
+            window.parent.location.href = newUrl;
+        }
+    }
 </script>
 """, height=0)
 
@@ -158,8 +177,8 @@ if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "show_settings" not in st.session_state: st.session_state["show_settings"] = False
 
-query_params = st.query_params
-current_user_raw = query_params.get("user", "Hide")
+# [変更] 優先順位に基づいたユーザー判定
+current_user_raw = st.query_params.get("user", "Hide")
 current_user_upper = current_user_raw.upper()
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 
@@ -172,7 +191,6 @@ with h_col2:
         st.session_state["show_settings"] = not st.session_state["show_settings"]
 
 if st.session_state["show_settings"]:
-    # 枠の中にすべての要素を正しく配置する形に修正しました
     with st.container(border=True):
         st.write(f"🔧 **アプリ設定** (Login: {current_user_raw})")
         
@@ -181,7 +199,14 @@ if st.session_state["show_settings"]:
         selected_user = st.radio("表示ユーザー切替:", user_list, index=default_idx, horizontal=True)
         
         if selected_user != current_user_raw:
+            # [変更] ユーザー切替時にURL更新とLocalStorage保存を同時に行う
             st.query_params["user"] = selected_user
+            components.html(f"""
+                <script>
+                    localStorage.setItem('m25_user', '{selected_user}');
+                    window.parent.location.href = window.parent.location.pathname + '?user={selected_user}';
+                </script>
+            """, height=0)
             st.rerun()
         
         auto_update = st.toggle("自動更新(8s)", value=True)
