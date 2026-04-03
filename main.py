@@ -38,6 +38,13 @@ st.markdown(f"""
     [data-testid="bundle-viewer-container"] {{display: none !important;}}
     .block-container {{ padding-top: 1rem; padding-bottom: 80px !important; max-width: 100% !important; }}
     
+    /* ボタンの色を固定（ライトモード対策） */
+    .stButton > button {{
+        background-color: #424549 !important;
+        color: white !important;
+        border: 1px solid #4f545c !important;
+    }}
+
     .chat-row {{ display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }}
     
     .message-text {{ 
