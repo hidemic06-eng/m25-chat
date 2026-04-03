@@ -9,34 +9,25 @@ import re
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
-# 【最重要：自己修復＆永続化ロジック】
-# 1. URLからユーザー名を取得
+# 【自己修復＆永続化ロジック】
 query_params = st.query_params
 user_from_url = query_params.get("user", None)
 
-# 2. JavaScriptでlocalStorage（ブラウザの深い記憶）を操作
-# - URLに名前があれば保存
-# - URLに名前がなければ記憶から復元してリダイレクト
 components.html(f"""
 <script>
     const urlParams = new URLSearchParams(window.parent.location.search);
     let user = urlParams.get('user');
     
     if (user) {{
-        // URLに名前がある場合：それを「正解」としてブラウザに永続保存
         localStorage.setItem('m25_persistent_user', user);
     }} else {{
-        // URLに名前がない場合：ブラウザの記憶から呼び出す
         user = localStorage.getItem('m25_persistent_user');
     }}
 
-    // PWA（ホーム画面）で起動し、かつURLに変数が付いていない場合の「自己修復」
     if (window.navigator.standalone && user && !window.parent.location.search.includes('user=')) {{
-        // 保存されていた名前を使って、自分自身を ?user=... 付きでリロード
         window.parent.location.href = window.parent.location.pathname + "?user=" + user;
     }}
 
-    // --- PWA用マニフェスト（指示書）の動的生成 ---
     const manifest = {{
         "start_url": window.parent.location.origin + window.parent.location.pathname + (user ? "?user=" + user : ""),
         "display": "standalone",
@@ -49,7 +40,6 @@ components.html(f"""
     linkManifest.href = URL.createObjectURL(blob);
     window.parent.document.head.appendChild(linkManifest);
 
-    // iOS Safari用全画面宣言
     const metaApp = document.createElement('meta');
     metaApp.name = "apple-mobile-web-app-capable";
     metaApp.content = "yes";
@@ -67,7 +57,6 @@ components.html(f"""
 </script>
 """, height=0)
 
-# Python側の変数確定（URL優先、なければHide）
 current_user_raw = user_from_url if user_from_url else "Hide"
 current_user_upper = current_user_raw.upper()
 
@@ -135,7 +124,7 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* --- 演出用アニメーション定義（省略なし） --- */
+    /* --- 演出用アニメーション --- */
     @keyframes rise {{
         0% {{ transform: translateY(0); opacity: 0; }}
         5% {{ opacity: 1; }}
@@ -240,7 +229,7 @@ try:
         if msg_id != st.session_state["last_effect_id"]:
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             
-            # --- 演出演出ロジック（そのまま保持） ---
+            # キーワード演出
             priority_emoji = None
             if any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
             elif any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
@@ -267,7 +256,8 @@ try:
                 for i in range(25):
                     left, size = random.randint(5, 95), random.uniform(2.5, 4.5)
                     delay, duration = random.uniform(0, 0.5), random.uniform(5.5, 6.5)
-                    effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{{priority_emoji}}</div>'
+                    # f-stringエスケープ済み
+                    effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{priority_emoji}</div>'
                 st.markdown(effect_html + '</div>', unsafe_allow_html=True)
             
             elif emoji_in_text:
@@ -279,7 +269,8 @@ try:
                     delay = random.uniform(0, 2.0)
                     duration = random.uniform(3.0, 4.0)
                     anim_name = "peek-left" if side == "left" else "peek-right"
-                    peek_html += f'<div class="peek-item" style="{{side}}:-100px; top:{{top}}%; animation:{{anim_name}} {{duration}}s forwards; animation-delay:{{delay}}s;">{{target_emoji}}</div>'
+                    # f-stringエスケープ済み
+                    peek_html += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
                 st.markdown(peek_html + '</div>', unsafe_allow_html=True)
 
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
@@ -296,7 +287,6 @@ try:
 
             st.session_state["last_effect_id"] = msg_id
 
-    # チャットログ表示
     for m in messages:
         utc_time = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
         jst_time = utc_time + timedelta(hours=9)
