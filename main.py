@@ -9,23 +9,38 @@ import re
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
-# 【追加点：PWA認識用コード】
-# このスクリプトがブラウザの裏側で「これはアプリだよ」と宣言します
+# 【URL変数を死守するPWA認識用コード】
 components.html("""
 <script>
-    // URLバーを隠す設定
+    // 1. 現在のURL（変数込み）を取得してアプリの開始URLに固定する
+    const currentFullUrl = window.parent.location.href;
+    const manifest = {
+        "start_url": currentFullUrl,
+        "display": "standalone",
+        "name": "M25-Chat",
+        "short_name": "M25"
+    };
+    const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+    const manifestURL = URL.createObjectURL(blob);
+    
+    const linkManifest = document.createElement('link');
+    linkManifest.rel = 'manifest';
+    linkManifest.href = manifestURL;
+    window.parent.document.getElementsByTagName('head')[0].appendChild(linkManifest);
+
+    // 2. 全画面モード設定 (iOS Safari用)
     const metaApp = document.createElement('meta');
     metaApp.name = "apple-mobile-web-app-capable";
     metaApp.content = "yes";
     window.parent.document.getElementsByTagName('head')[0].appendChild(metaApp);
 
-    // ステータスバーのデザイン
+    // 3. ステータスバーのデザイン
     const metaStatus = document.createElement('meta');
     metaStatus.name = "apple-mobile-web-app-status-bar-style";
     metaStatus.content = "black-translucent";
     window.parent.document.getElementsByTagName('head')[0].appendChild(metaStatus);
 
-    // ホーム画面用アイコンの設定
+    // 4. ホーム画面用アイコンの設定
     const linkIcon = window.parent.document.createElement('link');
     linkIcon.rel = 'apple-touch-icon';
     linkIcon.href = 'https://cdn-icons-png.flaticon.com/512/5968/5968756.png'; 
