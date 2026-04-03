@@ -9,53 +9,67 @@ import re
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
-# URL変数を取得（HideかMakiかを判定）
+# 【最重要：自己修復＆永続化ロジック】
+# 1. URLからユーザー名を取得
 query_params = st.query_params
-current_user_raw = query_params.get("user", "Hide")
-current_user_upper = current_user_raw.upper()
+user_from_url = query_params.get("user", None)
 
-# 【URL変数を死守するPWA認識用コード】
-# Python側の変数 current_user_raw をJSに埋め込むことで、Safariに起動URLを強制認識させます
+# 2. JavaScriptでlocalStorage（ブラウザの深い記憶）を操作
+# - URLに名前があれば保存
+# - URLに名前がなければ記憶から復元してリダイレクト
 components.html(f"""
 <script>
-    // 1. 現在の完全なURL（変数込み）をベースにマニフェストを生成
-    // window.parent.location.href がiframe制限で取れない場合に備え、直接組み立てます
-    const baseUrl = window.parent.location.origin + window.parent.location.pathname;
-    const startUrl = baseUrl + "?user={current_user_raw}";
+    const urlParams = new URLSearchParams(window.parent.location.search);
+    let user = urlParams.get('user');
+    
+    if (user) {{
+        // URLに名前がある場合：それを「正解」としてブラウザに永続保存
+        localStorage.setItem('m25_persistent_user', user);
+    }} else {{
+        // URLに名前がない場合：ブラウザの記憶から呼び出す
+        user = localStorage.getItem('m25_persistent_user');
+    }}
 
+    // PWA（ホーム画面）で起動し、かつURLに変数が付いていない場合の「自己修復」
+    if (window.navigator.standalone && user && !window.parent.location.search.includes('user=')) {{
+        // 保存されていた名前を使って、自分自身を ?user=... 付きでリロード
+        window.parent.location.href = window.parent.location.pathname + "?user=" + user;
+    }}
+
+    // --- PWA用マニフェスト（指示書）の動的生成 ---
     const manifest = {{
-        "start_url": startUrl,
+        "start_url": window.parent.location.origin + window.parent.location.pathname + (user ? "?user=" + user : ""),
         "display": "standalone",
-        "name": "M25-Chat ({current_user_raw})",
-        "short_name": "M25-{current_user_raw}"
+        "name": "M25-Chat" + (user ? " (" + user + ")" : ""),
+        "short_name": "M25" + (user ? "-" + user : "")
     }};
     const blob = new Blob([JSON.stringify(manifest)], {{type: 'application/json'}});
-    const manifestURL = URL.createObjectURL(blob);
-    
     const linkManifest = document.createElement('link');
     linkManifest.rel = 'manifest';
-    linkManifest.href = manifestURL;
-    window.parent.document.getElementsByTagName('head')[0].appendChild(linkManifest);
+    linkManifest.href = URL.createObjectURL(blob);
+    window.parent.document.head.appendChild(linkManifest);
 
-    // 2. 全画面モード設定 (iOS Safari用)
+    // iOS Safari用全画面宣言
     const metaApp = document.createElement('meta');
     metaApp.name = "apple-mobile-web-app-capable";
     metaApp.content = "yes";
-    window.parent.document.getElementsByTagName('head')[0].appendChild(metaApp);
+    window.parent.document.head.appendChild(metaApp);
 
-    // 3. ステータスバーのデザイン
     const metaStatus = document.createElement('meta');
     metaStatus.name = "apple-mobile-web-app-status-bar-style";
     metaStatus.content = "black-translucent";
-    window.parent.document.getElementsByTagName('head')[0].appendChild(metaStatus);
+    window.parent.document.head.appendChild(metaStatus);
 
-    // 4. ホーム画面用アイコンの設定
     const linkIcon = window.parent.document.createElement('link');
     linkIcon.rel = 'apple-touch-icon';
     linkIcon.href = 'https://cdn-icons-png.flaticon.com/512/5968/5968756.png'; 
-    window.parent.document.getElementsByTagName('head')[0].appendChild(linkIcon);
+    window.parent.document.head.appendChild(linkIcon);
 </script>
 """, height=0)
+
+# Python側の変数確定（URL優先、なければHide）
+current_user_raw = user_from_url if user_from_url else "Hide"
+current_user_upper = current_user_raw.upper()
 
 # --- 2. データベース(Supabase)接続設定 ---
 table_name = st.secrets.get("TABLE_NAME", "messages")
@@ -121,7 +135,7 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* --- 演出用アニメーション定義 --- */
+    /* --- 演出用アニメーション定義（省略なし） --- */
     @keyframes rise {{
         0% {{ transform: translateY(0); opacity: 0; }}
         5% {{ opacity: 1; }}
@@ -226,7 +240,7 @@ try:
         if msg_id != st.session_state["last_effect_id"]:
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             
-            # 演出ロジック（省略せずに元のコードを保持）
+            # --- 演出演出ロジック（そのまま保持） ---
             priority_emoji = None
             if any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
             elif any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
@@ -253,7 +267,7 @@ try:
                 for i in range(25):
                     left, size = random.randint(5, 95), random.uniform(2.5, 4.5)
                     delay, duration = random.uniform(0, 0.5), random.uniform(5.5, 6.5)
-                    effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{priority_emoji}</div>'
+                    effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{{priority_emoji}}</div>'
                 st.markdown(effect_html + '</div>', unsafe_allow_html=True)
             
             elif emoji_in_text:
@@ -265,7 +279,7 @@ try:
                     delay = random.uniform(0, 2.0)
                     duration = random.uniform(3.0, 4.0)
                     anim_name = "peek-left" if side == "left" else "peek-right"
-                    peek_html += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
+                    peek_html += f'<div class="peek-item" style="{{side}}:-100px; top:{{top}}%; animation:{{anim_name}} {{duration}}s forwards; animation-delay:{{delay}}s;">{{target_emoji}}</div>'
                 st.markdown(peek_html + '</div>', unsafe_allow_html=True)
 
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
