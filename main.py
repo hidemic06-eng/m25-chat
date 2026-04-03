@@ -9,13 +9,23 @@ import re
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
-# 【PWA化 & LocalStorage保存ロジック】 # [追加/修正]
-# セッション内で一度だけLocalStorageを確認するフラグ
-if "ls_checked" not in st.session_state:
-    st.session_state["ls_checked"] = False
-
-components.html(f"""
+# 【PWA化 & LocalStorage保存ロジック】 # [修正]
+# JSでLocalStorageを確認し、必要ならURLに付与してリダイレクトする
+components.html("""
 <script>
+    const urlParams = new URLSearchParams(window.parent.location.search);
+    const userParam = urlParams.get('user');
+    const savedUser = localStorage.getItem('m25_user');
+
+    if (userParam) {
+        // URLにuserがあれば、LocalStorageを最新の状態に更新
+        localStorage.setItem('m25_user', userParam);
+    } else if (savedUser) {
+        // URLになくLocalStorageにあれば、URLにくっつけて親画面をリロード
+        const newUrl = window.parent.location.origin + window.parent.location.pathname + '?user=' + savedUser;
+        window.parent.location.replace(newUrl);
+    }
+    
     // PWA設定
     const metaApp = document.createElement('meta');
     metaApp.name = "apple-mobile-web-app-capable";
@@ -25,20 +35,6 @@ components.html(f"""
     metaStatus.name = "apple-mobile-web-app-status-bar-style";
     metaStatus.content = "black-translucent";
     window.parent.document.getElementsByTagName('head')[0].appendChild(metaStatus);
-
-    // LocalStorage保存ロジック
-    const urlParams = new URLSearchParams(window.parent.location.search);
-    const userParam = urlParams.get('user');
-    const savedUser = localStorage.getItem('m25_user');
-
-    if (userParam) {{
-        // URLに指定がある場合はLocalStorageを更新して終了
-        localStorage.setItem('m25_user', userParam);
-    }} else if (savedUser) {{
-        // URLにないが保存記録がある場合、URLを書き換えてリロード（Python側に渡す）
-        const newUrl = window.parent.location.pathname + '?user=' + savedUser;
-        window.parent.location.href = newUrl;
-    }}
 </script>
 """, height=0)
 
@@ -177,7 +173,7 @@ if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "show_settings" not in st.session_state: st.session_state["show_settings"] = False
 
-# [修正] ユーザー判定
+# [修正] 優先順位: URLパラメータ > デフォルト(Hide)
 current_user_raw = st.query_params.get("user", "Hide")
 current_user_upper = current_user_raw.upper()
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
@@ -191,6 +187,7 @@ with h_col2:
         st.session_state["show_settings"] = not st.session_state["show_settings"]
 
 if st.session_state["show_settings"]:
+    # 枠の中にすべての要素を正しく配置する形に修正しました
     with st.container(border=True):
         st.write(f"🔧 **アプリ設定** (Login: {current_user_raw})")
         
@@ -199,11 +196,11 @@ if st.session_state["show_settings"]:
         selected_user = st.radio("表示ユーザー切替:", user_list, index=default_idx, horizontal=True)
         
         if selected_user != current_user_raw:
-            # URL更新とLocalStorage保存をJS経由で行いリロード
+            # [修正] ユーザー切替時、LocalStorageを更新してリロード
             components.html(f"""
                 <script>
                     localStorage.setItem('m25_user', '{selected_user}');
-                    window.parent.location.href = window.parent.location.pathname + '?user={selected_user}';
+                    window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + '?user={selected_user}';
                 </script>
             """, height=0)
             st.rerun()
@@ -282,6 +279,7 @@ try:
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             
+            # 【演出ロジック】画面揺れ、暗転、バウンド、発光
             if any(word in msg_body for word in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
             if any(word in msg_body for word in ["さみしい", "淋しい", "悲しい", "疲れた"]):
