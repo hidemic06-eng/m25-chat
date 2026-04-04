@@ -12,7 +12,6 @@ st.set_page_config(page_title="M25 Chat", page_icon="💬", layout="wide")
 ICON_URL = "https://abs.twimg.com/emoji/v2/72x72/1f4ac.png"
 
 # 【PWA・デバイスID取得】
-# ブラウザのlocalStorageからIDを取得し、Streamlitへ送信するJS
 components.html(f"""
 <script>
     let deviceId = localStorage.getItem('m25_device_id');
@@ -20,7 +19,6 @@ components.html(f"""
         deviceId = 'dev_' + Math.random().toString(36).substring(2, 15);
         localStorage.setItem('m25_device_id', deviceId);
     }}
-    // Streamlit側に値を送信
     window.parent.postMessage({{
         type: 'streamlit:set_ComponentValue',
         value: deviceId
@@ -41,14 +39,14 @@ components.html(f"""
 
 # デバイスID受け取り用の初期化
 if "my_device_id" not in st.session_state:
-    st.session_state["my_device_id"] = "unknown_device"
+    st.session_state["my_device_id"] = "initializing..."
 
 # --- 2. データベース接続設定 ---
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 table_name = st.secrets.get("TABLE_NAME", "messages")
 settings_table = "device_settings"
 
-# --- 3. デザイン設定 (CSS) - 全演出分を省略なしで記述 ---
+# --- 3. デザイン設定 (CSS) - 全演出分を省略なし ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
@@ -61,7 +59,6 @@ st.markdown("""
     .stChatInput { margin-bottom: 0px !important; padding-bottom: 20px !important; }
     .stButton > button { background-color: #424549 !important; color: white !important; border: 1px solid #4f545c !important; width: 100% !important; }
     
-    /* チャットレイアウト */
     .chat-row { display: flex; flex-direction: column; margin-bottom: 10px; width: 100%; }
     .message-text { 
         font-family: 'M PLUS Rounded 1c', sans-serif !important;
@@ -76,7 +73,6 @@ st.markdown("""
     .name-hide { color: #58a6ff !important; font-weight: 700; }
     .timestamp { color: #949ba4; font-size: 0.75rem; }
     
-    /* 演出アニメーション一式 */
     @keyframes rise { 0% { transform: translateY(0); opacity: 0; } 5% { opacity: 1; } 85% { opacity: 1; } 100% { transform: translateY(-125vh) rotate(360deg); opacity: 0; } }
     .rising-emoji { position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }
     .emoji-item { position: absolute; animation: rise linear forwards; }
@@ -117,30 +113,37 @@ with h_col1:
     status_label = " 🧪 TEST" if table_name == "messages_test" else ""
     st.markdown(f"### 💬 M25-Chat{status_label}")
 with h_col2:
-    if st.button("⚙️"):
+    if st.button("⚙️", key="settings_btn"):
         st.session_state["show_settings"] = not st.session_state["show_settings"]
+        st.rerun()
 
 if st.session_state["show_settings"]:
     with st.container(border=True):
         st.write(f"🔧 **アプリ設定**")
+        st.caption(f"Device ID: {st.session_state['my_device_id']}")
+        
         user_list = ["Maki", "Hide"]
-        default_idx = user_list.index(st.session_state["current_user"]) if st.session_state["current_user"] in user_list else 1
+        current = st.session_state["current_user"]
+        default_idx = user_list.index(current) if current in user_list else 1
         selected_user = st.radio("表示ユーザー切替:", user_list, index=default_idx, horizontal=True)
         
-        if selected_user != st.session_state["current_user"]:
-            try:
-                # 【本番仕様】端末固有のID（my_device_id）を使用して保存
-                supabase.table(settings_table).upsert({
-                    "device_id": st.session_state["my_device_id"], 
-                    "user_name": selected_user,
-                    "updated_at": datetime.now().isoformat()
-                }).execute()
-                
-                st.session_state["current_user"] = selected_user
-                st.query_params["user"] = selected_user
-                st.rerun()
-            except Exception as e:
-                st.error(f"設定の保存に失敗しました: {e}")
+        if selected_user != current:
+            # IDが確定（dev_から始まる）してから保存を実行するガード
+            if "dev_" not in st.session_state["my_device_id"]:
+                st.warning("端末情報を読み取り中です。もう一度切り替えてください。")
+            else:
+                try:
+                    supabase.table(settings_table).upsert({
+                        "device_id": st.session_state["my_device_id"], 
+                        "user_name": selected_user,
+                        "updated_at": datetime.now().isoformat()
+                    }).execute()
+                    
+                    st.session_state["current_user"] = selected_user
+                    st.query_params["user"] = selected_user
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"保存失敗: {e}")
             
         auto_update = st.toggle("自動更新(8s)", value=True)
 else:
@@ -155,7 +158,6 @@ try:
     current_user_raw = st.session_state["current_user"]
     current_user_upper = current_user_raw.upper()
     
-    # ページング
     b_col1, b_col2 = st.columns(2)
     with b_col1:
         if st.button("⬅️ 前の20件"):
@@ -167,13 +169,11 @@ try:
                 st.session_state["page_offset"] = 0
                 st.rerun()
 
-    # データ取得
     res = supabase.table(table_name).select("*").order("created_at", desc=True).range(
         st.session_state["page_offset"], st.session_state["page_offset"] + 19
     ).execute()
     messages = res.data[::-1]
     
-    # 演出ロジック（省略なし）
     if messages and st.session_state["page_offset"] == 0:
         latest = messages[-1]
         msg_id, msg_body = latest.get("id"), latest["message_body"]
@@ -228,7 +228,6 @@ try:
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(()=>{window.parent.document.querySelector(".stApp").classList.remove("flash-screen");}, 600);</script>', height=0)
             st.session_state["last_effect_id"] = msg_id
 
-    # メッセージ表示
     for m in messages:
         utc = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
         ts, s_name = (utc + timedelta(hours=9)).strftime('%H:%M'), m['sender_name']
