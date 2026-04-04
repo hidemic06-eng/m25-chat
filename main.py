@@ -5,32 +5,34 @@ import streamlit.components.v1 as components
 from datetime import datetime, timedelta
 import random
 import re
+from streamlit_javascript import st_javascript  # 追加
 
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25 Chat", page_icon="💬", layout="wide")
 
 ICON_URL = "https://abs.twimg.com/emoji/v2/72x72/1f4ac.png"
 
-# 【デバイスID取得用のJS】※演出に干渉しないよう配置
-def get_device_id():
-    # components.htmlではなく、値を返せる仕組みを利用
-    js_code = """
-    (function() {
-        let deviceId = localStorage.getItem('m25_device_id');
-        if (!deviceId) {
-            deviceId = 'dev_' + Math.random().toString(36).substring(2, 15);
-            localStorage.setItem('m25_device_id', deviceId);
-        }
-        return deviceId;
-    })()
-    """
-    # Streamlitの仕組みでJSから値を直接取得
-    from streamlit_javascript import st_javascript
-    return st_javascript(js_code)
+# 【デバイスID取得：新方式】
+# 演出を壊さないよう、ここだけロジックを確実なものに差し替えます
+js_id_code = """
+(function() {
+    let deviceId = localStorage.getItem('m25_device_id');
+    if (!deviceId) {
+        deviceId = 'dev_' + Math.random().toString(36).substring(2, 15);
+        localStorage.setItem('m25_device_id', deviceId);
+    }
+    return deviceId;
+})()
+"""
+retrieved_id = st_javascript(js_id_code)
 
-# デバイスIDの取得とPWA設定
-device_id = get_device_id()
+# IDが確定するまではセッションの状態を維持、確定したら上書き
+if retrieved_id and retrieved_id != 0:
+    st.session_state["my_device_id"] = retrieved_id
+elif "my_device_id" not in st.session_state:
+    st.session_state["my_device_id"] = "unknown_device"
 
+# PWA用メタタグ設定のみ components.html で継続
 components.html(f"""
 <script>
     const head = window.parent.document.getElementsByTagName('head')[0];
@@ -51,21 +53,17 @@ supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publish
 table_name = st.secrets.get("TABLE_NAME", "messages")
 settings_table = "device_settings"
 
-# デバイスIDが確定したらセッションに保存
-if device_id and device_id != 0: # st_javascriptは最初0を返すことがあるため
-    st.session_state["my_device_id"] = device_id
-    
-    # 初回時のみDBからユーザー設定を読み込む
-    if "user_fetched" not in st.session_state:
-        try:
-            res = supabase.table(settings_table).select("user_name").eq("device_id", device_id).execute()
-            if res.data:
-                st.session_state["current_user"] = res.data[0]["user_name"]
-            st.session_state["user_fetched"] = True
-        except:
-            pass
+# デバイスIDが判明している場合、ユーザー設定を自動ロード（初回のみ）
+if st.session_state["my_device_id"] != "unknown_device" and "user_fetched" not in st.session_state:
+    try:
+        res = supabase.table(settings_table).select("user_name").eq("device_id", st.session_state["my_device_id"]).execute()
+        if res.data:
+            st.session_state["current_user"] = res.data[0]["user_name"]
+        st.session_state["user_fetched"] = True
+    except:
+        pass
 
-# --- 3. デザイン設定 (CSS) - 頂いたコードを完全維持 ---
+# --- 3. デザイン設定 (CSS) - 頂いた内容を完全維持 ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
@@ -122,6 +120,7 @@ if "password_correct" not in st.session_state:
 if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "show_settings" not in st.session_state: st.session_state["show_settings"] = False
+
 if "current_user" not in st.session_state:
     st.session_state["current_user"] = st.query_params.get("user", "Hide")
 
@@ -137,6 +136,8 @@ with h_col2:
 if st.session_state["show_settings"]:
     with st.container(border=True):
         st.write(f"🔧 **アプリ設定**")
+        # デバッグ用にIDを表示（Hideさんが確認しやすいよう追加）
+        st.write(f"Device ID: `{st.session_state['my_device_id']}`")
         user_list = ["Maki", "Hide"]
         default_idx = user_list.index(st.session_state["current_user"]) if st.session_state["current_user"] in user_list else 1
         selected_user = st.radio("表示ユーザー切替:", user_list, index=default_idx, horizontal=True)
@@ -144,7 +145,7 @@ if st.session_state["show_settings"]:
         if selected_user != st.session_state["current_user"]:
             try:
                 supabase.table(settings_table).upsert({
-                    "device_id": st.session_state.get("my_device_id", "unknown_device"), 
+                    "device_id": st.session_state["my_device_id"], 
                     "user_name": selected_user,
                     "updated_at": datetime.now().isoformat()
                 }).execute()
@@ -161,7 +162,7 @@ if auto_update and st.session_state["page_offset"] == 0:
     st_autorefresh(interval=8000, key="chat_ref")
 st.divider()
 
-# --- 7. メッセージ表示 & 演出 (頂いたロジックを完全維持) ---
+# --- 7. メッセージ表示 & 演出 ---
 try:
     current_user_raw = st.session_state["current_user"]
     current_user_upper = current_user_raw.upper()
@@ -172,9 +173,10 @@ try:
             st.session_state["page_offset"] += 20
             st.rerun()
     with b_col2:
-        if st.session_state["page_offset"] > 0 and st.button("最新に戻る ➡️"):
-            st.session_state["page_offset"] = 0
-            st.rerun()
+        if st.session_state["page_offset"] > 0:
+            if st.button("最新に戻る ➡️"):
+                st.session_state["page_offset"] = 0
+                st.rerun()
 
     res = supabase.table(table_name).select("*").order("created_at", desc=True).range(
         st.session_state["page_offset"], st.session_state["page_offset"] + 19
@@ -187,20 +189,26 @@ try:
         if msg_id != st.session_state["last_effect_id"]:
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             priority_emoji = None
+            # 演出キーワード判定（バックアップ頂いた内容を完全維持）
             if any(w in msg_body for w in ["大好き", "愛してる"]): priority_emoji = "💘"
             elif any(w in msg_body for w in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
-            elif any(w in msg_body for w in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ビール", "酒"]): priority_emoji = "🍺"
+            elif any(w in msg_body for w in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
             elif "おにぎり" in msg_body: priority_emoji = "🍙"
             elif any(w in msg_body for w in ["バドミントン", "練習", "試合"]): priority_emoji = "🏸"
             elif any(w in msg_body for w in ["ラーメン", "山岡家"]): priority_emoji = "🍜"
-            elif any(w in msg_body for w in ["野菜", "サラダ"]): priority_emoji = "🥬"
+            elif any(w in msg_body for w in ["野菜", "サラダ", "レタス"]): priority_emoji = "🥬"
             elif any(w in msg_body for w in ["おやすみ", "眠い", "寝る"]): priority_emoji = "💤"
-            elif any(w in msg_body for w in ["綺麗", "きれい", "すごい"]): priority_emoji = "✨"
-            elif any(w in msg_body for w in ["コーヒー", "カフェ"]): priority_emoji = "☕️"
-            elif any(w in msg_body for w in ["楽しみ", "うれしい"]): priority_emoji = "🎶"
-            elif any(w in msg_body for w in ["ケーキ", "スイーツ"]): priority_emoji = "🍰"
-            elif any(w in msg_body for w in ["幸せ", "ハッピー"]): priority_emoji = "🍀"
-            elif any(w in msg_body for w in ["プリン"]): priority_emoji = "🍮"
+            elif any(w in msg_body for w in ["綺麗", "きれい", "すごい", "最高"]): priority_emoji = "✨"
+            elif any(w in msg_body for w in ["コーヒー", "カフェ", "休憩"]): priority_emoji = "☕️"
+            elif any(w in msg_body for w in ["ドライブ"]): priority_emoji = "🚗"
+            elif any(w in msg_body for w in ["ワイン", "ハイボール", "乾杯"]): priority_emoji = "🥂"
+            elif any(w in msg_body for w in ["花見", "さくら", "桜"]): priority_emoji = "🌸"
+            elif any(w in msg_body for w in ["楽しみ", "ルンルン", "うれしい"]): priority_emoji = "🎶"
+            elif any(w in msg_body for w in ["ケーキ", "スイーツ", "甘いもの"]): priority_emoji = "🍰"
+            elif any(w in msg_body for w in ["ラッキー", "幸せ", "しあわせ", "ハッピー"]): priority_emoji = "🍀"
+            elif any(w in msg_body for w in ["熊", "困った"]): priority_emoji = "🐻"
+            elif any(w in msg_body for w in ["おやつ", "プリン"]): priority_emoji = "プリン" if "プリン" in msg_body else "🍮"
+            elif any(w in msg_body for w in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
 
             if priority_emoji:
                 html = f'<div class="rising-emoji">'
@@ -218,13 +226,16 @@ try:
                     peek += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim} {duration}s forwards; animation-delay:{delay}s;">{target}</div>'
                 st.markdown(peek + '</div>', unsafe_allow_html=True)
             
-            if any(w in msg_body for w in ["おめでとう", "祝", "記念日"]): st.balloons()
-            if any(w in msg_body for w in ["雪", "寒い", "冬"]): st.snow()
-            if any(w in msg_body for w in ["こら", "起きて", "びっくり"]):
+            if any(w in msg_body for w in ["おめでとう", "祝", "記念日", "やったー"]): st.balloons()
+            if any(w in msg_body for w in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
+            if any(w in msg_body for w in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(()=>{window.parent.document.querySelector(".stApp").classList.remove("shake-screen");}, 2000);</script>', height=0)
-            if any(w in msg_body for w in ["さみしい", "悲しい", "疲れた"]):
+            if any(w in msg_body for w in ["さみしい", "淋しい", "悲しい", "疲れた"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("mood-dark"); setTimeout(()=>{window.parent.document.querySelector(".stApp").classList.remove("mood-dark");}, 3500);</script>', height=0)
-            
+            if any(w in msg_body for w in ["マジで", "えー", "正解", "おー"]):
+                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("bounce-screen"); setTimeout(()=>{window.parent.document.querySelector(".stApp").classList.remove("bounce-screen");}, 1000);</script>', height=0)
+            if any(w in msg_body for w in ["びっくり", "光る", "指輪"]):
+                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(()=>{window.parent.document.querySelector(".stApp").classList.remove("flash-screen");}, 600);</script>', height=0)
             st.session_state["last_effect_id"] = msg_id
 
     for m in messages:
