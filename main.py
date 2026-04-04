@@ -28,7 +28,7 @@ components.html("""
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 table_name = st.secrets.get("TABLE_NAME", "messages")
 
-# --- 3. デザイン設定 (CSS) - 余白を元通りに修正 ---
+# --- 3. デザイン設定 (CSS) - 隙間を徹底排除 ---
 app_bg_color = "#313338"
 text_main_color = "#dbdee1"
 sub_text_color = "#949ba4"
@@ -40,16 +40,19 @@ st.markdown(f"""
     #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
     .stAppDeployButton {{display:none;}}
     
-    /* ★ここを修正：余白を適正化（120pxから100pxへ、上部も詰めました） */
-    .block-container {{ padding-top: 0.5rem !important; padding-bottom: 100px !important; max-width: 100% !important; }}
+    /* 下部の隙間を極限までカット */
+    .block-container {{ padding-top: 0.5rem !important; padding-bottom: 50px !important; max-width: 100% !important; }}
+    
+    /* 入力エリアの浮きを解消 */
+    .stChatInput {{ margin-bottom: 0px !important; padding-bottom: 20px !important; }}
     
     .stButton > button {{ background-color: #424549 !important; color: white !important; border: 1px solid #4f545c !important; width: 100% !important; }}
     
-    .chat-row {{ display: flex; flex-direction: column; margin-bottom: 12px; width: 100%; }}
+    .chat-row {{ display: flex; flex-direction: column; margin-bottom: 10px; width: 100%; }}
     .message-text {{ 
         font-family: 'M PLUS Rounded 1c', sans-serif !important;
         font-feature-settings: "palt" 1; font-size: 1.15rem; line-height: 1.3; font-weight: 500 !important; 
-        letter-spacing: -0.04rem; max-width: 80%; white-space: pre-wrap; word-wrap: break-word; 
+        letter-spacing: -0.04rem; max-width: 85%; white-space: pre-wrap; word-wrap: break-word; 
         color: {text_main_color} !important; 
     }}
     .align-right {{ align-items: flex-end; text-align: right; }}
@@ -59,7 +62,7 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* 演出用アニメーション全集 (維持) */
+    /* 演出アニメーション */
     @keyframes rise {{ 0% {{ transform: translateY(0); opacity: 0; }} 5% {{ opacity: 1; }} 85% {{ opacity: 1; }} 100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }} }}
     .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
     .emoji-item {{ position: absolute; animation: rise linear forwards; }}
@@ -77,7 +80,7 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. 認証機能 ---
+# --- 4. 認証 ---
 if "password_correct" not in st.session_state:
     st.write("🔒 Enter Password")
     pw = st.text_input("Password", type="password", key="login")
@@ -91,14 +94,11 @@ if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "show_settings" not in st.session_state: st.session_state["show_settings"] = False
 
-# ユーザー確定
 url_user = st.query_params.get("user")
-if url_user:
-    st.session_state["current_user"] = url_user
-elif "current_user" not in st.session_state:
-    st.session_state["current_user"] = "Hide"
+if url_user: st.session_state["current_user"] = url_user
+elif "current_user" not in st.session_state: st.session_state["current_user"] = "Hide"
 
-# --- 6. ヘッダー & 設定 ---
+# --- 6. ヘッダー ---
 h_col1, h_col2 = st.columns([4, 1])
 with h_col1:
     status_label = " 🧪 TEST" if table_name == "messages_test" else ""
@@ -113,7 +113,6 @@ if st.session_state["show_settings"]:
         user_list = ["Maki", "Hide"]
         default_idx = user_list.index(st.session_state["current_user"]) if st.session_state["current_user"] in user_list else 1
         selected_user = st.radio("表示ユーザー切替:", user_list, index=default_idx, horizontal=True)
-        
         if selected_user != st.session_state["current_user"]:
             st.session_state["current_user"] = selected_user
             st.query_params["user"] = selected_user
@@ -126,12 +125,11 @@ if auto_update and st.session_state["page_offset"] == 0:
     st_autorefresh(interval=8000, key="chat_ref")
 st.divider()
 
-# --- 7. メッセージ表示 & 演出ロジック ---
+# --- 7. メッセージ表示 & 演出 ---
 try:
     current_user_raw = st.session_state["current_user"]
     current_user_upper = current_user_raw.upper()
 
-    # 「前の20件」ボタン
     b_col1, b_col2 = st.columns(2)
     with b_col1:
         if st.button("⬅️ 前の20件"):
@@ -151,12 +149,10 @@ try:
     if messages and st.session_state["page_offset"] == 0:
         latest = messages[-1]
         msg_id, msg_body = latest.get("id"), latest["message_body"]
-        
         if msg_id != st.session_state["last_effect_id"]:
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             priority_emoji = None
-            
-            # 【演出キーワード判定】
+            # 全キーワード判定を網羅
             if any(w in msg_body for w in ["大好き", "愛してる"]): priority_emoji = "💘"
             elif any(w in msg_body for w in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
             elif any(w in msg_body for w in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
@@ -192,10 +188,8 @@ try:
                     anim = "peek-left" if side == "left" else "peek-right"
                     peek += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim} {duration}s forwards; animation-delay:{delay}s;">{target}</div>'
                 st.markdown(peek + '</div>', unsafe_allow_html=True)
-
             if any(w in msg_body for w in ["おめでとう", "祝", "記念日", "やったー"]): st.balloons()
             if any(w in msg_body for w in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
-            
             if any(w in msg_body for w in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(()=>{window.parent.document.querySelector(".stApp").classList.remove("shake-screen");}, 2000);</script>', height=0)
             if any(w in msg_body for w in ["さみしい", "淋しい", "悲しい", "疲れた"]):
@@ -223,7 +217,6 @@ prompt = st.chat_input("メッセージを入力...")
 if prompt:
     supabase.table(table_name).insert({"sender_name": st.session_state["current_user"], "message_body": prompt}).execute()
     st.session_state["page_offset"] = 0
-    st.query_params["user"] = st.session_state["current_user"]
     st.rerun()
 
 if st.session_state["page_offset"] == 0:
