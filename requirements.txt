@@ -2,3 +2,4 @@ streamlit
 supabase
 streamlit-autorefresh
 streamlit-javascript
+extra-streamlit-components
