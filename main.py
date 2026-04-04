@@ -5,82 +5,42 @@ import streamlit.components.v1 as components
 from datetime import datetime, timedelta
 import random
 import re
+# クッキー管理用のライブラリを追加
+from extra_streamlit_components import CookieManager
 
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25 Chat", page_icon="💬", layout="wide")
 
+# CookieManagerの初期化
+@st.cache_resource
+def get_cookie_manager():
+    return CookieManager()
+
+cookie_manager = get_cookie_manager()
 ICON_URL = "https://abs.twimg.com/emoji/v2/72x72/1f4ac.png"
-
-# 【デバイスID取得：ダイレクト・インジェクション方式】
-# セッションにIDがなければ「取得中」にする
-if "my_device_id" not in st.session_state:
-    st.session_state["my_device_id"] = "unknown_device"
-
-# JSでlocalStorageを読み書きし、値をURLパラメータ経由でPythonに渡す
-# これにより、ライブラリのバグに左右されず確実にIDを固定できます
-device_js = """
-<script>
-    let gid = localStorage.getItem('m25_device_id');
-    if (!gid) {
-        gid = 'dev_' + Math.random().toString(36).substring(2, 15);
-        localStorage.setItem('m25_device_id', gid);
-    }
-    // URLの末尾にこっそりIDを付けてリロードさせる（一度だけ実行される）
-    const url = new URL(window.location.href);
-    if (url.searchParams.get('did') !== gid) {
-        url.searchParams.set('did', gid);
-        window.parent.location.href = url.href;
-    }
-</script>
-"""
-# IDが確定していない時だけJSを発火させる
-if st.session_state["my_device_id"] == "unknown_device":
-    if "did" in st.query_params:
-        st.session_state["my_device_id"] = st.query_params["did"]
-        # URLを綺麗にするためにパラメータを消してリロード
-        st.query_params.clear()
-        st.rerun()
-    else:
-        components.html(device_js, height=0)
 
 # --- 2. データベース接続設定 ---
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 table_name = st.secrets.get("TABLE_NAME", "messages")
 settings_table = "device_settings"
 
-# IDが確定したらDBからユーザー名をロード（Hideさんの設計通り）
-if st.session_state["my_device_id"] != "unknown_device" and "user_fetched" not in st.session_state:
-    try:
-        res = supabase.table(settings_table).select("user_name").eq("device_id", st.session_state["my_device_id"]).execute()
-        if res.data:
-            st.session_state["current_user"] = res.data[0]["user_name"]
-        st.session_state["user_fetched"] = True
-    except: pass
+# --- 3. ユーザー識別ロジック (PWA対応版) ---
+if "current_user" not in st.session_state:
+    # 1. Cookieから保存された名前を取得（URL変数が消えていてもOK）
+    saved_user = cookie_manager.get("m25_user")
+    if saved_user:
+        st.session_state["current_user"] = saved_user
+    else:
+        st.session_state["current_user"] = None
 
-# PWA設定 (維持)
-components.html(f"""
-<script>
-    const head = window.parent.document.getElementsByTagName('head')[0];
-    const metaName = document.createElement('meta');
-    metaName.name = "apple-mobile-web-app-title";
-    metaName.content = "M25 Chat"; head.appendChild(metaName);
-    const linkIcon = document.createElement('link');
-    linkIcon.rel = "apple-touch-icon";
-    linkIcon.href = "{ICON_URL}"; head.appendChild(linkIcon);
-    const metaApp = document.createElement('meta');
-    metaApp.name = "apple-mobile-web-app-capable";
-    metaApp.content = "yes"; head.appendChild(metaApp);
-</script>
-""", height=0)
-
-# --- 3. デザイン設定 (CSS) - 完全維持 ---
+# --- 4. デザイン設定 (CSS) - 完全維持 ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
     .stApp { background-color: #313338; color: #dbdee1; font-family: 'M PLUS Rounded 1c', sans-serif !important; }
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
     .stAppDeployButton {display:none;}
-    .block-container { padding-top: 0rem !important; padding-bottom: 50px !important; max-width: 100% !important; }
+    .block-container { padding-top: 0.5rem !important; padding-bottom: 50px !important; max-width: 100% !important; }
     [data-testid="stVerticalBlock"] { gap: 0.5rem !important; }
     hr { margin-top: 0.5rem !important; margin-bottom: 0.5rem !important; }
     .stChatInput { margin-bottom: 0px !important; padding-bottom: 20px !important; }
@@ -100,6 +60,7 @@ st.markdown("""
     .name-hide { color: #58a6ff !important; font-weight: 700; }
     .timestamp { color: #949ba4; font-size: 0.75rem; }
     
+    /* 演出アニメーション群 (完全維持) */
     @keyframes rise { 0% { transform: translateY(0); opacity: 0; } 5% { opacity: 1; } 85% { opacity: 1; } 100% { transform: translateY(-125vh) rotate(360deg); opacity: 0; } }
     .rising-emoji { position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }
     .emoji-item { position: absolute; animation: rise linear forwards; }
@@ -117,22 +78,41 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. 認証 ---
+# PWA設定用JS
+components.html(f"""
+<script>
+    const head = window.parent.document.getElementsByTagName('head')[0];
+    const metaName = document.createElement('meta');
+    metaName.name = "apple-mobile-web-app-title";
+    metaName.content = "M25 Chat"; head.appendChild(metaName);
+    const linkIcon = document.createElement('link');
+    linkIcon.rel = "apple-touch-icon"; linkIcon.href = "{ICON_URL}"; head.appendChild(linkIcon);
+    const metaApp = document.createElement('meta');
+    metaApp.name = "apple-mobile-web-app-capable"; metaApp.content = "yes"; head.appendChild(metaApp);
+</script>
+""", height=0)
+
+# --- 5. 認証 & ユーザー登録 ---
 if "password_correct" not in st.session_state:
-    st.write("🔒 Enter Password")
+    st.write("🔒 **Welcome to M25 Chat**")
+    user_select = st.radio("あなたはどっち？", ["Maki", "Hide"], horizontal=True)
     pw = st.text_input("Password", type="password", key="login")
-    if pw == "05250206":
-        st.session_state["password_correct"] = True
-        st.rerun()
+    
+    if st.button("Login"):
+        if pw == "05250206":
+            # Cookieに名前を保存（1年間有効）。これでPWAのURL消失を突破
+            cookie_manager.set("m25_user", user_select, expires_at=datetime.now() + timedelta(days=365))
+            st.session_state["current_user"] = user_select
+            st.session_state["password_correct"] = True
+            st.rerun()
+        else:
+            st.error("パスワードが違います")
     st.stop()
 
-# --- 5. セッション初期化 ---
+# セッション初期化
 if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "show_settings" not in st.session_state: st.session_state["show_settings"] = False
-
-if "current_user" not in st.session_state:
-    st.session_state["current_user"] = "Hide"
 
 # --- 6. ヘッダー & 設定画面 ---
 h_col1, h_col2 = st.columns([4, 1])
@@ -145,23 +125,11 @@ with h_col2:
 
 if st.session_state["show_settings"]:
     with st.container(border=True):
-        st.write(f"🔧 **アプリ設定**")
-        st.write(f"Device ID: `{st.session_state['my_device_id']}`")
-        user_list = ["Maki", "Hide"]
-        default_idx = user_list.index(st.session_state["current_user"]) if st.session_state["current_user"] in user_list else 1
-        selected_user = st.radio("表示ユーザー切替:", user_list, index=default_idx, horizontal=True)
-        
-        if selected_user != st.session_state["current_user"]:
-            try:
-                supabase.table(settings_table).upsert({
-                    "device_id": st.session_state["my_device_id"], 
-                    "user_name": selected_user,
-                    "updated_at": datetime.now().isoformat()
-                }).execute()
-                st.session_state["current_user"] = selected_user
-                st.rerun()
-            except Exception as e:
-                st.error(f"設定の保存に失敗しました: {e}")
+        st.write(f"🔧 **設定** (User: {st.session_state['current_user']})")
+        if st.button("ログアウト (ユーザー切替)"):
+            cookie_manager.delete("m25_user")
+            st.session_state["current_user"] = None
+            st.rerun()
         auto_update = st.toggle("自動更新(8s)", value=True)
 else:
     auto_update = True
@@ -170,7 +138,7 @@ if auto_update and st.session_state["page_offset"] == 0:
     st_autorefresh(interval=8000, key="chat_ref")
 st.divider()
 
-# --- 7. メッセージ表示 & 演出 (頂いた内容を完全維持) ---
+# --- 7. メッセージ表示 & 演出 (演出ロジック完全維持) ---
 try:
     current_user_raw = st.session_state["current_user"]
     current_user_upper = current_user_raw.upper()
@@ -191,12 +159,14 @@ try:
     ).execute()
     messages = res.data[::-1]
     
+    # 演出判定 (完全維持)
     if messages and st.session_state["page_offset"] == 0:
         latest = messages[-1]
         msg_id, msg_body = latest.get("id"), latest["message_body"]
         if msg_id != st.session_state["last_effect_id"]:
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             priority_emoji = None
+            # (キーワード判定ロジック群... 中略せずにそのまま実装)
             if any(w in msg_body for w in ["大好き", "愛してる"]): priority_emoji = "💘"
             elif any(w in msg_body for w in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
             elif any(w in msg_body for w in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
@@ -245,6 +215,7 @@ try:
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(()=>{window.parent.document.querySelector(".stApp").classList.remove("flash-screen");}, 600);</script>', height=0)
             st.session_state["last_effect_id"] = msg_id
 
+    # チャット吹き出し表示 (完全維持)
     for m in messages:
         utc = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
         ts, s_name = (utc + timedelta(hours=9)).strftime('%H:%M'), m['sender_name']
