@@ -11,18 +11,29 @@ st.set_page_config(page_title="M25 Chat", page_icon="💬", layout="wide")
 
 ICON_URL = "https://abs.twimg.com/emoji/v2/72x72/1f4ac.png"
 
-# 【PWA・デバイスID取得】
-components.html(f"""
+# 【PWA・デバイスID取得（確実な双方向通信版）】
+# components.htmlの戻り値を利用してIDを受け取ります
+my_id = components.html(f"""
 <script>
-    let deviceId = localStorage.getItem('m25_device_id');
+    const STORAGE_KEY = 'm25_device_id';
+    let deviceId = localStorage.getItem(STORAGE_KEY);
     if (!deviceId) {{
         deviceId = 'dev_' + Math.random().toString(36).substring(2, 15);
-        localStorage.setItem('m25_device_id', deviceId);
+        localStorage.setItem(STORAGE_KEY, deviceId);
     }}
-    window.parent.postMessage({{
-        type: 'streamlit:set_ComponentValue',
-        value: deviceId
-    }}, '*');
+
+    // Streamlit側に値を送る関数
+    function sendToStreamlit() {{
+        window.parent.postMessage({{
+            type: 'streamlit:set_ComponentValue',
+            value: deviceId
+        }}, '*');
+    }}
+
+    // 読み込み時と、タイミングをずらして数回送ることで確実にキャッチさせる
+    sendToStreamlit();
+    setTimeout(sendToStreamlit, 500);
+    setTimeout(sendToStreamlit, 1500);
 
     const head = window.parent.document.getElementsByTagName('head')[0];
     const metaName = document.createElement('meta');
@@ -36,6 +47,10 @@ components.html(f"""
     metaApp.content = "yes"; head.appendChild(metaApp);
 </script>
 """, height=0)
+
+# JSからIDが届いたらsession_stateを更新
+if my_id is not None and my_id != "":
+    st.session_state["my_device_id"] = my_id
 
 # デバイスID受け取り用の初期化
 if "my_device_id" not in st.session_state:
