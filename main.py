@@ -11,9 +11,14 @@ st.set_page_config(page_title="M25 Chat", page_icon="💬", layout="wide")
 
 ICON_URL = "https://abs.twimg.com/emoji/v2/72x72/1f4ac.png"
 
-# 【PWA・デバイスID取得（確実な双方向通信版）】
-# components.htmlの戻り値を利用してIDを受け取ります
-my_id = components.html(f"""
+# 【PWA・デバイスID取得（修正版）】
+# 初期値を設定
+if "my_device_id" not in st.session_state:
+    st.session_state["my_device_id"] = "initializing..."
+
+# JavaScriptでIDを取得し、Streamlitの変数へ戻す
+# ※ 変数への代入ではなく、実行のみ行います
+components.html(f"""
 <script>
     const STORAGE_KEY = 'm25_device_id';
     let deviceId = localStorage.getItem(STORAGE_KEY);
@@ -22,7 +27,7 @@ my_id = components.html(f"""
         localStorage.setItem(STORAGE_KEY, deviceId);
     }}
 
-    // Streamlit側に値を送る関数
+    // Streamlit側に値を送る標準的な関数
     function sendToStreamlit() {{
         window.parent.postMessage({{
             type: 'streamlit:set_ComponentValue',
@@ -30,11 +35,11 @@ my_id = components.html(f"""
         }}, '*');
     }}
 
-    // 読み込み時と、タイミングをずらして数回送ることで確実にキャッチさせる
+    // 確実に送るため複数回実行
     sendToStreamlit();
-    setTimeout(sendToStreamlit, 500);
-    setTimeout(sendToStreamlit, 1500);
+    setTimeout(sendToStreamlit, 1000);
 
+    // PWA用ヘッダー追加
     const head = window.parent.document.getElementsByTagName('head')[0];
     const metaName = document.createElement('meta');
     metaName.name = "apple-mobile-web-app-title";
@@ -48,13 +53,12 @@ my_id = components.html(f"""
 </script>
 """, height=0)
 
-# JSからIDが届いたらsession_stateを更新
-if my_id is not None and my_id != "":
-    st.session_state["my_device_id"] = my_id
-
-# デバイスID受け取り用の初期化
-if "my_device_id" not in st.session_state:
-    st.session_state["my_device_id"] = "initializing..."
+# JSからのメッセージを受け取って反映する仕組み
+# 空のコンポーネントを配置し、その戻り値をIDとして利用します
+receiver = components.declare_component("device_id_receiver", html="""<script></script>""")
+actual_id = receiver() 
+if actual_id:
+    st.session_state["my_device_id"] = str(actual_id)
 
 # --- 2. データベース接続設定 ---
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
@@ -135,7 +139,9 @@ with h_col2:
 if st.session_state["show_settings"]:
     with st.container(border=True):
         st.write(f"🔧 **アプリ設定**")
-        st.caption(f"Device ID: {st.session_state['my_device_id']}")
+        # 型エラーを避けるため文字列として表示
+        display_id = str(st.session_state['my_device_id'])
+        st.caption(f"Device ID: {display_id}")
         
         user_list = ["Maki", "Hide"]
         current = st.session_state["current_user"]
@@ -144,12 +150,12 @@ if st.session_state["show_settings"]:
         
         if selected_user != current:
             # IDが確定（dev_から始まる）してから保存を実行するガード
-            if "dev_" not in st.session_state["my_device_id"]:
+            if "dev_" not in display_id:
                 st.warning("端末情報を読み取り中です。もう一度切り替えてください。")
             else:
                 try:
                     supabase.table(settings_table).upsert({
-                        "device_id": st.session_state["my_device_id"], 
+                        "device_id": display_id, 
                         "user_name": selected_user,
                         "updated_at": datetime.now().isoformat()
                     }).execute()
@@ -216,12 +222,12 @@ try:
             elif any(w in msg_body for w in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
 
             if priority_emoji:
-                html = f'<div class="rising-emoji">'
+                html_emoji = f'<div class="rising-emoji">'
                 for i in range(25):
                     l, s = random.randint(5,95), random.uniform(2.5, 4.5)
                     d, dur = random.uniform(0, 0.5), random.uniform(5.5, 6.5)
-                    html += f'<div class="emoji-item" style="left:{l}%; font-size:{s}rem; animation-delay:{d}s; animation-duration:{dur}s;">{priority_emoji}</div>'
-                st.markdown(html + '</div>', unsafe_allow_html=True)
+                    html_emoji += f'<div class="emoji-item" style="left:{l}%; font-size:{s}rem; animation-delay:{d}s; animation-duration:{dur}s;">{priority_emoji}</div>'
+                st.markdown(html_emoji + '</div>', unsafe_allow_html=True)
             elif emoji_in_text:
                 target, peek = emoji_in_text[-1], '<div>'
                 for i in range(5):
