@@ -28,7 +28,7 @@ components.html("""
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 table_name = st.secrets.get("TABLE_NAME", "messages")
 
-# --- 3. デザイン設定 (CSS) - Hideさんのこだわり配色を完全復元 ---
+# --- 3. デザイン設定 (CSS) ---
 app_bg_color = "#313338"
 text_main_color = "#dbdee1"
 sub_text_color = "#949ba4"
@@ -52,13 +52,11 @@ st.markdown(f"""
     .align-right {{ align-items: flex-end; text-align: right; }}
     .align-left {{ align-items: flex-start; text-align: left; }}
     .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }}
-    
-    /* ユーザー別カラー設定 */
     .name-maki {{ color: #ffa657 !important; font-weight: 700; }}
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* 演出用アニメーション全集 (rise, peek, shake, mood-dark, bounce, flash) */
+    /* 演出用アニメーション全集 */
     @keyframes rise {{ 0% {{ transform: translateY(0); opacity: 0; }} 5% {{ opacity: 1; }} 85% {{ opacity: 1; }} 100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }} }}
     .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
     .emoji-item {{ position: absolute; animation: rise linear forwards; }}
@@ -90,7 +88,7 @@ if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "show_settings" not in st.session_state: st.session_state["show_settings"] = False
 
-# ユーザー確定ロジック
+# ユーザー確定
 url_user = st.query_params.get("user")
 if url_user:
     st.session_state["current_user"] = url_user
@@ -130,11 +128,25 @@ try:
     current_user_raw = st.session_state["current_user"]
     current_user_upper = current_user_raw.upper()
 
+    # ★【改善】「前の20件」ボタンをメッセージより「上」に配置
+    b_col1, b_col2 = st.columns(2)
+    with b_col1:
+        if st.button("⬅️ 前の20件"):
+            st.session_state["page_offset"] += 20
+            st.rerun()
+    with b_col2:
+        if st.session_state["page_offset"] > 0:
+            if st.button("最新に戻る ➡️"):
+                st.session_state["page_offset"] = 0
+                st.rerun()
+
+    # データ取得
     res = supabase.table(table_name).select("*").order("created_at", desc=True).range(
         st.session_state["page_offset"], st.session_state["page_offset"] + 19
     ).execute()
     messages = res.data[::-1]
     
+    # 演出ロジック (ページオフセット0の時のみ)
     if messages and st.session_state["page_offset"] == 0:
         latest = messages[-1]
         msg_id, msg_body = latest.get("id"), latest["message_body"]
@@ -183,7 +195,6 @@ try:
             if any(w in msg_body for w in ["おめでとう", "祝", "記念日", "やったー"]): st.balloons()
             if any(w in msg_body for w in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             
-            # 【JavaScript演出】
             if any(w in msg_body for w in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(()=>{window.parent.document.querySelector(".stApp").classList.remove("shake-screen");}, 2000);</script>', height=0)
             if any(w in msg_body for w in ["さみしい", "淋しい", "悲しい", "疲れた"]):
@@ -194,6 +205,7 @@ try:
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(()=>{window.parent.document.querySelector(".stApp").classList.remove("flash-screen");}, 600);</script>', height=0)
             st.session_state["last_effect_id"] = msg_id
 
+    # メッセージ一覧の表示
     for m in messages:
         utc = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
         ts, s_name = (utc + timedelta(hours=9)).strftime('%H:%M'), m['sender_name']
@@ -203,18 +215,6 @@ try:
         n_cls = "name-maki" if "MAKI" in s_up else "name-hide" if "HIDE" in s_up else ""
         st.markdown(f'<div class="chat-row {align}"><div class="chat-header" style="{h_style}"><span class="{n_cls}">{s_name}</span><span class="timestamp">{ts}</span></div><div class="message-text">{m["message_body"]}</div></div>', unsafe_allow_html=True)
 
-    # ページングボタン
-    b_col1, b_col2 = st.columns(2)
-    with b_col1:
-        if st.button("⬅️ 前の20件"):
-            st.session_state["page_offset"] += 20
-            st.rerun()
-    with b_col2:
-        if st.session_state["page_offset"] > 0:
-            if st.button("最新に戻る ➡️"):
-                st.session_state["page_offset"] = 0
-                st.rerun()
-
 except Exception as e:
     st.error(f"Error: {e}")
 
@@ -223,10 +223,10 @@ input_placeholder = "テストメッセージを入力..." if table_name == "mes
 prompt = st.chat_input(input_placeholder)
 if prompt:
     supabase.table(table_name).insert({"sender_name": st.session_state["current_user"], "message_body": prompt}).execute()
-    # 送信後は最新に戻る＆URL維持
     st.session_state["page_offset"] = 0
     st.query_params["user"] = st.session_state["current_user"]
     st.rerun()
 
+# ページオフセットが0の時だけ自動スクロール
 if st.session_state["page_offset"] == 0:
     components.html('<script>window.parent.document.querySelector(".main").scrollTo(0, 99999);</script>', height=0)
