@@ -5,36 +5,59 @@ import streamlit.components.v1 as components
 from datetime import datetime, timedelta
 import random
 import re
-from streamlit_javascript import st_javascript
 
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25 Chat", page_icon="💬", layout="wide")
 
 ICON_URL = "https://abs.twimg.com/emoji/v2/72x72/1f4ac.png"
 
-# 【デバイスID取得：同期安定版】
-# 演出を壊さないよう、ここだけロジックを確実なものに差し替えます
-js_id_code = """
-(function() {
-    let deviceId = localStorage.getItem('m25_device_id');
-    if (!deviceId) {
-        deviceId = 'dev_' + Math.random().toString(36).substring(2, 15);
-        localStorage.setItem('m25_device_id', deviceId);
-    }
-    return deviceId;
-})()
-"""
-retrieved_id = st_javascript(js_id_code)
-
-# IDが文字列として届くまで待機し、確定したらリランして反映させる
-if isinstance(retrieved_id, str) and retrieved_id.strip() != "" and retrieved_id != "0":
-    if st.session_state.get("my_device_id") != retrieved_id:
-        st.session_state["my_device_id"] = retrieved_id
-        st.rerun()
-elif "my_device_id" not in st.session_state:
+# 【デバイスID取得：ダイレクト・インジェクション方式】
+# セッションにIDがなければ「取得中」にする
+if "my_device_id" not in st.session_state:
     st.session_state["my_device_id"] = "unknown_device"
 
-# PWA用メタタグ設定のみ components.html で継続
+# JSでlocalStorageを読み書きし、値をURLパラメータ経由でPythonに渡す
+# これにより、ライブラリのバグに左右されず確実にIDを固定できます
+device_js = """
+<script>
+    let gid = localStorage.getItem('m25_device_id');
+    if (!gid) {
+        gid = 'dev_' + Math.random().toString(36).substring(2, 15);
+        localStorage.setItem('m25_device_id', gid);
+    }
+    // URLの末尾にこっそりIDを付けてリロードさせる（一度だけ実行される）
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('did') !== gid) {
+        url.searchParams.set('did', gid);
+        window.parent.location.href = url.href;
+    }
+</script>
+"""
+# IDが確定していない時だけJSを発火させる
+if st.session_state["my_device_id"] == "unknown_device":
+    if "did" in st.query_params:
+        st.session_state["my_device_id"] = st.query_params["did"]
+        # URLを綺麗にするためにパラメータを消してリロード
+        st.query_params.clear()
+        st.rerun()
+    else:
+        components.html(device_js, height=0)
+
+# --- 2. データベース接続設定 ---
+supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
+table_name = st.secrets.get("TABLE_NAME", "messages")
+settings_table = "device_settings"
+
+# IDが確定したらDBからユーザー名をロード（Hideさんの設計通り）
+if st.session_state["my_device_id"] != "unknown_device" and "user_fetched" not in st.session_state:
+    try:
+        res = supabase.table(settings_table).select("user_name").eq("device_id", st.session_state["my_device_id"]).execute()
+        if res.data:
+            st.session_state["current_user"] = res.data[0]["user_name"]
+        st.session_state["user_fetched"] = True
+    except: pass
+
+# PWA設定 (維持)
 components.html(f"""
 <script>
     const head = window.parent.document.getElementsByTagName('head')[0];
@@ -50,22 +73,7 @@ components.html(f"""
 </script>
 """, height=0)
 
-# --- 2. データベース接続設定 ---
-supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
-table_name = st.secrets.get("TABLE_NAME", "messages")
-settings_table = "device_settings"
-
-# デバイスIDが判明している場合、ユーザー設定を自動ロード（初回のみ）
-if st.session_state["my_device_id"] != "unknown_device" and "user_fetched" not in st.session_state:
-    try:
-        res = supabase.table(settings_table).select("user_name").eq("device_id", st.session_state["my_device_id"]).execute()
-        if res.data:
-            st.session_state["current_user"] = res.data[0]["user_name"]
-        st.session_state["user_fetched"] = True
-    except:
-        pass
-
-# --- 3. デザイン設定 (CSS) - 頂いた内容を完全維持 ---
+# --- 3. デザイン設定 (CSS) - 完全維持 ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
@@ -124,7 +132,7 @@ if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] 
 if "show_settings" not in st.session_state: st.session_state["show_settings"] = False
 
 if "current_user" not in st.session_state:
-    st.session_state["current_user"] = st.query_params.get("user", "Hide")
+    st.session_state["current_user"] = "Hide"
 
 # --- 6. ヘッダー & 設定画面 ---
 h_col1, h_col2 = st.columns([4, 1])
@@ -151,7 +159,6 @@ if st.session_state["show_settings"]:
                     "updated_at": datetime.now().isoformat()
                 }).execute()
                 st.session_state["current_user"] = selected_user
-                st.query_params["user"] = selected_user
                 st.rerun()
             except Exception as e:
                 st.error(f"設定の保存に失敗しました: {e}")
@@ -163,7 +170,7 @@ if auto_update and st.session_state["page_offset"] == 0:
     st_autorefresh(interval=8000, key="chat_ref")
 st.divider()
 
-# --- 7. メッセージ表示 & 演出 ---
+# --- 7. メッセージ表示 & 演出 (頂いた内容を完全維持) ---
 try:
     current_user_raw = st.session_state["current_user"]
     current_user_upper = current_user_raw.upper()
