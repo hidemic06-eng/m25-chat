@@ -7,47 +7,35 @@ import random
 import re
 
 # --- 1. アプリの基本設定 ---
-# ここでブラウザのタブ名とアイコン（絵文字）を設定
 st.set_page_config(page_title="M25 Chat", page_icon="💬", layout="wide")
 
-# ★ここにお好きな画像URLを入れてください（例：DropboxやGitHub上の画像など）
-# 未指定の場合は、とりあえず「💬」の絵文字がアイコンっぽく表示される設定にします
-ICON_URL = "https://abs.twimg.com/emoji/v2/72x72/1f4ac.png" # 吹き出し絵文字の例
+# ★アイコン画像のURL（お好きなものに変更可能です）
+ICON_URL = "https://abs.twimg.com/emoji/v2/72x72/1f4ac.png"
 
-# 【PWA・アイコン・名前の強制上書き】
+# 【PWA・アイコン・端末ID設定】 
+# ※エラー防止のため Pythonの変数展開を使わずに記述
 components.html(f"""
 <script>
-    // 1. デバイスID発行
     let deviceId = localStorage.getItem('m25_device_id');
     if (!deviceId) {{
         deviceId = 'dev_' + Math.random().toString(36).substring(2, 15);
         localStorage.setItem('m25_device_id', deviceId);
     }}
-
-    // 2. ホーム画面用のアイコンと名前を設定
     const head = window.parent.document.getElementsByTagName('head')[0];
-    
-    // アプリ名（ホーム画面に並ぶ名前）
     const metaName = document.createElement('meta');
     metaName.name = "apple-mobile-web-app-title";
     metaName.content = "M25 Chat"; 
     head.appendChild(metaName);
-
-    // アイコン画像
     const linkIcon = document.createElement('link');
     linkIcon.rel = "apple-touch-icon";
     linkIcon.href = "{ICON_URL}";
     head.appendChild(linkIcon);
-
-    // フルスクリーン設定
     const metaApp = document.createElement('meta');
     metaApp.name = "apple-mobile-web-app-capable";
     metaApp.content = "yes";
     head.appendChild(metaApp);
 </script>
 """, height=0)
-
-# --- (以下、これまでのロジックを継続：余白修正版) ---
 
 # --- 2. データベース接続設定 ---
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
@@ -69,7 +57,6 @@ st.markdown(f"""
     hr {{ margin-top: 0.5rem !important; margin-bottom: 0.5rem !important; }}
     .stChatInput {{ margin-bottom: 0px !important; padding-bottom: 20px !important; }}
     .stButton > button {{ background-color: #424549 !important; color: white !important; border: 1px solid #4f545c !important; width: 100% !important; }}
-    
     .chat-row {{ display: flex; flex-direction: column; margin-bottom: 10px; width: 100%; }}
     .message-text {{ 
         font-family: 'M PLUS Rounded 1c', sans-serif !important;
@@ -102,7 +89,6 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# (以下、以前の認証・メッセージ表示・送信ロジックをそのまま貼り付けてください)
 # --- 4. 認証 ---
 if "password_correct" not in st.session_state:
     st.write("🔒 Enter Password")
@@ -199,7 +185,7 @@ try:
                 for i in range(25):
                     l, s = random.randint(5,95), random.uniform(2.5, 4.5)
                     d, dur = random.uniform(0, 0.5), random.uniform(5.5, 6.5)
-                    html += f'<div class="emoji-item" style="left:{l}%; font-size:{s}rem; animation-delay:{d}s; animation-duration:{dur}s;">{{priority_emoji}}</div>'
+                    html += f'<div class="emoji-item" style="left:{l}%; font-size:{s}rem; animation-delay:{d}s; animation-duration:{dur}s;">{priority_emoji}</div>'
                 st.markdown(html + '</div>', unsafe_allow_html=True)
             elif emoji_in_text:
                 target, peek = emoji_in_text[-1], '<div>'
@@ -207,7 +193,7 @@ try:
                     side, top = random.choice(["left", "right"]), random.randint(20, 80)
                     delay, duration = random.uniform(0, 2.0), random.uniform(3.0, 4.0)
                     anim = "peek-left" if side == "left" else "peek-right"
-                    peek += f'<div class="peek-item" style="{{side}}:-100px; top:{{top}}%; animation:{{anim}} {{duration}}s forwards; animation-delay:{{delay}}s;">{{target}}</div>'
+                    peek += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim} {duration}s forwards; animation-delay:{delay}s;">{target}</div>'
                 st.markdown(peek + '</div>', unsafe_allow_html=True)
             if any(w in msg_body for w in ["おめでとう", "祝", "記念日", "やったー"]): st.balloons()
             if any(w in msg_body for w in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
@@ -228,7 +214,7 @@ try:
         align = "align-right" if s_up == current_user_upper else "align-left"
         h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
         n_cls = "name-maki" if "MAKI" in s_up else "name-hide" if "HIDE" in s_up else ""
-        st.markdown(f'<div class="chat-row {{align}}"><div class="chat-header" style="{{h_style}}"><span class="{{n_cls}}">{{s_name}}</span><span class="timestamp">{{ts}}</span></div><div class="message-text">{{m["message_body"]}}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="chat-row {align}"><div class="chat-header" style="{h_style}"><span class="{n_cls}">{s_name}</span><span class="timestamp">{ts}</span></div><div class="message-text">{m["message_body"]}</div></div>', unsafe_allow_html=True)
 
 except Exception as e:
     st.error(f"Error: {e}")
