@@ -5,18 +5,14 @@ import streamlit.components.v1 as components
 from datetime import datetime, timedelta
 import random
 import re
-# クッキー管理用のライブラリを追加
+# クッキー管理用のライブラリ
 from extra_streamlit_components import CookieManager
 
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25 Chat", page_icon="💬", layout="wide")
 
-# CookieManagerの初期化
-@st.cache_resource
-def get_cookie_manager():
-    return CookieManager()
-
-cookie_manager = get_cookie_manager()
+# 【修正】CachedWidgetWarningを防ぐためキャッシュせず初期化
+cookie_manager = CookieManager()
 ICON_URL = "https://abs.twimg.com/emoji/v2/72x72/1f4ac.png"
 
 # --- 2. データベース接続設定 ---
@@ -26,7 +22,7 @@ settings_table = "device_settings"
 
 # --- 3. ユーザー識別ロジック (PWA対応版) ---
 if "current_user" not in st.session_state:
-    # 1. Cookieから保存された名前を取得（URL変数が消えていてもOK）
+    # Cookieから保存された名前を取得（PWAでURL変数が消えても維持されます）
     saved_user = cookie_manager.get("m25_user")
     if saved_user:
         st.session_state["current_user"] = saved_user
@@ -78,7 +74,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# PWA設定用JS
+# PWA設定用JS (完全維持)
 components.html(f"""
 <script>
     const head = window.parent.document.getElementsByTagName('head')[0];
@@ -94,20 +90,24 @@ components.html(f"""
 
 # --- 5. 認証 & ユーザー登録 ---
 if "password_correct" not in st.session_state:
-    st.write("🔒 **Welcome to M25 Chat**")
-    user_select = st.radio("あなたはどっち？", ["Maki", "Hide"], horizontal=True)
-    pw = st.text_input("Password", type="password", key="login")
-    
-    if st.button("Login"):
-        if pw == "05250206":
-            # Cookieに名前を保存（1年間有効）。これでPWAのURL消失を突破
-            cookie_manager.set("m25_user", user_select, expires_at=datetime.now() + timedelta(days=365))
-            st.session_state["current_user"] = user_select
-            st.session_state["password_correct"] = True
-            st.rerun()
-        else:
-            st.error("パスワードが違います")
-    st.stop()
+    if st.session_state["current_user"] is None:
+        st.write("🔒 **Welcome to M25 Chat**")
+        user_select = st.radio("あなたはどっち？", ["Maki", "Hide"], horizontal=True)
+        pw = st.text_input("Password", type="password", key="login")
+        
+        if st.button("Login"):
+            if pw == "05250206":
+                # Cookieに名前を保存（1年間有効）。これでPWAのURL消失を突破
+                cookie_manager.set("m25_user", user_select, expires_at=datetime.now() + timedelta(days=365))
+                st.session_state["current_user"] = user_select
+                st.session_state["password_correct"] = True
+                st.rerun()
+            else:
+                st.error("パスワードが違います")
+        st.stop()
+    else:
+        # Cookieがある場合はパスワードのみ、または自動ログイン
+        st.session_state["password_correct"] = True
 
 # セッション初期化
 if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
@@ -129,6 +129,7 @@ if st.session_state["show_settings"]:
         if st.button("ログアウト (ユーザー切替)"):
             cookie_manager.delete("m25_user")
             st.session_state["current_user"] = None
+            st.session_state.pop("password_correct", None) # 認証もリセット
             st.rerun()
         auto_update = st.toggle("自動更新(8s)", value=True)
 else:
@@ -141,7 +142,7 @@ st.divider()
 # --- 7. メッセージ表示 & 演出 (演出ロジック完全維持) ---
 try:
     current_user_raw = st.session_state["current_user"]
-    current_user_upper = current_user_raw.upper()
+    current_user_upper = current_user_raw.upper() if current_user_raw else ""
     
     b_col1, b_col2 = st.columns(2)
     with b_col1:
@@ -166,7 +167,6 @@ try:
         if msg_id != st.session_state["last_effect_id"]:
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             priority_emoji = None
-            # (キーワード判定ロジック群... 中略せずにそのまま実装)
             if any(w in msg_body for w in ["大好き", "愛してる"]): priority_emoji = "💘"
             elif any(w in msg_body for w in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
             elif any(w in msg_body for w in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
