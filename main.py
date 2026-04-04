@@ -112,36 +112,36 @@ if "current_user" not in st.session_state:
     st.session_state["current_user"] = st.query_params.get("user", "Hide")
 
 # --- 6. ヘッダー & 設定画面 ---
+h_col1, h_col2 = st.columns([4, 1])
+with h_col1:
+    status_label = " 🧪 TEST" if table_name == "messages_test" else ""
+    st.markdown(f"### 💬 M25-Chat{status_label}")
+with h_col2:
+    if st.button("⚙️"):
+        st.session_state["show_settings"] = not st.session_state["show_settings"]
+
 if st.session_state["show_settings"]:
     with st.container(border=True):
         st.write(f"🔧 **アプリ設定**")
-        
-        # 現在のIDが取得できているか確認（デバッグ用：後で消してOK）
-        st.caption(f"現在の接続ID: {st.session_state['my_device_id']}")
-        
         user_list = ["Maki", "Hide"]
         default_idx = user_list.index(st.session_state["current_user"]) if st.session_state["current_user"] in user_list else 1
         selected_user = st.radio("表示ユーザー切替:", user_list, index=default_idx, horizontal=True)
         
         if selected_user != st.session_state["current_user"]:
-            # 【本番仕様：ガード追加】
-            # IDが "unknown_device" のまま保存されないようにする
-            if st.session_state["my_device_id"] == "unknown_device":
-                st.warning("端末情報を確認中です。もう一度ボタンを押してください。")
-            else:
-                try:
-                    supabase.table(settings_table).upsert({
-                        "device_id": st.session_state["my_device_id"], 
-                        "user_name": selected_user,
-                        "updated_at": datetime.now().isoformat()
-                    }).execute()
-                    
-                    st.session_state["current_user"] = selected_user
-                    st.query_params["user"] = selected_user
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"設定の保存に失敗しました: {e}")
-                                
+            try:
+                # 【本番仕様】端末固有のID（my_device_id）を使用して保存
+                supabase.table(settings_table).upsert({
+                    "device_id": st.session_state["my_device_id"], 
+                    "user_name": selected_user,
+                    "updated_at": datetime.now().isoformat()
+                }).execute()
+                
+                st.session_state["current_user"] = selected_user
+                st.query_params["user"] = selected_user
+                st.rerun()
+            except Exception as e:
+                st.error(f"設定の保存に失敗しました: {e}")
+            
         auto_update = st.toggle("自動更新(8s)", value=True)
 else:
     auto_update = True
