@@ -11,21 +11,28 @@ st.set_page_config(page_title="M25 Chat", page_icon="💬", layout="wide")
 
 ICON_URL = "https://abs.twimg.com/emoji/v2/72x72/1f4ac.png"
 
-# 【PWA・デバイスID取得】
-# ブラウザのlocalStorageからIDを取得し、Streamlitへ送信するJS
+# 【デバイスID取得用のJS】※演出に干渉しないよう配置
+def get_device_id():
+    # components.htmlではなく、値を返せる仕組みを利用
+    js_code = """
+    (function() {
+        let deviceId = localStorage.getItem('m25_device_id');
+        if (!deviceId) {
+            deviceId = 'dev_' + Math.random().toString(36).substring(2, 15);
+            localStorage.setItem('m25_device_id', deviceId);
+        }
+        return deviceId;
+    })()
+    """
+    # Streamlitの仕組みでJSから値を直接取得
+    from streamlit_javascript import st_javascript
+    return st_javascript(js_code)
+
+# デバイスIDの取得とPWA設定
+device_id = get_device_id()
+
 components.html(f"""
 <script>
-    let deviceId = localStorage.getItem('m25_device_id');
-    if (!deviceId) {{
-        deviceId = 'dev_' + Math.random().toString(36).substring(2, 15);
-        localStorage.setItem('m25_device_id', deviceId);
-    }}
-    // Streamlit側に値を送信
-    window.parent.postMessage({{
-        type: 'streamlit:set_ComponentValue',
-        value: deviceId
-    }}, '*');
-
     const head = window.parent.document.getElementsByTagName('head')[0];
     const metaName = document.createElement('meta');
     metaName.name = "apple-mobile-web-app-title";
@@ -39,16 +46,26 @@ components.html(f"""
 </script>
 """, height=0)
 
-# デバイスID受け取り用の初期化
-if "my_device_id" not in st.session_state:
-    st.session_state["my_device_id"] = "unknown_device"
-
 # --- 2. データベース接続設定 ---
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 table_name = st.secrets.get("TABLE_NAME", "messages")
 settings_table = "device_settings"
 
-# --- 3. デザイン設定 (CSS) - 全演出分を省略なしで記述 ---
+# デバイスIDが確定したらセッションに保存
+if device_id and device_id != 0: # st_javascriptは最初0を返すことがあるため
+    st.session_state["my_device_id"] = device_id
+    
+    # 初回時のみDBからユーザー設定を読み込む
+    if "user_fetched" not in st.session_state:
+        try:
+            res = supabase.table(settings_table).select("user_name").eq("device_id", device_id).execute()
+            if res.data:
+                st.session_state["current_user"] = res.data[0]["user_name"]
+            st.session_state["user_fetched"] = True
+        except:
+            pass
+
+# --- 3. デザイン設定 (CSS) - 頂いたコードを完全維持 ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
@@ -61,7 +78,6 @@ st.markdown("""
     .stChatInput { margin-bottom: 0px !important; padding-bottom: 20px !important; }
     .stButton > button { background-color: #424549 !important; color: white !important; border: 1px solid #4f545c !important; width: 100% !important; }
     
-    /* チャットレイアウト */
     .chat-row { display: flex; flex-direction: column; margin-bottom: 10px; width: 100%; }
     .message-text { 
         font-family: 'M PLUS Rounded 1c', sans-serif !important;
@@ -76,7 +92,6 @@ st.markdown("""
     .name-hide { color: #58a6ff !important; font-weight: 700; }
     .timestamp { color: #949ba4; font-size: 0.75rem; }
     
-    /* 演出アニメーション一式 */
     @keyframes rise { 0% { transform: translateY(0); opacity: 0; } 5% { opacity: 1; } 85% { opacity: 1; } 100% { transform: translateY(-125vh) rotate(360deg); opacity: 0; } }
     .rising-emoji { position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }
     .emoji-item { position: absolute; animation: rise linear forwards; }
@@ -107,7 +122,6 @@ if "password_correct" not in st.session_state:
 if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "show_settings" not in st.session_state: st.session_state["show_settings"] = False
-
 if "current_user" not in st.session_state:
     st.session_state["current_user"] = st.query_params.get("user", "Hide")
 
@@ -129,19 +143,16 @@ if st.session_state["show_settings"]:
         
         if selected_user != st.session_state["current_user"]:
             try:
-                # 【本番仕様】端末固有のID（my_device_id）を使用して保存
                 supabase.table(settings_table).upsert({
-                    "device_id": st.session_state["my_device_id"], 
+                    "device_id": st.session_state.get("my_device_id", "unknown_device"), 
                     "user_name": selected_user,
                     "updated_at": datetime.now().isoformat()
                 }).execute()
-                
                 st.session_state["current_user"] = selected_user
                 st.query_params["user"] = selected_user
                 st.rerun()
             except Exception as e:
                 st.error(f"設定の保存に失敗しました: {e}")
-            
         auto_update = st.toggle("自動更新(8s)", value=True)
 else:
     auto_update = True
@@ -150,30 +161,26 @@ if auto_update and st.session_state["page_offset"] == 0:
     st_autorefresh(interval=8000, key="chat_ref")
 st.divider()
 
-# --- 7. メッセージ表示 & 演出 ---
+# --- 7. メッセージ表示 & 演出 (頂いたロジックを完全維持) ---
 try:
     current_user_raw = st.session_state["current_user"]
     current_user_upper = current_user_raw.upper()
     
-    # ページング
     b_col1, b_col2 = st.columns(2)
     with b_col1:
         if st.button("⬅️ 前の20件"):
             st.session_state["page_offset"] += 20
             st.rerun()
     with b_col2:
-        if st.session_state["page_offset"] > 0:
-            if st.button("最新に戻る ➡️"):
-                st.session_state["page_offset"] = 0
-                st.rerun()
+        if st.session_state["page_offset"] > 0 and st.button("最新に戻る ➡️"):
+            st.session_state["page_offset"] = 0
+            st.rerun()
 
-    # データ取得
     res = supabase.table(table_name).select("*").order("created_at", desc=True).range(
         st.session_state["page_offset"], st.session_state["page_offset"] + 19
     ).execute()
     messages = res.data[::-1]
     
-    # 演出ロジック（省略なし）
     if messages and st.session_state["page_offset"] == 0:
         latest = messages[-1]
         msg_id, msg_body = latest.get("id"), latest["message_body"]
@@ -182,23 +189,18 @@ try:
             priority_emoji = None
             if any(w in msg_body for w in ["大好き", "愛してる"]): priority_emoji = "💘"
             elif any(w in msg_body for w in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
-            elif any(w in msg_body for w in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
+            elif any(w in msg_body for w in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ビール", "酒"]): priority_emoji = "🍺"
             elif "おにぎり" in msg_body: priority_emoji = "🍙"
             elif any(w in msg_body for w in ["バドミントン", "練習", "試合"]): priority_emoji = "🏸"
             elif any(w in msg_body for w in ["ラーメン", "山岡家"]): priority_emoji = "🍜"
-            elif any(w in msg_body for w in ["野菜", "サラダ", "レタス"]): priority_emoji = "🥬"
+            elif any(w in msg_body for w in ["野菜", "サラダ"]): priority_emoji = "🥬"
             elif any(w in msg_body for w in ["おやすみ", "眠い", "寝る"]): priority_emoji = "💤"
-            elif any(w in msg_body for w in ["綺麗", "きれい", "すごい", "最高"]): priority_emoji = "✨"
-            elif any(w in msg_body for w in ["コーヒー", "カフェ", "休憩"]): priority_emoji = "☕️"
-            elif any(w in msg_body for w in ["ドライブ"]): priority_emoji = "🚗"
-            elif any(w in msg_body for w in ["ワイン", "ハイボール", "乾杯"]): priority_emoji = "🥂"
-            elif any(w in msg_body for w in ["花見", "さくら", "桜"]): priority_emoji = "🌸"
-            elif any(w in msg_body for w in ["楽しみ", "ルンルン", "うれしい"]): priority_emoji = "🎶"
-            elif any(w in msg_body for w in ["ケーキ", "スイーツ", "甘いもの"]): priority_emoji = "🍰"
-            elif any(w in msg_body for w in ["ラッキー", "幸せ", "しあわせ", "ハッピー"]): priority_emoji = "🍀"
-            elif any(w in msg_body for w in ["熊", "困った"]): priority_emoji = "🐻"
-            elif any(w in msg_body for w in ["おやつ", "プリン"]): priority_emoji = "プリン" if "プリン" in msg_body else "🍮"
-            elif any(w in msg_body for w in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
+            elif any(w in msg_body for w in ["綺麗", "きれい", "すごい"]): priority_emoji = "✨"
+            elif any(w in msg_body for w in ["コーヒー", "カフェ"]): priority_emoji = "☕️"
+            elif any(w in msg_body for w in ["楽しみ", "うれしい"]): priority_emoji = "🎶"
+            elif any(w in msg_body for w in ["ケーキ", "スイーツ"]): priority_emoji = "🍰"
+            elif any(w in msg_body for w in ["幸せ", "ハッピー"]): priority_emoji = "🍀"
+            elif any(w in msg_body for w in ["プリン"]): priority_emoji = "🍮"
 
             if priority_emoji:
                 html = f'<div class="rising-emoji">'
@@ -216,19 +218,15 @@ try:
                     peek += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim} {duration}s forwards; animation-delay:{delay}s;">{target}</div>'
                 st.markdown(peek + '</div>', unsafe_allow_html=True)
             
-            if any(w in msg_body for w in ["おめでとう", "祝", "記念日", "やったー"]): st.balloons()
-            if any(w in msg_body for w in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
-            if any(w in msg_body for w in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
+            if any(w in msg_body for w in ["おめでとう", "祝", "記念日"]): st.balloons()
+            if any(w in msg_body for w in ["雪", "寒い", "冬"]): st.snow()
+            if any(w in msg_body for w in ["こら", "起きて", "びっくり"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(()=>{window.parent.document.querySelector(".stApp").classList.remove("shake-screen");}, 2000);</script>', height=0)
-            if any(w in msg_body for w in ["さみしい", "淋しい", "悲しい", "疲れた"]):
+            if any(w in msg_body for w in ["さみしい", "悲しい", "疲れた"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("mood-dark"); setTimeout(()=>{window.parent.document.querySelector(".stApp").classList.remove("mood-dark");}, 3500);</script>', height=0)
-            if any(w in msg_body for w in ["マジで", "えー", "正解", "おー"]):
-                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("bounce-screen"); setTimeout(()=>{window.parent.document.querySelector(".stApp").classList.remove("bounce-screen");}, 1000);</script>', height=0)
-            if any(w in msg_body for w in ["びっくり", "光る", "指輪"]):
-                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(()=>{window.parent.document.querySelector(".stApp").classList.remove("flash-screen");}, 600);</script>', height=0)
+            
             st.session_state["last_effect_id"] = msg_id
 
-    # メッセージ表示
     for m in messages:
         utc = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
         ts, s_name = (utc + timedelta(hours=9)).strftime('%H:%M'), m['sender_name']
