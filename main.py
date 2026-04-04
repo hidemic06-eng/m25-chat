@@ -9,11 +9,10 @@ import re
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25 Chat", page_icon="💬", layout="wide")
 
-# ★アイコン画像のURL（お好きなものに変更可能です）
+# アイコン画像のURL
 ICON_URL = "https://abs.twimg.com/emoji/v2/72x72/1f4ac.png"
 
 # 【PWA・アイコン・端末ID設定】 
-# ※エラー防止のため Pythonの変数展開を使わずに記述
 components.html(f"""
 <script>
     let deviceId = localStorage.getItem('m25_device_id');
@@ -40,6 +39,7 @@ components.html(f"""
 # --- 2. データベース接続設定 ---
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 table_name = st.secrets.get("TABLE_NAME", "messages")
+settings_table = "device_settings"
 
 # --- 3. デザイン設定 (CSS) ---
 app_bg_color = "#313338"
@@ -103,11 +103,15 @@ if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "show_settings" not in st.session_state: st.session_state["show_settings"] = False
 
-url_user = st.query_params.get("user")
-if url_user: st.session_state["current_user"] = url_user
-elif "current_user" not in st.session_state: st.session_state["current_user"] = "Hide"
+# ユーザー初期判定ロジック
+if "current_user" not in st.session_state:
+    url_user = st.query_params.get("user")
+    if url_user:
+        st.session_state["current_user"] = url_user
+    else:
+        st.session_state["current_user"] = "Hide"
 
-# --- 6. ヘッダー ---
+# --- 6. ヘッダー & 設定画面 ---
 h_col1, h_col2 = st.columns([4, 1])
 with h_col1:
     status_label = " 🧪 TEST" if table_name == "messages_test" else ""
@@ -118,14 +122,26 @@ with h_col2:
 
 if st.session_state["show_settings"]:
     with st.container(border=True):
-        st.write(f"🔧 **アプリ設定** (ログイン: {st.session_state['current_user']})")
+        st.write(f"🔧 **アプリ設定**")
         user_list = ["Maki", "Hide"]
         default_idx = user_list.index(st.session_state["current_user"]) if st.session_state["current_user"] in user_list else 1
         selected_user = st.radio("表示ユーザー切替:", user_list, index=default_idx, horizontal=True)
+        
         if selected_user != st.session_state["current_user"]:
+            # 【重要】device_settingsテーブルへの保存処理
+            try:
+                supabase.table(settings_table).upsert({
+                    "device_id": "current_session_device", 
+                    "user_name": selected_user,
+                    "updated_at": datetime.now().isoformat()
+                }).execute()
+            except Exception as e:
+                st.error(f"設定の保存に失敗しました: {e}")
+
             st.session_state["current_user"] = selected_user
             st.query_params["user"] = selected_user
             st.rerun()
+            
         auto_update = st.toggle("自動更新(8s)", value=True)
 else:
     auto_update = True
@@ -138,6 +154,8 @@ st.divider()
 try:
     current_user_raw = st.session_state["current_user"]
     current_user_upper = current_user_raw.upper()
+    
+    # ページングボタン
     b_col1, b_col2 = st.columns(2)
     with b_col1:
         if st.button("⬅️ 前の20件"):
@@ -149,11 +167,13 @@ try:
                 st.session_state["page_offset"] = 0
                 st.rerun()
 
+    # データ取得
     res = supabase.table(table_name).select("*").order("created_at", desc=True).range(
         st.session_state["page_offset"], st.session_state["page_offset"] + 19
     ).execute()
     messages = res.data[::-1]
     
+    # 演出ロジック
     if messages and st.session_state["page_offset"] == 0:
         latest = messages[-1]
         msg_id, msg_body = latest.get("id"), latest["message_body"]
@@ -195,6 +215,7 @@ try:
                     anim = "peek-left" if side == "left" else "peek-right"
                     peek += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim} {duration}s forwards; animation-delay:{delay}s;">{target}</div>'
                 st.markdown(peek + '</div>', unsafe_allow_html=True)
+            
             if any(w in msg_body for w in ["おめでとう", "祝", "記念日", "やったー"]): st.balloons()
             if any(w in msg_body for w in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             if any(w in msg_body for w in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
@@ -207,6 +228,7 @@ try:
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(()=>{window.parent.document.querySelector(".stApp").classList.remove("flash-screen");}, 600);</script>', height=0)
             st.session_state["last_effect_id"] = msg_id
 
+    # チャット表示ループ
     for m in messages:
         utc = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
         ts, s_name = (utc + timedelta(hours=9)).strftime('%H:%M'), m['sender_name']
