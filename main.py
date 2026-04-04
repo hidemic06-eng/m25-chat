@@ -5,14 +5,14 @@ import streamlit.components.v1 as components
 from datetime import datetime, timedelta
 import random
 import re
-from streamlit_javascript import st_javascript  # 追加
+from streamlit_javascript import st_javascript
 
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25 Chat", page_icon="💬", layout="wide")
 
 ICON_URL = "https://abs.twimg.com/emoji/v2/72x72/1f4ac.png"
 
-# 【デバイスID取得：新方式】
+# 【デバイスID取得：同期安定版】
 # 演出を壊さないよう、ここだけロジックを確実なものに差し替えます
 js_id_code = """
 (function() {
@@ -26,9 +26,11 @@ js_id_code = """
 """
 retrieved_id = st_javascript(js_id_code)
 
-# IDが確定するまではセッションの状態を維持、確定したら上書き
-if retrieved_id and retrieved_id != 0:
-    st.session_state["my_device_id"] = retrieved_id
+# IDが文字列として届くまで待機し、確定したらリランして反映させる
+if isinstance(retrieved_id, str) and retrieved_id.strip() != "" and retrieved_id != "0":
+    if st.session_state.get("my_device_id") != retrieved_id:
+        st.session_state["my_device_id"] = retrieved_id
+        st.rerun()
 elif "my_device_id" not in st.session_state:
     st.session_state["my_device_id"] = "unknown_device"
 
@@ -136,7 +138,6 @@ with h_col2:
 if st.session_state["show_settings"]:
     with st.container(border=True):
         st.write(f"🔧 **アプリ設定**")
-        # デバッグ用にIDを表示（Hideさんが確認しやすいよう追加）
         st.write(f"Device ID: `{st.session_state['my_device_id']}`")
         user_list = ["Maki", "Hide"]
         default_idx = user_list.index(st.session_state["current_user"]) if st.session_state["current_user"] in user_list else 1
@@ -189,7 +190,6 @@ try:
         if msg_id != st.session_state["last_effect_id"]:
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             priority_emoji = None
-            # 演出キーワード判定（バックアップ頂いた内容を完全維持）
             if any(w in msg_body for w in ["大好き", "愛してる"]): priority_emoji = "💘"
             elif any(w in msg_body for w in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
             elif any(w in msg_body for w in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
