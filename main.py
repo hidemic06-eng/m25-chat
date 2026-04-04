@@ -28,7 +28,7 @@ components.html("""
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 table_name = st.secrets.get("TABLE_NAME", "messages")
 
-# --- 3. デザイン設定 (CSS) ---
+# --- 3. デザイン設定 (CSS) - 余白を元通りに修正 ---
 app_bg_color = "#313338"
 text_main_color = "#dbdee1"
 sub_text_color = "#949ba4"
@@ -39,24 +39,27 @@ st.markdown(f"""
     .stApp {{ background-color: {app_bg_color}; color: {text_main_color}; font-family: 'M PLUS Rounded 1c', sans-serif !important; }}
     #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
     .stAppDeployButton {{display:none;}}
-    .block-container {{ padding-top: 1rem; padding-bottom: 120px !important; max-width: 100% !important; }}
+    
+    /* ★ここを修正：余白を適正化（120pxから100pxへ、上部も詰めました） */
+    .block-container {{ padding-top: 0.5rem !important; padding-bottom: 100px !important; max-width: 100% !important; }}
+    
     .stButton > button {{ background-color: #424549 !important; color: white !important; border: 1px solid #4f545c !important; width: 100% !important; }}
     
-    .chat-row {{ display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }}
+    .chat-row {{ display: flex; flex-direction: column; margin-bottom: 12px; width: 100%; }}
     .message-text {{ 
         font-family: 'M PLUS Rounded 1c', sans-serif !important;
-        font-feature-settings: "palt" 1; font-size: 1.15rem; line-height: 1.35; font-weight: 500 !important; 
+        font-feature-settings: "palt" 1; font-size: 1.15rem; line-height: 1.3; font-weight: 500 !important; 
         letter-spacing: -0.04rem; max-width: 80%; white-space: pre-wrap; word-wrap: break-word; 
         color: {text_main_color} !important; 
     }}
     .align-right {{ align-items: flex-end; text-align: right; }}
     .align-left {{ align-items: flex-start; text-align: left; }}
-    .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }}
+    .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; font-size: 0.85rem; }}
     .name-maki {{ color: #ffa657 !important; font-weight: 700; }}
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* 演出用アニメーション全集 */
+    /* 演出用アニメーション全集 (維持) */
     @keyframes rise {{ 0% {{ transform: translateY(0); opacity: 0; }} 5% {{ opacity: 1; }} 85% {{ opacity: 1; }} 100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }} }}
     .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
     .emoji-item {{ position: absolute; animation: rise linear forwards; }}
@@ -128,7 +131,7 @@ try:
     current_user_raw = st.session_state["current_user"]
     current_user_upper = current_user_raw.upper()
 
-    # ★【改善】「前の20件」ボタンをメッセージより「上」に配置
+    # 「前の20件」ボタン
     b_col1, b_col2 = st.columns(2)
     with b_col1:
         if st.button("⬅️ 前の20件"):
@@ -140,13 +143,11 @@ try:
                 st.session_state["page_offset"] = 0
                 st.rerun()
 
-    # データ取得
     res = supabase.table(table_name).select("*").order("created_at", desc=True).range(
         st.session_state["page_offset"], st.session_state["page_offset"] + 19
     ).execute()
     messages = res.data[::-1]
     
-    # 演出ロジック (ページオフセット0の時のみ)
     if messages and st.session_state["page_offset"] == 0:
         latest = messages[-1]
         msg_id, msg_body = latest.get("id"), latest["message_body"]
@@ -205,7 +206,6 @@ try:
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(()=>{window.parent.document.querySelector(".stApp").classList.remove("flash-screen");}, 600);</script>', height=0)
             st.session_state["last_effect_id"] = msg_id
 
-    # メッセージ一覧の表示
     for m in messages:
         utc = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
         ts, s_name = (utc + timedelta(hours=9)).strftime('%H:%M'), m['sender_name']
@@ -219,14 +219,12 @@ except Exception as e:
     st.error(f"Error: {e}")
 
 # --- 8. 送信エリア ---
-input_placeholder = "テストメッセージを入力..." if table_name == "messages_test" else "メッセージを入力..."
-prompt = st.chat_input(input_placeholder)
+prompt = st.chat_input("メッセージを入力...")
 if prompt:
     supabase.table(table_name).insert({"sender_name": st.session_state["current_user"], "message_body": prompt}).execute()
     st.session_state["page_offset"] = 0
     st.query_params["user"] = st.session_state["current_user"]
     st.rerun()
 
-# ページオフセットが0の時だけ自動スクロール
 if st.session_state["page_offset"] == 0:
     components.html('<script>window.parent.document.querySelector(".main").scrollTo(0, 99999);</script>', height=0)
