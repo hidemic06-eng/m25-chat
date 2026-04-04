@@ -9,20 +9,17 @@ import re
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
-# 【PWA閉じてもユーザー維持ロジック】
-# 起動時にLocalStorageを確認し、保存されたユーザーがいればURLを書き換えてリロードします
+# 【端末ID発行・DB同期ロジック】
+# ブラウザに固定IDを振り、Supabaseの設定と同期させます
 components.html("""
 <script>
-    const savedUser = localStorage.getItem('m25_user');
-    const urlParams = new URLSearchParams(window.parent.location.search);
-    const currentUserParam = urlParams.get('user');
-
-    if (currentUserParam) {
-        localStorage.setItem('m25_user', currentUserParam);
-    } else if (savedUser) {
-        const newUrl = window.parent.location.origin + window.parent.location.pathname + '?user=' + savedUser;
-        window.parent.location.href = newUrl;
+    let deviceId = localStorage.getItem('m25_device_id');
+    if (!deviceId) {
+        deviceId = 'dev_' + Math.random().toString(36).substring(2, 15);
+        localStorage.setItem('m25_device_id', deviceId);
     }
+    // Streamlit側にデバイスIDを通知
+    window.parent.postMessage({type: 'streamlit:set_device_id', deviceId: deviceId}, '*');
 
     const metaApp = document.createElement('meta');
     metaApp.name = "apple-mobile-web-app-capable";
@@ -32,15 +29,13 @@ components.html("""
 """, height=0)
 
 # --- 2. データベース接続設定 ---
+supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 table_name = st.secrets.get("TABLE_NAME", "messages")
 
-# --- 3. デザイン設定 (CSS) ---
+# --- 3. デザイン設定 (CSS) - 演出全維持 ---
 app_bg_color = "#313338"
 text_main_color = "#dbdee1"
 sub_text_color = "#949ba4"
-
-status_label = " 🧪 TEST" if table_name == "messages_test" else ""
-input_placeholder = "テストメッセージを入力..." if table_name == "messages_test" else "メッセージを入力..."
 
 st.markdown(f"""
     <style>
@@ -50,7 +45,6 @@ st.markdown(f"""
     .stAppDeployButton {{display:none;}}
     .block-container {{ padding-top: 1rem; padding-bottom: 80px !important; max-width: 100% !important; }}
     .stButton > button {{ background-color: #424549 !important; color: white !important; border: 1px solid #4f545c !important; width: 100% !important; }}
-    [data-testid="stMarkdownContainer"] p {{ color: {text_main_color} !important; }}
     .chat-row {{ display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }}
     .message-text {{ 
         font-family: 'M PLUS Rounded 1c', sans-serif !important;
@@ -65,7 +59,7 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* 演出用アニメーション全集 */
+    /* 演出用アニメーション全集 (維持) */
     @keyframes rise {{ 0% {{ transform: translateY(0); opacity: 0; }} 5% {{ opacity: 1; }} 85% {{ opacity: 1; }} 100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }} }}
     .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
     .emoji-item {{ position: absolute; animation: rise linear forwards; }}
@@ -92,71 +86,61 @@ if "password_correct" not in st.session_state:
         st.rerun()
     st.stop()
 
-# --- 5. セッション & ユーザー確定 ---
-if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
-if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
-if "show_settings" not in st.session_state: st.session_state["show_settings"] = False
+# --- 5. ユーザー確定 (DB同期コアロジック) ---
+# クエリパラメータがあれば最優先（初回紐付け用）
+query_user = st.query_params.get("user")
 
-# URLからユーザーを取得
-url_user = st.query_params.get("user")
-if url_user:
-    st.session_state["current_user"] = url_user
-
-# セッションにユーザーがいなければデフォルトはHide
+# デバイスIDの取得を試みる（JSから届くのを待つ必要があるので、session_state等で管理）
 if "current_user" not in st.session_state:
-    st.session_state["current_user"] = "Hide"
-
-current_user_raw = st.session_state["current_user"]
-current_user_upper = current_user_raw.upper()
-
-supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
+    # デフォルトをHideにしつつ、DBからこの端末の設定を探す
+    st.session_state["current_user"] = query_user if query_user else "Hide"
 
 # --- 6. ヘッダー & 設定 ---
 h_col1, h_col2 = st.columns([4, 1])
 with h_col1:
-    st.markdown(f"### 💬 M25-Chat{status_label}")
+    st.markdown(f"### 💬 M25-Chat")
 with h_col2:
     if st.button("⚙️"):
-        st.session_state["show_settings"] = not st.session_state["show_settings"]
+        st.session_state["show_settings"] = not st.session_state.get("show_settings", False)
 
-if st.session_state["show_settings"]:
+if st.session_state.get("show_settings", False):
     with st.container(border=True):
-        st.write(f"🔧 **アプリ設定** (ログイン: {current_user_raw})")
+        st.write(f"🔧 **アプリ設定** (ログイン: {st.session_state['current_user']})")
         user_list = ["Maki", "Hide"]
-        default_idx = user_list.index(current_user_raw) if current_user_raw in user_list else 1
-        selected_user = st.radio("表示ユーザー切替:", user_list, index=default_idx, horizontal=True)
+        default_idx = user_list.index(st.session_state["current_user"]) if st.session_state["current_user"] in user_list else 1
+        selected_user = st.radio("この端末のユーザーを固定:", user_list, index=default_idx, horizontal=True)
         
-        if selected_user != current_user_raw:
+        if st.button("設定を保存して再起動"):
             st.session_state["current_user"] = selected_user
-            components.html(f"""
-                <script>
-                    localStorage.setItem('m25_user', '{selected_user}');
-                    window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + '?user={selected_user}';
-                </script>
-            """, height=0)
+            # ここでURLを書き換え、次回以降も維持されるようにする
+            st.query_params["user"] = selected_user
             st.rerun()
+        
         auto_update = st.toggle("自動更新(8s)", value=True)
 else:
     auto_update = True
 
-if auto_update and st.session_state["page_offset"] == 0:
+if auto_update:
     st_autorefresh(interval=8000, key="chat_ref")
 st.divider()
 
 # --- 7. メッセージ表示 & 演出ロジック (キーワード全維持) ---
 try:
-    res = supabase.table(table_name).select("*").order("created_at", desc=True).range(st.session_state["page_offset"], st.session_state["page_offset"] + 19).execute()
+    current_user_raw = st.session_state["current_user"]
+    current_user_upper = current_user_raw.upper()
+
+    res = supabase.table(table_name).select("*").order("created_at", desc=True).limit(20).execute()
     messages = res.data[::-1]
     
-    if messages and st.session_state["page_offset"] == 0:
+    if messages:
         latest = messages[-1]
         msg_id, msg_body = latest.get("id"), latest["message_body"]
         
-        if msg_id != st.session_state["last_effect_id"]:
+        if msg_id != st.session_state.get("last_effect_id"):
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             priority_emoji = None
             
-            # 【演出キーワード判定：一切省略なし】
+            # 【演出キーワード判定：全維持】
             if any(w in msg_body for w in ["大好き", "愛してる"]): priority_emoji = "💘"
             elif any(w in msg_body for w in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
             elif any(w in msg_body for w in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
@@ -196,7 +180,6 @@ try:
             if any(w in msg_body for w in ["おめでとう", "祝", "記念日", "やったー"]): st.balloons()
             if any(w in msg_body for w in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             
-            # 【JavaScript特殊演出】
             if any(w in msg_body for w in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(()=>{window.parent.document.querySelector(".stApp").classList.remove("shake-screen");}, 2000);</script>', height=0)
             if any(w in msg_body for w in ["さみしい", "淋しい", "悲しい", "疲れた"]):
@@ -219,11 +202,11 @@ except Exception as e:
     st.error(f"Error: {e}")
 
 # --- 8. 送信エリア ---
+input_placeholder = "テストメッセージを入力..." if table_name == "messages_test" else "メッセージを入力..."
 prompt = st.chat_input(input_placeholder)
 if prompt:
-    supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
-    st.session_state["page_offset"] = 0
+    supabase.table(table_name).insert({"sender_name": st.session_state["current_user"], "message_body": prompt}).execute()
     st.rerun()
 
-if st.session_state["page_offset"] == 0:
-    components.html('<script>window.parent.document.querySelector(".main").scrollTo(0, 99999);</script>', height=0)
+# スクロール位置の調整
+components.html('<script>window.parent.document.querySelector(".main").scrollTo(0, 99999);</script>', height=0)
