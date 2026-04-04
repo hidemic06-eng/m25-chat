@@ -28,7 +28,7 @@ components.html("""
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 table_name = st.secrets.get("TABLE_NAME", "messages")
 
-# --- 3. デザイン設定 (CSS) - 隙間を徹底排除 ---
+# --- 3. デザイン設定 (CSS) - 上下の余白を徹底排除 ---
 app_bg_color = "#313338"
 text_main_color = "#dbdee1"
 sub_text_color = "#949ba4"
@@ -40,10 +40,14 @@ st.markdown(f"""
     #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
     .stAppDeployButton {{display:none;}}
     
-    /* 下部の隙間を極限までカット */
-    .block-container {{ padding-top: 0.5rem !important; padding-bottom: 50px !important; max-width: 100% !important; }}
+    /* 全体のコンテナ余白調整 */
+    .block-container {{ padding-top: 0rem !important; padding-bottom: 50px !important; max-width: 100% !important; }}
     
-    /* 入力エリアの浮きを解消 */
+    /* ★改善：パーツ間の縦方向の隙間を極限まで詰める */
+    [data-testid="stVerticalBlock"] {{ gap: 0.5rem !important; }}
+    hr {{ margin-top: 0.5rem !important; margin-bottom: 0.5rem !important; }}
+    
+    /* 入力エリアの調整 */
     .stChatInput {{ margin-bottom: 0px !important; padding-bottom: 20px !important; }}
     
     .stButton > button {{ background-color: #424549 !important; color: white !important; border: 1px solid #4f545c !important; width: 100% !important; }}
@@ -62,7 +66,7 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* 演出アニメーション */
+    /* 演出アニメーション全維持 */
     @keyframes rise {{ 0% {{ transform: translateY(0); opacity: 0; }} 5% {{ opacity: 1; }} 85% {{ opacity: 1; }} 100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }} }}
     .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
     .emoji-item {{ position: absolute; animation: rise linear forwards; }}
@@ -152,7 +156,6 @@ try:
         if msg_id != st.session_state["last_effect_id"]:
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             priority_emoji = None
-            # 全キーワード判定を網羅
             if any(w in msg_body for w in ["大好き", "愛してる"]): priority_emoji = "💘"
             elif any(w in msg_body for w in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
             elif any(w in msg_body for w in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
