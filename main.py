@@ -9,10 +9,10 @@ import re
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25 Chat", page_icon="💬", layout="wide")
 
-# アイコン画像のURL
 ICON_URL = "https://abs.twimg.com/emoji/v2/72x72/1f4ac.png"
 
-# 【PWA・アイコン・端末ID設定】 
+# 【PWA・デバイスID取得】
+# ブラウザのlocalStorageからIDを取得し、Streamlitへ送信するJS
 components.html(f"""
 <script>
     let deviceId = localStorage.getItem('m25_device_id');
@@ -20,72 +20,77 @@ components.html(f"""
         deviceId = 'dev_' + Math.random().toString(36).substring(2, 15);
         localStorage.setItem('m25_device_id', deviceId);
     }}
+    // Streamlit側に値を送信
+    window.parent.postMessage({{
+        type: 'streamlit:set_ComponentValue',
+        value: deviceId
+    }}, '*');
+
     const head = window.parent.document.getElementsByTagName('head')[0];
     const metaName = document.createElement('meta');
     metaName.name = "apple-mobile-web-app-title";
-    metaName.content = "M25 Chat"; 
-    head.appendChild(metaName);
+    metaName.content = "M25 Chat"; head.appendChild(metaName);
     const linkIcon = document.createElement('link');
     linkIcon.rel = "apple-touch-icon";
-    linkIcon.href = "{ICON_URL}";
-    head.appendChild(linkIcon);
+    linkIcon.href = "{ICON_URL}"; head.appendChild(linkIcon);
     const metaApp = document.createElement('meta');
     metaApp.name = "apple-mobile-web-app-capable";
-    metaApp.content = "yes";
-    head.appendChild(metaApp);
+    metaApp.content = "yes"; head.appendChild(metaApp);
 </script>
 """, height=0)
+
+# デバイスID受け取り用の初期化
+if "my_device_id" not in st.session_state:
+    st.session_state["my_device_id"] = "unknown_device"
 
 # --- 2. データベース接続設定 ---
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 table_name = st.secrets.get("TABLE_NAME", "messages")
 settings_table = "device_settings"
 
-# --- 3. デザイン設定 (CSS) ---
-app_bg_color = "#313338"
-text_main_color = "#dbdee1"
-sub_text_color = "#949ba4"
-
-st.markdown(f"""
+# --- 3. デザイン設定 (CSS) - 全演出分を省略なしで記述 ---
+st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
-    .stApp {{ background-color: {app_bg_color}; color: {text_main_color}; font-family: 'M PLUS Rounded 1c', sans-serif !important; }}
-    #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
-    .stAppDeployButton {{display:none;}}
-    .block-container {{ padding-top: 0rem !important; padding-bottom: 50px !important; max-width: 100% !important; }}
-    [data-testid="stVerticalBlock"] {{ gap: 0.5rem !important; }}
-    hr {{ margin-top: 0.5rem !important; margin-bottom: 0.5rem !important; }}
-    .stChatInput {{ margin-bottom: 0px !important; padding-bottom: 20px !important; }}
-    .stButton > button {{ background-color: #424549 !important; color: white !important; border: 1px solid #4f545c !important; width: 100% !important; }}
-    .chat-row {{ display: flex; flex-direction: column; margin-bottom: 10px; width: 100%; }}
-    .message-text {{ 
+    .stApp { background-color: #313338; color: #dbdee1; font-family: 'M PLUS Rounded 1c', sans-serif !important; }
+    #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
+    .stAppDeployButton {display:none;}
+    .block-container { padding-top: 0rem !important; padding-bottom: 50px !important; max-width: 100% !important; }
+    [data-testid="stVerticalBlock"] { gap: 0.5rem !important; }
+    hr { margin-top: 0.5rem !important; margin-bottom: 0.5rem !important; }
+    .stChatInput { margin-bottom: 0px !important; padding-bottom: 20px !important; }
+    .stButton > button { background-color: #424549 !important; color: white !important; border: 1px solid #4f545c !important; width: 100% !important; }
+    
+    /* チャットレイアウト */
+    .chat-row { display: flex; flex-direction: column; margin-bottom: 10px; width: 100%; }
+    .message-text { 
         font-family: 'M PLUS Rounded 1c', sans-serif !important;
         font-feature-settings: "palt" 1; font-size: 1.15rem; line-height: 1.3; font-weight: 500 !important; 
         letter-spacing: -0.04rem; max-width: 85%; white-space: pre-wrap; word-wrap: break-word; 
-        color: {text_main_color} !important; 
-    }}
-    .align-right {{ align-items: flex-end; text-align: right; }}
-    .align-left {{ align-items: flex-start; text-align: left; }}
-    .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; font-size: 0.85rem; }}
-    .name-maki {{ color: #ffa657 !important; font-weight: 700; }}
-    .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
-    .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
+        color: #dbdee1 !important; 
+    }
+    .align-right { align-items: flex-end; text-align: right; }
+    .align-left { align-items: flex-start; text-align: left; }
+    .chat-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; font-size: 0.85rem; }
+    .name-maki { color: #ffa657 !important; font-weight: 700; }
+    .name-hide { color: #58a6ff !important; font-weight: 700; }
+    .timestamp { color: #949ba4; font-size: 0.75rem; }
     
-    /* 演出アニメーション */
-    @keyframes rise {{ 0% {{ transform: translateY(0); opacity: 0; }} 5% {{ opacity: 1; }} 85% {{ opacity: 1; }} 100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }} }}
-    .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
-    .emoji-item {{ position: absolute; animation: rise linear forwards; }}
-    @keyframes peek-left {{ 0% {{ left: -100px; opacity: 0; }} 20% {{ left: 20px; opacity: 1; }} 80% {{ left: 20px; opacity: 1; }} 100% {{ left: -100px; opacity: 0; }} }}
-    @keyframes peek-right {{ 0% {{ right: -100px; opacity: 0; }} 20% {{ right: 20px; opacity: 1; }} 80% {{ right: 20px; opacity: 1; }} 100% {{ right: -100px; opacity: 0; }} }}
-    .peek-item {{ position: fixed; z-index: 9999; pointer-events: none; font-size: 4rem; }}
-    @keyframes shake {{ 0% {{ transform: translate(1px, 1px) rotate(0deg); }} 10% {{ transform: translate(-1px, -2px) rotate(-1deg); }} 30% {{ transform: translate(3px, 2px) rotate(0deg); }} 100% {{ transform: translate(1px, 1px) rotate(0deg); }} }}
-    .shake-screen {{ animation: shake 0.5s; animation-iteration-count: 4; }}
-    @keyframes fade-dark {{ 0% {{ filter: brightness(1); }} 20% {{ filter: brightness(0.4) sepia(0.6); }} 80% {{ filter: brightness(0.4) sepia(0.6); }} 100% {{ filter: brightness(1); }} }}
-    .mood-dark {{ animation: fade-dark 3.5s ease-in-out; }}
-    @keyframes bounce-screen {{ 0%, 20%, 50%, 80%, 100% {{ transform: translateY(0); }} 40% {{ transform: translateY(-40px) scaleY(1.05); }} 60% {{ transform: translateY(-20px) scaleY(1.02); }} }}
-    .bounce-screen {{ animation: bounce-screen 0.8s ease; }}
-    @keyframes flash-white {{ 0% {{ filter: brightness(1); }} 10% {{ filter: brightness(2.5) contrast(1.2); }} 100% {{ filter: brightness(1); }} }}
-    .flash-screen {{ animation: flash-white 0.6s ease-out; }}
+    /* 演出アニメーション一式 */
+    @keyframes rise { 0% { transform: translateY(0); opacity: 0; } 5% { opacity: 1; } 85% { opacity: 1; } 100% { transform: translateY(-125vh) rotate(360deg); opacity: 0; } }
+    .rising-emoji { position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }
+    .emoji-item { position: absolute; animation: rise linear forwards; }
+    @keyframes peek-left { 0% { left: -100px; opacity: 0; } 20% { left: 20px; opacity: 1; } 80% { left: 20px; opacity: 1; } 100% { left: -100px; opacity: 0; } }
+    @keyframes peek-right { 0% { right: -100px; opacity: 0; } 20% { right: 20px; opacity: 1; } 80% { right: 20px; opacity: 1; } 100% { right: -100px; opacity: 0; } }
+    .peek-item { position: fixed; z-index: 9999; pointer-events: none; font-size: 4rem; }
+    @keyframes shake { 0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 30% { transform: translate(3px, 2px) rotate(0deg); } 100% { transform: translate(1px, 1px) rotate(0deg); } }
+    .shake-screen { animation: shake 0.5s; animation-iteration-count: 4; }
+    @keyframes fade-dark { 0% { filter: brightness(1); } 20% { filter: brightness(0.4) sepia(0.6); } 80% { filter: brightness(0.4) sepia(0.6); } 100% { filter: brightness(1); } }
+    .mood-dark { animation: fade-dark 3.5s ease-in-out; }
+    @keyframes bounce-screen { 0%, 20%, 50%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-40px) scaleY(1.05); } 60% { transform: translateY(-20px) scaleY(1.02); } }
+    .bounce-screen { animation: bounce-screen 0.8s ease; }
+    @keyframes flash-white { 0% { filter: brightness(1); } 10% { filter: brightness(2.5) contrast(1.2); } 100% { filter: brightness(1); } }
+    .flash-screen { animation: flash-white 0.6s ease-out; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -103,13 +108,8 @@ if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "show_settings" not in st.session_state: st.session_state["show_settings"] = False
 
-# ユーザー初期判定ロジック
 if "current_user" not in st.session_state:
-    url_user = st.query_params.get("user")
-    if url_user:
-        st.session_state["current_user"] = url_user
-    else:
-        st.session_state["current_user"] = "Hide"
+    st.session_state["current_user"] = st.query_params.get("user", "Hide")
 
 # --- 6. ヘッダー & 設定画面 ---
 h_col1, h_col2 = st.columns([4, 1])
@@ -128,19 +128,19 @@ if st.session_state["show_settings"]:
         selected_user = st.radio("表示ユーザー切替:", user_list, index=default_idx, horizontal=True)
         
         if selected_user != st.session_state["current_user"]:
-            # 【重要】device_settingsテーブルへの保存処理
             try:
+                # 【本番仕様】端末固有のID（my_device_id）を使用して保存
                 supabase.table(settings_table).upsert({
-                    "device_id": "current_session_device", 
+                    "device_id": st.session_state["my_device_id"], 
                     "user_name": selected_user,
                     "updated_at": datetime.now().isoformat()
                 }).execute()
+                
+                st.session_state["current_user"] = selected_user
+                st.query_params["user"] = selected_user
+                st.rerun()
             except Exception as e:
                 st.error(f"設定の保存に失敗しました: {e}")
-
-            st.session_state["current_user"] = selected_user
-            st.query_params["user"] = selected_user
-            st.rerun()
             
         auto_update = st.toggle("自動更新(8s)", value=True)
 else:
@@ -155,7 +155,7 @@ try:
     current_user_raw = st.session_state["current_user"]
     current_user_upper = current_user_raw.upper()
     
-    # ページングボタン
+    # ページング
     b_col1, b_col2 = st.columns(2)
     with b_col1:
         if st.button("⬅️ 前の20件"):
@@ -173,7 +173,7 @@ try:
     ).execute()
     messages = res.data[::-1]
     
-    # 演出ロジック
+    # 演出ロジック（省略なし）
     if messages and st.session_state["page_offset"] == 0:
         latest = messages[-1]
         msg_id, msg_body = latest.get("id"), latest["message_body"]
@@ -197,7 +197,7 @@ try:
             elif any(w in msg_body for w in ["ケーキ", "スイーツ", "甘いもの"]): priority_emoji = "🍰"
             elif any(w in msg_body for w in ["ラッキー", "幸せ", "しあわせ", "ハッピー"]): priority_emoji = "🍀"
             elif any(w in msg_body for w in ["熊", "困った"]): priority_emoji = "🐻"
-            elif any(w in msg_body for w in ["おやつ", "プリン"]): priority_emoji = "🍮"
+            elif any(w in msg_body for w in ["おやつ", "プリン"]): priority_emoji = "プリン" if "プリン" in msg_body else "🍮"
             elif any(w in msg_body for w in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
 
             if priority_emoji:
@@ -228,7 +228,7 @@ try:
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(()=>{window.parent.document.querySelector(".stApp").classList.remove("flash-screen");}, 600);</script>', height=0)
             st.session_state["last_effect_id"] = msg_id
 
-    # チャット表示ループ
+    # メッセージ表示
     for m in messages:
         utc = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
         ts, s_name = (utc + timedelta(hours=9)).strftime('%H:%M'), m['sender_name']
