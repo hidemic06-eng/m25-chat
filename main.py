@@ -159,7 +159,7 @@ if "password_correct" not in st.session_state:
             detected_user = "Maki"
         elif "iPhone" in ua:
             os_info = "iPhone"
-            detected_user = "Maki"
+            detected_user = "Hide"
         elif "iPad" in ua:
             os_info = "iPad"
             detected_user = "Hide"
