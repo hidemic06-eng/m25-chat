@@ -312,14 +312,16 @@ try:
             if any(word in msg_body for word in ["びっくり", "すごい", "光る", "指輪"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
 
-            # D. 流れる文字演出（ニコニコ風）
+            # D. 流れる文字演出（キーワードがあれば、そのメッセージをそのまま流す）
+            # キーワード: w, 笑, 草, 爆笑, うける
             if any(word in msg_body for word in ["w", "笑", "草", "うける", "爆笑"]):
                 marquee_html = '<div class="marquee-wrapper">'
+                # メッセージが長すぎる場合は20文字でカット
+                display_text = (msg_body[:20] + '..') if len(msg_body) > 20 else msg_body
                 for i in range(3):
                     top_pos = random.randint(10, 80)
-                    delay = i * 0.5
-                    content = "w" * random.randint(8, 20) if "w" in msg_body else "笑笑笑笑笑笑笑笑笑"
-                    marquee_html += f'<div class="marquee-text" style="top:{top_pos}vh; animation-delay:{delay}s;">{content}</div>'
+                    delay = i * 0.7  # 少し間隔を空けて流す
+                    marquee_html += f'<div class="marquee-text" style="top:{top_pos}vh; animation-delay:{delay}s;">{display_text}</div>'
                 st.markdown(marquee_html + '</div>', unsafe_allow_html=True)
 
             st.session_state["last_effect_id"] = msg_id
