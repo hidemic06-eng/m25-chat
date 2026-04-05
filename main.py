@@ -144,12 +144,16 @@ if "password_correct" not in st.session_state:
     st.write("🔒 Enter Password")
     pw = st.text_input("Password", type="password", key="login")
     
-    # OS情報の取得とユーザー判定
+    # OS情報とURLパラメータの取得
     try:
         ua = st.context.headers.get("User-Agent", "")
+        query_params = st.query_params
+        url_user = query_params.get("user", None)
+        
         os_info = "Unknown Device"
         detected_user = "Unknown"
         
+        # OS判定
         if "Android" in ua:
             os_info = "Android"
             detected_user = "Maki"
@@ -161,9 +165,13 @@ if "password_correct" not in st.session_state:
             detected_user = "Hide"
         elif "Windows" in ua:
             os_info = "Windows"
-            detected_user = "Hide"
+            # Windowsの場合のみ、URL変数を最優先する
+            if url_user:
+                detected_user = url_user
+            else:
+                detected_user = "Hide"
         
-        # ログイン画面にユーザー名とデバイス情報を表示
+        # ログイン画面にユーザー名を表示
         st.write(f"👤 User: **{detected_user}**")
         st.caption(f"Device: {os_info}")
     except:
@@ -173,7 +181,7 @@ if "password_correct" not in st.session_state:
         st.session_state["password_correct"] = True
         st.rerun()
     st.stop()
-    
+
 # --- 5. 設定 ---
 if "page_offset" not in st.session_state:
     st.session_state["page_offset"] = 0
