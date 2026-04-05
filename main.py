@@ -136,6 +136,31 @@ st.markdown(f"""
     }}
     .flash-screen {{ animation: flash-white 0.6s ease-out; }}
 
+    /* D. 流れる文字演出（ニコニコ風） */
+    @keyframes marquee {{
+        0% {{ transform: translateX(100vw); }}
+        100% {{ transform: translateX(-100vw); }}
+    }}
+    .marquee-wrapper {{
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 9998;
+        overflow: hidden;
+    }}
+    .marquee-text {{
+        position: absolute;
+        white-space: nowrap;
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: rgba(255, 255, 255, 0.5);
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        animation: marquee 5s linear forwards;
+    }}
+
     </style>
 """, unsafe_allow_html=True)
 
@@ -286,6 +311,18 @@ try:
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("bounce-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("bounce-screen"); }, 1000);</script>', height=0)
             if any(word in msg_body for word in ["びっくり", "すごい", "光る", "指輪"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
+
+            # D. 流れる文字演出（キーワードがあれば、そのメッセージをそのまま流す）
+            # キーワード: w, 笑, 草, 爆笑, うける
+            if any(word in msg_body for word in ["w", "笑", "草", "うける", "爆笑", "すご", "最高", "天才", "神", "優勝", "飲みに行", "ビール", "大好き"]):
+                marquee_html = '<div class="marquee-wrapper">'
+                # メッセージが長すぎる場合は20文字でカット
+                display_text = (msg_body[:20] + '..') if len(msg_body) > 20 else msg_body
+                for i in range(3):
+                    top_pos = random.randint(10, 80)
+                    delay = i * 0.7  # 少し間隔を空けて流す
+                    marquee_html += f'<div class="marquee-text" style="top:{top_pos}vh; animation-delay:{delay}s;">{display_text}</div>'
+                st.markdown(marquee_html + '</div>', unsafe_allow_html=True)
 
             st.session_state["last_effect_id"] = msg_id
 
