@@ -174,6 +174,9 @@ if "password_correct" not in st.session_state:
         # ログイン画面にユーザー名を表示
         st.write(f"👤 User: **{detected_user}**")
         st.caption(f"Device: {os_info}")
+        
+        # セッションにユーザー名を保存
+        st.session_state["username"] = detected_user
     except:
         pass
 
@@ -188,8 +191,8 @@ if "page_offset" not in st.session_state:
 if "last_effect_id" not in st.session_state:
     st.session_state["last_effect_id"] = None
 
-query_params = st.query_params
-current_user_raw = query_params.get("user", "Hide")
+# 送信者名を判定結果から取得
+current_user_raw = st.session_state.get("username", "Hide")
 current_user_upper = current_user_raw.upper()
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 
