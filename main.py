@@ -144,10 +144,16 @@ if "password_correct" not in st.session_state:
     st.write("🔒 Enter Password")
     pw = st.text_input("Password", type="password", key="login")
     
-    # OS情報の取得と表示（追加箇所）
+    # OS情報の取得と表示（特定のキーワードのみ抽出）
     try:
-        ua = st.context.headers.get("User-Agent", "Unknown OS")
-        st.caption(f"Device Info: {ua}")
+        ua = st.context.headers.get("User-Agent", "")
+        os_info = "Unknown Device"
+        if "iPhone" in ua: os_info = "iPhone"
+        elif "iPad" in ua: os_info = "iPad"
+        elif "Android" in ua: os_info = "Android"
+        elif "Windows" in ua: os_info = "Windows"
+        
+        st.caption(f"Device: {os_info}")
     except:
         pass
 
