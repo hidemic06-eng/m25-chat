@@ -143,6 +143,43 @@ st.markdown(f"""
 if "password_correct" not in st.session_state:
     st.write("🔒 Enter Password")
     pw = st.text_input("Password", type="password", key="login")
+    
+    # OS情報とURLパラメータの取得
+    try:
+        ua = st.context.headers.get("User-Agent", "")
+        query_params = st.query_params
+        url_user = query_params.get("user", None)
+        
+        os_info = "Unknown Device"
+        detected_user = "Unknown"
+        
+        # OS判定
+        if "Android" in ua:
+            os_info = "Android"
+            detected_user = "Maki"
+        elif "iPhone" in ua:
+            os_info = "iPhone"
+            detected_user = "Hide"
+        elif "iPad" in ua:
+            os_info = "iPad"
+            detected_user = "Hide"
+        elif "Windows" in ua:
+            os_info = "Windows"
+            # Windowsの場合のみ、URL変数を最優先する
+            if url_user:
+                detected_user = url_user
+            else:
+                detected_user = "Hide"
+        
+        # ログイン画面にユーザー名を表示
+        st.write(f"👤 User: **{detected_user}**")
+        st.caption(f"Device: {os_info}")
+        
+        # セッションにユーザー名を保存
+        st.session_state["username"] = detected_user
+    except:
+        pass
+
     if pw == "05250206":
         st.session_state["password_correct"] = True
         st.rerun()
@@ -154,8 +191,8 @@ if "page_offset" not in st.session_state:
 if "last_effect_id" not in st.session_state:
     st.session_state["last_effect_id"] = None
 
-query_params = st.query_params
-current_user_raw = query_params.get("user", "Hide")
+# 送信者名を判定結果から取得
+current_user_raw = st.session_state.get("username", "Hide")
 current_user_upper = current_user_raw.upper()
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 
