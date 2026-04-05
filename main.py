@@ -314,7 +314,7 @@ try:
 
             # D. 流れる文字演出（キーワードがあれば、そのメッセージをそのまま流す）
             # キーワード: w, 笑, 草, 爆笑, うける
-            if any(word in msg_body for word in ["w", "笑", "草", "うける", "爆笑"]):
+            if any(word in msg_body for word in ["w", "笑", "草", "うける", "爆笑", "すご", "最高", "天才", "神", "優勝", "飲みに行", "ビール", "大好き"]):
                 marquee_html = '<div class="marquee-wrapper">'
                 # メッセージが長すぎる場合は20文字でカット
                 display_text = (msg_body[:20] + '..') if len(msg_body) > 20 else msg_body
