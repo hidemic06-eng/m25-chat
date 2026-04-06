@@ -13,6 +13,7 @@ import uuid
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
 # --- 2. データベース(Supabase)接続設定 ---
+# URLとKeyはHideさんの環境のものを保持してください
 supabase_url = "https://kvqbwknrsdasoipttkpr.supabase.co"
 supabase_key = st.secrets.get("SUPABASE_KEY", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 supabase = create_client(supabase_url, supabase_key)
@@ -42,9 +43,7 @@ st.markdown(f"""
     #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
     .stAppDeployButton {{display:none;}}
     [data-testid="bundle-viewer-container"] {{display: none !important;}}
-    
-    /* スマホ最適化: 下部に固定入力欄があるため余白を大きく確保 */
-    .block-container {{ padding-top: 1rem; padding-bottom: 160px !important; max-width: 100% !important; }}
+    .block-container {{ padding-top: 1rem; padding-bottom: 120px !important; max-width: 100% !important; }}
     
     .stButton > button {{
         background-color: #424549 !important;
@@ -68,6 +67,7 @@ st.markdown(f"""
         padding: 0; 
     }}
 
+    /* 画像表示スタイル */
     .chat-image {{
         max-width: 280px;
         border-radius: 12px;
@@ -75,6 +75,7 @@ st.markdown(f"""
         border: 1px solid #4f545c;
     }}
 
+    .stChatInput textarea {{ font-family: 'M PLUS Rounded 1c', sans-serif !important; }}
     .align-right {{ align-items: flex-end; text-align: right; }}
     .align-left {{ align-items: flex-start; text-align: left; }}
     
@@ -82,70 +83,119 @@ st.markdown(f"""
     .name-maki {{ color: #ffa657 !important; font-weight: 700; }}
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
-
-    /* --- LINE風: 固定フッターのレイアウト強制 --- */
-    div[data-testid="stVerticalBlock"] > div:has(div.fixed-footer) {{
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        background-color: {app_bg_color};
-        z-index: 999;
-        padding: 10px 10px 30px 10px;
-        border-top: 1px solid #4f545c;
-    }}
-
-    /* スマホで横並びが崩れないようにカラムの挙動を上書き */
-    [data-testid="column"] {{
-        flex: unset !important;
-        width: auto !important;
-        min-width: unset !important;
-    }}
-
-    .stTextInput input {{
-        border-radius: 20px !important;
-        background-color: #1e1f22 !important;
-        border: none !important;
-        color: white !important;
-    }}
-
-    .stPopover > button {{
-        border-radius: 50% !important;
-        width: 40px !important;
-        height: 40px !important;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 0 !important;
-    }}
     
-    /* --- アニメーション全維持（省略なし） --- */
-    @keyframes rise {{ 0% {{ transform: translateY(0); opacity: 0; }} 5% {{ opacity: 1; }} 85% {{ opacity: 1; }} 100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }} }}
+    /* --- 演出用アニメーション定義 --- */
+    @keyframes rise {{
+        0% {{ transform: translateY(0); opacity: 0; }}
+        5% {{ opacity: 1; }}
+        85% {{ opacity: 1; }}
+        100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }}
+    }}
     .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
     .emoji-item {{ position: absolute; animation: rise linear forwards; }}
-    @keyframes peek-left {{ 0% {{ left: -100px; opacity: 0; }} 20% {{ left: 20px; opacity: 1; }} 80% {{ left: 20px; opacity: 1; }} 100% {{ left: -100px; opacity: 0; }} }}
-    @keyframes peek-right {{ 0% {{ right: -100px; opacity: 0; }} 20% {{ right: 20px; opacity: 1; }} 80% {{ right: 20px; opacity: 1; }} 100% {{ right: -100px; opacity: 0; }} }}
+
+    @keyframes peek-left {{
+        0% {{ left: -100px; opacity: 0; }}
+        20% {{ left: 20px; opacity: 1; }}
+        80% {{ left: 20px; opacity: 1; }}
+        100% {{ left: -100px; opacity: 0; }}
+    }}
+    @keyframes peek-right {{
+        0% {{ right: -100px; opacity: 0; }}
+        20% {{ right: 20px; opacity: 1; }}
+        80% {{ right: 20px; opacity: 1; }}
+        100% {{ right: -100px; opacity: 0; }}
+    }}
     .peek-item {{ position: fixed; z-index: 9999; pointer-events: none; font-size: 4rem; }}
-    @keyframes shake {{ 0% {{ transform: translate(1px, 1px) rotate(0deg); }} 10% {{ transform: translate(-1px, -2px) rotate(-1deg); }} 30% {{ transform: translate(3px, 2px) rotate(0deg); }} 100% {{ transform: translate(1px, 1px) rotate(0deg); }} }}
+
+    @keyframes shake {{
+        0% {{ transform: translate(1px, 1px) rotate(0deg); }}
+        10% {{ transform: translate(-1px, -2px) rotate(-1deg); }}
+        30% {{ transform: translate(3px, 2px) rotate(0deg); }}
+        100% {{ transform: translate(1px, 1px) rotate(0deg); }}
+    }}
     .shake-screen {{ animation: shake 0.5s; animation-iteration-count: 4; }}
-    @keyframes fade-dark {{ 0% {{ filter: brightness(1); }} 20% {{ filter: brightness(0.4) sepia(0.6); }} 80% {{ filter: brightness(0.4) sepia(0.6); }} 100% {{ filter: brightness(1); }} }}
+
+    @keyframes fade-dark {{
+        0% {{ filter: brightness(1); }}
+        20% {{ filter: brightness(0.4) sepia(0.6); }}
+        80% {{ filter: brightness(0.4) sepia(0.6); }}
+        100% {{ filter: brightness(1); }}
+    }}
     .mood-dark {{ animation: fade-dark 3.5s ease-in-out; }}
-    @keyframes bounce-screen {{ 0%, 20%, 50%, 80%, 100% {{ transform: translateY(0); }} 40% {{ transform: translateY(-40px) scaleY(1.05); }} 60% {{ transform: translateY(-20px) scaleY(1.02); }} }}
+
+    @keyframes bounce-screen {{
+        0%, 20%, 50%, 80%, 100% {{ transform: translateY(0); }}
+        40% {{ transform: translateY(-40px) scaleY(1.05); }}
+        60% {{ transform: translateY(-20px) scaleY(1.02); }}
+    }}
     .bounce-screen {{ animation: bounce-screen 0.8s ease; }}
-    @keyframes flash-white {{ 0% {{ filter: brightness(1); }} 10% {{ filter: brightness(2.5) contrast(1.2); }} 100% {{ filter: brightness(1); }} }}
+
+    @keyframes flash-white {{
+        0% {{ filter: brightness(1); }}
+        10% {{ filter: brightness(2.5) contrast(1.2); }}
+        100% {{ filter: brightness(1); }}
+    }}
     .flash-screen {{ animation: flash-white 0.6s ease-out; }}
-    @keyframes marquee {{ 0% {{ transform: translateX(100vw); }} 100% {{ transform: translateX(-100vw); }} }}
-    .marquee-wrapper {{ position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9998; overflow: hidden; }}
-    .marquee-text {{ position: absolute; white-space: nowrap; font-size: 2.5rem; font-weight: 800; color: rgba(255, 255, 255, 0.5); text-shadow: 2px 2px 4px rgba(0,0,0,0.5); animation: marquee 5s linear forwards; }}
-    @keyframes rainbow-text {{ 0% {{ color: #ff0000; text-shadow: 0 0 8px #ff0000; }} 17% {{ color: #ff8000; text-shadow: 0 0 8px #ff8000; }} 33% {{ color: #ffff00; text-shadow: 0 0 8px #ffff00; }} 50% {{ color: #00ff00; text-shadow: 0 0 8px #00ff00; }} 67% {{ color: #00ffff; text-shadow: 0 0 8px #00ffff; }} 83% {{ color: #0000ff; text-shadow: 0 0 8px #0000ff; }} 100% {{ color: #ff00ff; text-shadow: 0 0 8px #ff00ff; }} }}
+
+    @keyframes marquee {{
+        0% {{ transform: translateX(100vw); }}
+        100% {{ transform: translateX(-100vw); }}
+    }}
+    .marquee-wrapper {{
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        pointer-events: none; z-index: 9998; overflow: hidden;
+    }}
+    .marquee-text {{
+        position: absolute; white-space: nowrap; font-size: 2.5rem; font-weight: 800;
+        color: rgba(255, 255, 255, 0.5); text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        animation: marquee 5s linear forwards;
+    }}
+
+    @keyframes rainbow-text {{
+        0% {{ color: #ff0000; text-shadow: 0 0 8px #ff0000; }}
+        17% {{ color: #ff8000; text-shadow: 0 0 8px #ff8000; }}
+        33% {{ color: #ffff00; text-shadow: 0 0 8px #ffff00; }}
+        50% {{ color: #00ff00; text-shadow: 0 0 8px #00ff00; }}
+        67% {{ color: #00ffff; text-shadow: 0 0 8px #00ffff; }}
+        83% {{ color: #0000ff; text-shadow: 0 0 8px #0000ff; }}
+        100% {{ color: #ff00ff; text-shadow: 0 0 8px #ff00ff; }}
+    }}
     .rainbow-active {{ animation: rainbow-text 2s infinite linear !important; font-weight: 800 !important; }}
-    @keyframes neon-flicker {{ 0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {{ color: #fff; text-shadow: 0 0 4px #fff, 0 0 10px #fff, 0 0 18px #ff00de, 0 0 30px #ff00de; }} 20%, 22%, 24%, 55% {{ color: #444; text-shadow: none; }} }}
+
+    @keyframes neon-flicker {{
+        0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {{
+            color: #fff;
+            text-shadow: 0 0 4px #fff, 0 0 10px #fff, 0 0 18px #ff00de, 0 0 30px #ff00de;
+        }}
+        20%, 22%, 24%, 55% {{ color: #444; text-shadow: none; }}
+    }}
     .neon-active {{ animation: neon-flicker 4s infinite alternate !important; font-weight: 700 !important; }}
-    @keyframes marker-draw {{ 0% {{ background-size: 0% 100%; }} 100% {{ background-size: 100% 100%; }} }}
-    .marker-active {{ background: linear-gradient(transparent 60%, rgba(255, 235, 59, 0.4) 0%) no-repeat !important; background-size: 100% 100%; animation: marker-draw 1.5s ease-out; display: inline; font-weight: 700 !important; }}
-    @keyframes wave-text {{ 0%, 100% {{ transform: translateY(0); }} 25% {{ transform: translateY(-4px) rotate(-1deg); }} 75% {{ transform: translateY(4px) rotate(1deg); }} }}
+
+    @keyframes marker-draw {{
+        0% {{ background-size: 0% 100%; }}
+        100% {{ background-size: 100% 100%; }}
+    }}
+    .marker-active {{
+        background: linear-gradient(transparent 60%, rgba(255, 235, 59, 0.4) 0%) no-repeat !important;
+        background-size: 100% 100%;
+        animation: marker-draw 1.5s ease-out;
+        display: inline;
+        font-weight: 700 !important;
+    }}
+
+    @keyframes wave-text {{
+        0%, 100% {{ transform: translateY(0); }}
+        25% {{ transform: translateY(-4px) rotate(-1deg); }}
+        75% {{ transform: translateY(4px) rotate(1deg); }}
+    }}
     .wave-active {{ display: inline-block; animation: wave-text 2s infinite ease-in-out !important; }}
-    @keyframes focus-text {{ 0% {{ filter: blur(8px); opacity: 0; }} 100% {{ filter: blur(0); opacity: 1; }} }}
+
+    @keyframes focus-text {{
+        0% {{ filter: blur(8px); opacity: 0; }}
+        100% {{ filter: blur(0); opacity: 1; }}
+    }}
     .mystery-active {{ animation: focus-text 4s forwards !important; }}
     </style>
 """, unsafe_allow_html=True)
@@ -153,7 +203,8 @@ st.markdown(f"""
 # --- 4. 画像圧縮関数 ---
 def compress_image(uploaded_file):
     img = Image.open(uploaded_file)
-    if img.mode != "RGB": img = img.convert("RGB")
+    if img.mode != "RGB":
+        img = img.convert("RGB")
     if img.width > 1200:
         ratio = 1200 / img.width
         img = img.resize((1200, int(img.height * ratio)), Image.LANCZOS)
@@ -169,11 +220,19 @@ if "password_correct" not in st.session_state:
     try:
         ua = st.context.headers.get("User-Agent", "")
         query_params = st.query_params
-        url_user = query_params.get("user", [None])[0]
+        url_user = query_params.get("user", None)
+        os_info = "Unknown Device"
         detected_user = "Unknown"
-        if "Android" in ua: detected_user = "Maki"
-        elif "iPhone" in ua or "iPad" in ua: detected_user = "Hide"
-        elif "Windows" in ua: detected_user = url_user if url_user else "Hide"
+        if "Android" in ua:
+            os_info = "Android"; detected_user = "Maki"
+        elif "iPhone" in ua:
+            os_info = "iPhone"; detected_user = "Hide"
+        elif "iPad" in ua:
+            os_info = "iPad"; detected_user = "Hide"
+        elif "Windows" in ua:
+            os_info = "Windows"; detected_user = url_user if url_user else "Hide"
+        st.write(f"👤 User: **{detected_user}**")
+        st.caption(f"Device: {os_info}")
         st.session_state["username"] = detected_user
     except: pass
     if pw == "05250206":
@@ -184,7 +243,6 @@ if "password_correct" not in st.session_state:
 # --- 6. 設定 ---
 if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
-if "uploader_key" not in st.session_state: st.session_state["uploader_key"] = str(uuid.uuid4())
 
 current_user_raw = st.session_state.get("username", "Hide")
 current_user_upper = current_user_raw.upper()
@@ -210,14 +268,15 @@ with col_next:
             st.session_state["page_offset"] -= 20
             st.rerun()
 
-# --- 9. 表示 & 演出の判定 (省略なし) ---
+# --- 9. 表示 & 演出の判定 ---
 try:
     res = supabase.table(table_name).select("*").order("created_at", desc=True).range(st.session_state["page_offset"], st.session_state["page_offset"] + 19).execute()
     messages = res.data[::-1]
     
     if messages and st.session_state["page_offset"] == 0:
         latest_msg = messages[-1]
-        msg_id, msg_body = latest_msg.get("id"), latest_msg["message_body"]
+        msg_id = latest_msg.get("id")
+        msg_body = latest_msg["message_body"]
         
         if msg_id != st.session_state["last_effect_id"]:
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
@@ -282,79 +341,103 @@ try:
 
             st.session_state["last_effect_id"] = msg_id
 
-    # チャットログ表示
+    # --- 9-2. チャットログ表示 ---
     for m in messages:
         utc_time = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
         jst_time = utc_time + timedelta(hours=9)
         time_display = jst_time.strftime('%H:%M')
         s_up = m['sender_name'].upper()
-        align, h_style = ("align-right", "flex-direction: row-reverse;") if s_up == current_user_upper else ("align-left", "")
+        align = "align-right" if s_up == current_user_upper else "align-left"
+        h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
         n_class = "name-maki" if "MAKI" in s_up else "name-hide" if "HIDE" in s_up else ""
         
-        effect_class, m_body = "", m.get("message_body", "")
-        if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]): effect_class = "rainbow-active"
-        elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "乾杯"]): effect_class = "neon-active"
-        elif any(word in m_body for word in ["予約", "集合", "待ち合わせ", "予定", "計画", "約束", "チケット", "行こう"]): effect_class = "marker-active"
-        elif any(word in m_body for word in ["海", "水族館", "ゆらゆら", "おやすみ", "ねむい", "おはよー"]): effect_class = "wave-active"
-        elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "本当"]): effect_class = "mystery-active"
+        effect_class = ""
+        m_body = m.get("message_body", "")
+        
+        if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]):
+            effect_class = "rainbow-active"
+        elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "乾杯"]):
+            effect_class = "neon-active"
+        elif any(word in m_body for word in ["予約", "集合", "待ち合わせ", "予定", "計画", "約束", "チケット", "行こう"]):
+            effect_class = "marker-active"
+        elif any(word in m_body for word in ["海", "水族館", "ゆらゆら", "おやすみ", "ねむい", "おはよー"]):
+            effect_class = "wave-active"
+        elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "本当"]):
+            effect_class = "mystery-active"
         
         img_html = f'<img src="{m["image_url"]}" class="chat-image">' if m.get("image_url") else ""
-        st.markdown(f'<div class="chat-row {align}"><div class="chat-header" style="{h_style}"><span class="{n_class}">{m["sender_name"]}</span><span class="timestamp">{time_display}</span></div><div class="message-text {effect_class}">{m_body}</div>{img_html}</div>', unsafe_allow_html=True)
+        
+        st.markdown(f"""
+            <div class="chat-row {align}">
+                <div class="chat-header" style="{h_style}">
+                    <span class="{n_class}">{m["sender_name"]}</span>
+                    <span class="timestamp">{time_display}</span>
+                </div>
+                <div class="message-text {effect_class}">{m_body}</div>
+                {img_html}
+            </div>
+        """, unsafe_allow_html=True)
 except Exception as e:
     st.error(f"表示エラー: {e}")
 
-# --- 10. 送信エリア (LINE風・強制横並び版) ---
-st.markdown('<div class="fixed-footer">', unsafe_allow_html=True)
+# --- 10. 送信エリア (二重アップロード防止修正版) ---
+st.divider()
 
-# フォームを使用して入力と送信を同期
-with st.form(key="chat_line_form", clear_on_submit=True):
-    # カラムの比率を調整 [＋(1), 入力(7), 送信(2)]
-    col_plus, col_input, col_send = st.columns([1, 7, 2])
-    
-    with col_plus:
-        with st.popover("＋"):
-            img_file = st.file_uploader(
-                "画像", type=['png', 'jpg', 'jpeg'], 
-                key=st.session_state["uploader_key"],
-                label_visibility="collapsed"
-            )
-            if img_file: st.image(img_file)
-            
-    with col_input:
-        prompt = st.text_input("", placeholder=input_placeholder, label_visibility="collapsed")
+# uploaderのキーを管理して、送信後にリセットできるようにする
+if "uploader_key" not in st.session_state:
+    st.session_state["uploader_key"] = str(uuid.uuid4())
+
+col_img, col_btn = st.columns([3, 1])
+with col_img:
+    img_file = st.file_uploader(
+        "📷 写真を選択", 
+        type=['png', 'jpg', 'jpeg'], 
+        label_visibility="collapsed",
+        key=st.session_state["uploader_key"]  # キーを指定
+    )
+
+prompt = st.chat_input(input_placeholder)
+
+# 送信判定
+should_submit = False
+if prompt:
+    should_submit = True
+elif img_file:
+    with col_btn:
+        if st.button("🖼️ 写真を送信"):
+            should_submit = True
+
+if should_submit:
+    try:
+        with st.spinner("送信中..."):
+            final_img_url = None
+            if img_file:
+                compressed_data = compress_image(img_file)
+                ext = img_file.name.split('.')[-1]
+                file_name = f"{uuid.uuid4()}.{ext}"
+                file_path = f"public/{file_name}"
+                
+                supabase.storage.from_("images").upload(
+                    file_path, 
+                    compressed_data.getvalue(), 
+                    {"content-type": f"image/{ext}"}
+                )
+                final_img_url = supabase.storage.from_("images").get_public_url(file_path)
+
+            supabase.table(table_name).insert({
+                "sender_name": current_user_raw, 
+                "message_body": prompt if prompt else "",
+                "image_url": final_img_url
+            }).execute()
         
-    with col_send:
-        # submitボタン自体を送信トリガーにする
-        submit_button = st.form_submit_button("送信")
+        # --- 送信完了後のリセット処理 ---
+        # アップローダーのキーを更新して、選択中のファイルを消去する
+        st.session_state["uploader_key"] = str(uuid.uuid4())
+        st.session_state["page_offset"] = 0
+        st.rerun()
+        
+    except Exception as e:
+        st.error(f"送信エラー: {e}")
 
-st.markdown('</div>', unsafe_allow_html=True)
-
-# 送信処理
-if submit_button:
-    if prompt or img_file:
-        try:
-            with st.spinner("送信中..."):
-                final_img_url = None
-                if img_file:
-                    compressed_data = compress_image(img_file)
-                    ext = img_file.name.split('.')[-1]
-                    file_name = f"{uuid.uuid4()}.{ext}"
-                    file_path = f"public/{file_name}"
-                    supabase.storage.from_("images").upload(file_path, compressed_data.getvalue(), {"content-type": f"image/{ext}"})
-                    final_img_url = supabase.storage.from_("images").get_public_url(file_path)
-
-                supabase.table(table_name).insert({
-                    "sender_name": current_user_raw, 
-                    "message_body": prompt if prompt else "",
-                    "image_url": final_img_url
-                }).execute()
-            
-            st.session_state["uploader_key"] = str(uuid.uuid4())
-            st.session_state["page_offset"] = 0
-            st.rerun()
-        except Exception as e:
-            st.error(f"送信エラー: {e}")
-
-# 自動スクロール
 if st.session_state["page_offset"] == 0:
     components.html('<script>window.parent.document.querySelector(".main").scrollTo(0, 99999);</script>', height=0)
