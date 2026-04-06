@@ -102,7 +102,6 @@ st.markdown(f"""
     .peek-item {{ position: fixed; z-index: 9999; pointer-events: none; font-size: 4rem; }}
 
     /* C. 画面全体アクション */
-    /* シェイク（揺れる） */
     @keyframes shake {{
         0% {{ transform: translate(1px, 1px) rotate(0deg); }}
         10% {{ transform: translate(-1px, -2px) rotate(-1deg); }}
@@ -111,7 +110,6 @@ st.markdown(f"""
     }}
     .shake-screen {{ animation: shake 0.5s; animation-iteration-count: 4; }}
 
-    /* ムードダーク（暗くなる） */
     @keyframes fade-dark {{
         0% {{ filter: brightness(1); }}
         20% {{ filter: brightness(0.4) sepia(0.6); }}
@@ -120,7 +118,6 @@ st.markdown(f"""
     }}
     .mood-dark {{ animation: fade-dark 3.5s ease-in-out; }}
 
-    /* バウンス（跳ねる） */
     @keyframes bounce-screen {{
         0%, 20%, 50%, 80%, 100% {{ transform: translateY(0); }}
         40% {{ transform: translateY(-40px) scaleY(1.05); }}
@@ -128,7 +125,6 @@ st.markdown(f"""
     }}
     .bounce-screen {{ animation: bounce-screen 0.8s ease; }}
 
-    /* フラッシュ（光る） */
     @keyframes flash-white {{
         0% {{ filter: brightness(1); }}
         10% {{ filter: brightness(2.5) contrast(1.2); }}
@@ -143,22 +139,64 @@ st.markdown(f"""
     }}
     .marquee-wrapper {{
         position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        z-index: 9998;
-        overflow: hidden;
+        top: 0; left: 0; width: 100%; height: 100%;
+        pointer-events: none; z-index: 9998; overflow: hidden;
     }}
     .marquee-text {{
-        position: absolute;
-        white-space: nowrap;
-        font-size: 2.5rem;
-        font-weight: 800;
-        color: rgba(255, 255, 255, 0.5);
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        position: absolute; white-space: nowrap; font-size: 2.5rem; font-weight: 800;
+        color: rgba(255, 255, 255, 0.5); text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         animation: marquee 5s linear forwards;
+    }}
+
+    /* F. レインボーテキスト演出 */
+    @keyframes rainbow-text {{
+        0% {{ color: #ff0000; text-shadow: 0 0 8px #ff0000; }}
+        17% {{ color: #ff8000; text-shadow: 0 0 8px #ff8000; }}
+        33% {{ color: #ffff00; text-shadow: 0 0 8px #ffff00; }}
+        50% {{ color: #00ff00; text-shadow: 0 0 8px #00ff00; }}
+        67% {{ color: #00ffff; text-shadow: 0 0 8px #00ffff; }}
+        83% {{ color: #0000ff; text-shadow: 0 0 8px #0000ff; }}
+        100% {{ color: #ff00ff; text-shadow: 0 0 8px #ff00ff; }}
+    }}
+    .rainbow-active {{
+        animation: rainbow-text 2s infinite linear !important;
+        font-weight: 800 !important;
+    }}
+
+    /* G. ネオンテキスト演出 */
+    @keyframes neon-flicker {{
+        0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {{
+            color: #fff;
+            text-shadow: 0 0 4px #fff, 0 0 10px #fff, 0 0 18px #ff00de, 0 0 30px #ff00de;
+        }}
+        20%, 22%, 24%, 55% {{
+            color: #444;
+            text-shadow: none;
+        }}
+    }}
+    .neon-active {{
+        animation: neon-flicker 4s infinite alternate !important;
+        font-weight: 700 !important;
+    }}
+
+    /* I. ゆれる文字（ウェーブ） */
+    @keyframes wave-text {{
+        0%, 100% {{ transform: translateY(0); }}
+        25% {{ transform: translateY(-4px) rotate(-1deg); }}
+        75% {{ transform: translateY(4px) rotate(1deg); }}
+    }}
+    .wave-active {{
+        display: inline-block;
+        animation: wave-text 2s infinite ease-in-out !important;
+    }}
+
+    /* J. ボケる文字（ミステリアス） */
+    @keyframes focus-text {{
+        0% {{ filter: blur(8px); opacity: 0; }}
+        100% {{ filter: blur(0); opacity: 1; }}
+    }}
+    .mystery-active {{
+        animation: focus-text 4s forwards !important;
     }}
 
     </style>
@@ -169,7 +207,6 @@ if "password_correct" not in st.session_state:
     st.write("🔒 Enter Password")
     pw = st.text_input("Password", type="password", key="login")
     
-    # OS情報とURLパラメータの取得
     try:
         ua = st.context.headers.get("User-Agent", "")
         query_params = st.query_params
@@ -178,7 +215,6 @@ if "password_correct" not in st.session_state:
         os_info = "Unknown Device"
         detected_user = "Unknown"
         
-        # OS判定
         if "Android" in ua:
             os_info = "Android"
             detected_user = "Maki"
@@ -190,17 +226,10 @@ if "password_correct" not in st.session_state:
             detected_user = "Hide"
         elif "Windows" in ua:
             os_info = "Windows"
-            # Windowsの場合のみ、URL変数を最優先する
-            if url_user:
-                detected_user = url_user
-            else:
-                detected_user = "Hide"
+            detected_user = url_user if url_user else "Hide"
         
-        # ログイン画面にユーザー名を表示
         st.write(f"👤 User: **{detected_user}**")
         st.caption(f"Device: {os_info}")
-        
-        # セッションにユーザー名を保存
         st.session_state["username"] = detected_user
     except:
         pass
@@ -216,7 +245,6 @@ if "page_offset" not in st.session_state:
 if "last_effect_id" not in st.session_state:
     st.session_state["last_effect_id"] = None
 
-# 送信者名を判定結果から取得
 current_user_raw = st.session_state.get("username", "Hide")
 current_user_upper = current_user_raw.upper()
 supabase = create_client("https://kvqbwknrsdasoipttkpr.supabase.co", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
@@ -242,7 +270,7 @@ with col_next:
             st.session_state["page_offset"] -= 20
             st.rerun()
 
-# --- 8. 表示 & 演出の判定（融合版） ---
+# --- 8. 表示 & 演出の判定 ---
 try:
     res = supabase.table(table_name).select("*").order("created_at", desc=True).range(st.session_state["page_offset"], st.session_state["page_offset"] + 19).execute()
     messages = res.data[::-1]
@@ -253,13 +281,12 @@ try:
         msg_body = latest_msg["message_body"]
         
         if msg_id != st.session_state["last_effect_id"]:
-            # テキストから絵文字のみを抽出
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             
-            # A. 昇る演出（キーワード判定）
+            # A. 昇る演出
             priority_emoji = None
-            if any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
-            elif any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
+            if any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
+            elif any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
             elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
             elif "おにぎり" in msg_body: priority_emoji = "🍙"
             elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]): priority_emoji = "🏸"
@@ -286,15 +313,13 @@ try:
                     effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{priority_emoji}</div>'
                 st.markdown(effect_html + '</div>', unsafe_allow_html=True)
             
-            # B. ひょっこり演出（キーワードがなくても絵文字があれば実行）
+            # B. ひょっこり演出
             elif emoji_in_text:
                 target_emoji = emoji_in_text[-1]
                 peek_html = '<div>'
                 for i in range(5):
-                    side = random.choice(["left", "right"])
-                    top = random.randint(20, 80)
-                    delay = random.uniform(0, 2.0)
-                    duration = random.uniform(3.0, 4.0)
+                    side = random.choice(["left", "right"]); top = random.randint(20, 80)
+                    delay = random.uniform(0, 2.0); duration = random.uniform(3.0, 4.0)
                     anim_name = "peek-left" if side == "left" else "peek-right"
                     peek_html += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
                 st.markdown(peek_html + '</div>', unsafe_allow_html=True)
@@ -312,21 +337,18 @@ try:
             if any(word in msg_body for word in ["びっくり", "すごい", "光る", "指輪"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
 
-            # D. 流れる文字演出（キーワードがあれば、そのメッセージをそのまま流す）
-            # キーワード: w, 笑, 草, 爆笑, うける
+            # D. 流れる文字演出（ニコニコ風）
             if any(word in msg_body for word in ["w", "笑", "草", "うける", "爆笑", "すご", "最高", "天才", "神", "優勝", "飲みに行", "ビール", "大好き"]):
                 marquee_html = '<div class="marquee-wrapper">'
-                # メッセージが長すぎる場合は20文字でカット
                 display_text = (msg_body[:20] + '..') if len(msg_body) > 20 else msg_body
                 for i in range(3):
-                    top_pos = random.randint(10, 80)
-                    delay = i * 0.7  # 少し間隔を空けて流す
+                    top_pos = random.randint(10, 80); delay = i * 0.7
                     marquee_html += f'<div class="marquee-text" style="top:{top_pos}vh; animation-delay:{delay}s;">{display_text}</div>'
                 st.markdown(marquee_html + '</div>', unsafe_allow_html=True)
 
             st.session_state["last_effect_id"] = msg_id
 
-    # チャットログ表示
+    # --- 8-2. チャットログ表示 ---
     for m in messages:
         utc_time = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
         jst_time = utc_time + timedelta(hours=9)
@@ -336,13 +358,30 @@ try:
         h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
         n_class = "name-maki" if "MAKI" in s_up else "name-hide" if "HIDE" in s_up else ""
         
+        # 【演出用クラスの判定】
+        effect_class = ""
+        m_body = m["message_body"]
+        
+        # 1: レインボー
+        if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]):
+            effect_class = "rainbow-active"
+        # 2: ネオン
+        elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "飲みに行こう", "ビール", "乾杯"]):
+            effect_class = "neon-active"
+        # 4: ゆれる（ウェーブ）
+        elif any(word in m_body for word in ["海", "水族館", "ゆらゆら", "おやすみ", "ねむい", "おはよー"]):
+            effect_class = "wave-active"
+        # 5: ボケる（ミステリアス）
+        elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "本当"]):
+            effect_class = "mystery-active"
+        
         st.markdown(f"""
             <div class="chat-row {align}">
                 <div class="chat-header" style="{h_style}">
                     <span class="{n_class}">{m["sender_name"]}</span>
                     <span class="timestamp">{time_display}</span>
                 </div>
-                <div class="message-text">{m["message_body"]}</div>
+                <div class="message-text {effect_class}">{m["message_body"]}</div>
             </div>
         """, unsafe_allow_html=True)
 except Exception as e:
@@ -353,8 +392,7 @@ prompt = st.chat_input(input_placeholder)
 if prompt:
     try:
         supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
-        st.session_state["page_offset"] = 0
-        st.rerun()
+        st.session_state["page_offset"] = 0; st.rerun()
     except Exception as e:
         st.error(f"送信エラー: {e}")
 
