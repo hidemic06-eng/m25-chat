@@ -4,7 +4,7 @@ from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
 from datetime import datetime, timedelta
 import random
-import re  # 正規表現ライブラリを追加（絵文字抽出用）
+import re
 
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
@@ -38,7 +38,6 @@ st.markdown(f"""
     [data-testid="bundle-viewer-container"] {{display: none !important;}}
     .block-container {{ padding-top: 1rem; padding-bottom: 80px !important; max-width: 100% !important; }}
     
-    /* ボタンの色を固定（ライトモード対策） */
     .stButton > button {{
         background-color: #424549 !important;
         color: white !important;
@@ -61,7 +60,6 @@ st.markdown(f"""
         padding: 0; 
     }}
 
-    /* 入力エリアのフォント設定 */
     .stChatInput textarea {{
         font-family: 'M PLUS Rounded 1c', sans-serif !important;
     }}
@@ -179,6 +177,19 @@ st.markdown(f"""
         font-weight: 700 !important;
     }}
 
+    /* H. 蛍光ペン（マーカー）演出 */
+    @keyframes marker-draw {{
+        0% {{ background-size: 0% 100%; }}
+        100% {{ background-size: 100% 100%; }}
+    }}
+    .marker-active {{
+        background: linear-gradient(transparent 60%, rgba(255, 235, 59, 0.4) 0%) no-repeat !important;
+        background-size: 100% 100%;
+        animation: marker-draw 1.5s ease-out;
+        display: inline;
+        font-weight: 700 !important;
+    }}
+
     /* I. ゆれる文字（ウェーブ） */
     @keyframes wave-text {{
         0%, 100% {{ transform: translateY(0); }}
@@ -283,7 +294,7 @@ try:
         if msg_id != st.session_state["last_effect_id"]:
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             
-            # A. 昇る演出
+            # 昇る演出などの共通処理...
             priority_emoji = None
             if any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
             elif any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
@@ -313,7 +324,6 @@ try:
                     effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{priority_emoji}</div>'
                 st.markdown(effect_html + '</div>', unsafe_allow_html=True)
             
-            # B. ひょっこり演出
             elif emoji_in_text:
                 target_emoji = emoji_in_text[-1]
                 peek_html = '<div>'
@@ -324,7 +334,6 @@ try:
                     peek_html += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
                 st.markdown(peek_html + '</div>', unsafe_allow_html=True)
 
-            # C. 画面全体のアクション
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             
@@ -337,7 +346,6 @@ try:
             if any(word in msg_body for word in ["びっくり", "すごい", "光る", "指輪"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
 
-            # D. 流れる文字演出（ニコニコ風）
             if any(word in msg_body for word in ["w", "笑", "草", "うける", "爆笑", "すご", "最高", "天才", "神", "優勝", "飲みに行", "ビール", "大好き"]):
                 marquee_html = '<div class="marquee-wrapper">'
                 display_text = (msg_body[:20] + '..') if len(msg_body) > 20 else msg_body
@@ -358,20 +366,17 @@ try:
         h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
         n_class = "name-maki" if "MAKI" in s_up else "name-hide" if "HIDE" in s_up else ""
         
-        # 【演出用クラスの判定】
         effect_class = ""
         m_body = m["message_body"]
         
-        # 1: レインボー
         if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]):
             effect_class = "rainbow-active"
-        # 2: ネオン
         elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "飲みに行こう", "ビール", "乾杯"]):
             effect_class = "neon-active"
-        # 4: ゆれる（ウェーブ）
+        elif any(word in m_body for word in ["予約", "集合", "待ち合わせ", "予定", "計画", "約束"]):
+            effect_class = "marker-active" # マーカー演出
         elif any(word in m_body for word in ["海", "水族館", "ゆらゆら", "おやすみ", "ねむい", "おはよー"]):
             effect_class = "wave-active"
-        # 5: ボケる（ミステリアス）
         elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "本当"]):
             effect_class = "mystery-active"
         
@@ -396,6 +401,5 @@ if prompt:
     except Exception as e:
         st.error(f"送信エラー: {e}")
 
-# --- 10. 自動スクロール ---
 if st.session_state["page_offset"] == 0:
     components.html('<script>window.parent.document.querySelector(".main").scrollTo(0, 99999);</script>', height=0)
