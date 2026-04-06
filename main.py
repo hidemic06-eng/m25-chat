@@ -157,26 +157,6 @@ st.markdown(f"""
         animation: marquee 5s linear forwards;
     }}
 
-    /* E. シャトルが飛ぶ演出（スマッシュ） */
-    @keyframes smash-hit {{
-        0% {{ transform: translate(100vw, -100px) rotate(-45deg); opacity: 1; }}
-        100% {{ transform: translate(-100px, 100vh) rotate(-45deg); opacity: 1; }}
-    }}
-    .shuttle-wrapper {{
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        z-index: 10000;
-        overflow: hidden;
-    }}
-    .shuttle-item {{
-        position: absolute;
-        font-size: 4rem;
-        animation: smash-hit 0.8s ease-in forwards;
-    }}
 
     </style>
 """, unsafe_allow_html=True)
@@ -271,7 +251,7 @@ try:
             elif any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
             elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
             elif "おにぎり" in msg_body: priority_emoji = "🍙"
-#            elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]): priority_emoji = "🏸"
+            elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]): priority_emoji = "🏸"
             elif any(word in msg_body for word in ["ラーメン", "山岡家"]): priority_emoji = "🍜"
             elif any(word in msg_body for word in ["野菜", "サラダ", "レタス"]): priority_emoji = "🥬"
             elif any(word in msg_body for word in ["おやすみ", "眠い", "寝る"]): priority_emoji = "💤"
@@ -330,11 +310,6 @@ try:
                     delay = i * 0.7
                     marquee_html += f'<div class="marquee-text" style="top:{top_pos}vh; animation-delay:{delay}s;">{display_text}</div>'
                 st.markdown(marquee_html + '</div>', unsafe_allow_html=True)
-
-            # E. シャトル演出（スマッシュ）
-            if any(word in msg_body for word in ["バド", "練習", "試合", "スマッシュ", "🏸"]):
-                shuttle_html = '<div class="shuttle-wrapper"><div class="shuttle-item">🏸</div></div>'
-                st.markdown(shuttle_html, unsafe_allow_html=True)
 
             st.session_state["last_effect_id"] = msg_id
 
