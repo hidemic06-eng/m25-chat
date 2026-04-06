@@ -43,11 +43,21 @@ st.markdown(f"""
     .stAppDeployButton {{display:none;}}
     [data-testid="bundle-viewer-container"] {{display: none !important;}}
     
-    /* --- 【重要】下部の余白を最適化 --- */
+    /* --- 下部の余白を最適化 & 境界線を消去 --- */
     .block-container {{ 
         padding-top: 1rem; 
-        padding-bottom: 5rem !important; /* 120pxから5remへ縮小し、無駄な空白を削除 */
+        padding-bottom: 2rem !important; 
         max-width: 100% !important; 
+    }}
+
+    /* グレーの横線（hr）をすべて非表示 */
+    hr {{
+        display: none !important;
+    }}
+
+    /* 要素間の隙間をゼロにしてメッセージを詰める */
+    [data-testid="stVerticalBlock"] {{
+        gap: 0rem !important;
     }}
     
     .stButton > button {{
@@ -56,7 +66,7 @@ st.markdown(f"""
         border: 1px solid #4f545c !important;
     }}
 
-    .chat-row {{ display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }}
+    .chat-row {{ display: flex; flex-direction: column; margin-bottom: 8px; width: 100%; }}
     
     .message-text {{ 
         font-family: 'M PLUS Rounded 1c', sans-serif !important;
@@ -70,6 +80,17 @@ st.markdown(f"""
         word-wrap: break-word; 
         color: {text_main_color} !important; 
         padding: 0; 
+    }}
+
+    /* 入力欄の枠線と余白の調整 */
+    [data-testid="stChatInput"] {{
+        border: none !important;
+        margin-top: -10px !important;
+    }}
+    [data-testid="stChatInput"] div {{
+        border: none !important;
+        box-shadow: none !important;
+        outline: none !important;
     }}
 
     .chat-image {{
@@ -257,7 +278,7 @@ st.title(f"💬 M25-Chat{status_label}")
 auto_update = st.toggle("自動更新(8s)", value=True)
 if auto_update and st.session_state["page_offset"] == 0:
     st_autorefresh(interval=8000, key="chat_ref")
-st.divider()
+# st.divider()  <-- ヘッダー下の線も不要な場合はここをコメントアウト
 
 # --- 8. ナビゲーション ---
 col_prev, col_page, col_next = st.columns([1, 2, 1])
@@ -409,7 +430,7 @@ except Exception as e:
     st.error(f"表示エラー: {e}")
 
 # --- 10. 送信エリア (チャット入力のみ) ---
-st.divider()
+# st.divider()  <-- グレーの横線を消すためにここを削除しました
 prompt = st.chat_input(input_placeholder)
 
 # st.chat_input または 上部で選択された img_file の送信判定
