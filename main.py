@@ -67,11 +67,17 @@ st.markdown(f"""
         padding: 0; 
     }}
 
+    /* ポラロイド風フレームのデザイン */
     .chat-image {{
         max-width: 280px;
-        border-radius: 12px;
-        margin-top: 8px;
-        border: 1px solid #4f545c;
+        border-radius: 4px;
+        margin-top: 10px;
+        /* 白いフチとしっかりめの影 */
+        border: 8px solid #ffffff !important;
+        box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+        /* わずかに傾けてランダムな配置感を出す */
+        transform: rotate(-1.5deg);
+        display: inline-block;
     }}
 
     .stChatInput textarea {{
@@ -261,7 +267,12 @@ try:
             if priority_emoji:
                 effect_html = '<div class="rising-emoji">'
                 for i in range(25):
-                    left, size = random.randint(5, 95), random.uniform(2.5, 4.5)
+                    left = random.randint(5, 95)
+                    # 画像（カメラ）の場合はサイズをより大胆にバラけさせる
+                    if priority_emoji == "📷":
+                        size = random.uniform(2.0, 5.5)
+                    else:
+                        size = random.uniform(2.5, 4.5)
                     delay, duration = random.uniform(0, 0.5), random.uniform(5.5, 6.5)
                     effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{priority_emoji}</div>'
                 st.markdown(effect_html + '</div>', unsafe_allow_html=True)
