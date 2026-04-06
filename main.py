@@ -309,12 +309,13 @@ try:
             elif any(word in msg_body for word in ["ドライブ"]): priority_emoji = "🚗"
             elif any(word in msg_body for word in ["ワイン", "ハイボール", "乾杯"]): priority_emoji = "🥂"
             elif any(word in msg_body for word in ["花見", "さくら", "桜"]): priority_emoji = "🌸"
-            elif any(word in msg_body for word in ["楽しみ", "ルンルン", "うれしい"]): priority_emoji = "🎶"
+            elif any(word in msg_body for word in ["楽しみ", "ルンルン", "うれしい"]): priority_emoji = "🥳"
             elif any(word in msg_body for word in ["ケーキ", "スイーツ", "甘いもの"]): priority_emoji = "🍰"
             elif any(word in msg_body for word in ["ラッキー", "幸せ", "しあわせ", "ハッピー"]): priority_emoji = "🍀"
             elif any(word in msg_body for word in ["熊", "困った"]): priority_emoji = "🐻"
             elif any(word in msg_body for word in ["おやつ", "プリン"]): priority_emoji = "🍮"
             elif any(word in msg_body for word in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
+            elif any(word in msg_body for word in ["キノコ", "きのこ"]): priority_emoji = "🍄"
 
             if priority_emoji:
                 effect_html = '<div class="rising-emoji">'
