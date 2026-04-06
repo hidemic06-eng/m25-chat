@@ -177,19 +177,6 @@ st.markdown(f"""
         font-weight: 700 !important;
     }}
 
-    /* H. 光の粉（パーティクル）エフェクト */
-    @keyframes particle-move {{
-        0% {{ text-shadow: 0 0 4px #fff, 0 0 8px #ffeb3b, -3px -3px 2px #ffeb3b, 3px -3px 2px #ffeb3b, -3px 3px 2px #ffeb3b, 3px 3px 2px #ffeb3b; color: #fff; }}
-        33% {{ text-shadow: 0 0 4px #fff, 0 0 12px #ffeb3b, -6px 2px 3px #ffeb3b, 5px -5px 3px #ffeb3b, 2px 6px 3px #ffeb3b, -5px -2px 3px #ffeb3b; color: #fff; }}
-        66% {{ text-shadow: 0 0 4px #fff, 0 0 10px #ffeb3b, 4px 4px 2px #ffeb3b, -4px -5px 4px #ffeb3b, 6px -2px 2px #ffeb3b, -2px 6px 4px #ffeb3b; color: #fff; }}
-        100% {{ text-shadow: 0 0 4px #fff, 0 0 8px #ffeb3b, -3px -3px 2px #ffeb3b, 3px -3px 2px #ffeb3b, -3px 3px 2px #ffeb3b, 3px 3px 2px #ffeb3b; color: #fff; }}
-    }}
-    .particle-active {{
-        animation: particle-move 3s infinite linear !important;
-        font-weight: 700 !important;
-        display: inline-block;
-    }}
-
     /* I. ゆれる文字（ウェーブ） */
     @keyframes wave-text {{
         0%, 100% {{ transform: translateY(0); }}
@@ -373,8 +360,6 @@ try:
             effect_class = "rainbow-active"
         elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "飲みに行こう", "ビール", "乾杯"]):
             effect_class = "neon-active"
-        elif any(word in m_body for word in ["記念日", "おめでとう", "特別", "魔法", "キラキラ"]):
-            effect_class = "particle-active"
         elif any(word in m_body for word in ["海", "水族館", "ゆらゆら", "おやすみ", "ねむい", "おはよー"]):
             effect_class = "wave-active"
         elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "本当"]):
