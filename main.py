@@ -163,26 +163,35 @@ st.markdown(f"""
         font-weight: 800 !important;
     }}
 
-    /* G. ネオンテキスト演出 (追加) */
-    @keyframes neon-flicker {{
-        0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {{
+/* G. ネオンテキスト演出 (カラーチェンジ版) */
+    @keyframes neon-flicker-color {{
+        /* 0%: ピンク */
+        0%, 25% {{
             color: #fff;
-            text-shadow: 
-                0 0 4px #fff,
-                0 0 10px #fff,
-                0 0 18px #ff00de,
-                0 0 30px #ff00de;
+            text-shadow: 0 0 4px #fff, 0 0 10px #fff, 0 0 20px #ff00de, 0 0 35px #ff00de;
         }}
-        20%, 22%, 24%, 55% {{
-            color: #444;
-            text-shadow: none;
+        /* 20%あたりでチカッとさせる */
+        22% {{ color: #444; text-shadow: none; }}
+        
+        /* 50%: 青 */
+        45%, 65% {{
+            color: #fff;
+            text-shadow: 0 0 4px #fff, 0 0 10px #fff, 0 0 20px #00d2ff, 0 0 35px #00d2ff;
+        }}
+        /* 55%あたりでチカッとさせる */
+        58% {{ color: #444; text-shadow: none; }}
+        
+        /* 85%: 緑 */
+        80%, 100% {{
+            color: #fff;
+            text-shadow: 0 0 4px #fff, 0 0 10px #fff, 0 0 20px #00ff8a, 0 0 35px #00ff8a;
         }}
     }}
     .neon-active {{
-        animation: neon-flicker 4s infinite alternate !important;
+        animation: neon-flicker-color 8s infinite alternate !important;
         font-weight: 700 !important;
     }}
-
+    
     </style>
 """, unsafe_allow_html=True)
 
