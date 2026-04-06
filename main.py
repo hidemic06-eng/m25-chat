@@ -61,7 +61,14 @@ st.markdown(f"""
         border: 1px solid #4f545c !important;
     }}
 
-    .chat-row {{ display: flex; flex-direction: column; margin-bottom: 8px; width: 100%; }}
+    /* --- メッセージ間の余白を調整 --- */
+    .chat-row {{ 
+        display: flex; 
+        flex-direction: column; 
+        margin-top: 20px; /* 前のメッセージとの間隔を確保 */
+        margin-bottom: 5px; 
+        width: 100%; 
+    }}
     
     .message-text {{ 
         font-family: 'M PLUS Rounded 1c', sans-serif !important;
@@ -74,7 +81,7 @@ st.markdown(f"""
         white-space: pre-wrap; 
         word-wrap: break-word; 
         color: {text_main_color} !important; 
-        padding: 0; 
+        padding: 2px 0; 
     }}
 
     [data-testid="stChatInput"] {{
@@ -103,48 +110,32 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* --- 演出用アニメーション --- */
-    @keyframes rise {{
-        0% {{ transform: translateY(0); opacity: 0; }}
-        5% {{ opacity: 1; }}
-        85% {{ opacity: 1; }}
-        100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }}
-    }}
+    /* --- 演出用アニメーション (変更なし) --- */
+    @keyframes rise {{ 0% {{ transform: translateY(0); opacity: 0; }} 5% {{ opacity: 1; }} 85% {{ opacity: 1; }} 100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }} }}
     .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
     .emoji-item {{ position: absolute; animation: rise linear forwards; }}
-
     @keyframes peek-left {{ 0% {{ left: -100px; opacity: 0; }} 20% {{ left: 20px; opacity: 1; }} 80% {{ left: 20px; opacity: 1; }} 100% {{ left: -100px; opacity: 0; }} }}
     @keyframes peek-right {{ 0% {{ right: -100px; opacity: 0; }} 20% {{ right: 20px; opacity: 1; }} 80% {{ right: 20px; opacity: 1; }} 100% {{ right: -100px; opacity: 0; }} }}
     .peek-item {{ position: fixed; z-index: 9999; pointer-events: none; font-size: 4rem; }}
-
     @keyframes shake {{ 0% {{ transform: translate(1px, 1px) rotate(0deg); }} 10% {{ transform: translate(-1px, -2px) rotate(-1deg); }} 30% {{ transform: translate(3px, 2px) rotate(0deg); }} 100% {{ transform: translate(1px, 1px) rotate(0deg); }} }}
     .shake-screen {{ animation: shake 0.5s; animation-iteration-count: 4; }}
-
     @keyframes fade-dark {{ 0% {{ filter: brightness(1); }} 20% {{ filter: brightness(0.4) sepia(0.6); }} 80% {{ filter: brightness(0.4) sepia(0.6); }} 100% {{ filter: brightness(1); }} }}
     .mood-dark {{ animation: fade-dark 3.5s ease-in-out; }}
-
     @keyframes bounce-screen {{ 0%, 20%, 50%, 80%, 100% {{ transform: translateY(0); }} 40% {{ transform: translateY(-40px) scaleY(1.05); }} 60% {{ transform: translateY(-20px) scaleY(1.02); }} }}
     .bounce-screen {{ animation: bounce-screen 0.8s ease; }}
-
     @keyframes flash-white {{ 0% {{ filter: brightness(1); }} 10% {{ filter: brightness(2.5) contrast(1.2); }} 100% {{ filter: brightness(1); }} }}
     .flash-screen {{ animation: flash-white 0.6s ease-out; }}
-
     @keyframes marquee {{ 0% {{ transform: translateX(100vw); }} 100% {{ transform: translateX(-100vw); }} }}
     .marquee-wrapper {{ position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9998; overflow: hidden; }}
     .marquee-text {{ position: absolute; white-space: nowrap; font-size: 2.5rem; font-weight: 800; color: rgba(255, 255, 255, 0.5); text-shadow: 2px 2px 4px rgba(0,0,0,0.5); animation: marquee 5s linear forwards; }}
-
     @keyframes rainbow-text {{ 0% {{ color: #ff0000; text-shadow: 0 0 8px #ff0000; }} 17% {{ color: #ff8000; text-shadow: 0 0 8px #ff8000; }} 33% {{ color: #ffff00; text-shadow: 0 0 8px #ffff00; }} 50% {{ color: #00ff00; text-shadow: 0 0 8px #00ff00; }} 67% {{ color: #00ffff; text-shadow: 0 0 8px #00ffff; }} 83% {{ color: #0000ff; text-shadow: 0 0 8px #0000ff; }} 100% {{ color: #ff00ff; text-shadow: 0 0 8px #ff00ff; }} }}
     .rainbow-active {{ animation: rainbow-text 2s infinite linear !important; font-weight: 800 !important; }}
-
     @keyframes neon-flicker {{ 0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {{ color: #fff; text-shadow: 0 0 4px #fff, 0 0 10px #fff, 0 0 18px #ff00de, 0 0 30px #ff00de; }} 20%, 22%, 24%, 55% {{ color: #444; text-shadow: none; }} }}
     .neon-active {{ animation: neon-flicker 4s infinite alternate !important; font-weight: 700 !important; }}
-
     @keyframes marker-draw {{ 0% {{ background-size: 0% 100%; }} 100% {{ background-size: 100% 100%; }} }}
     .marker-active {{ background: linear-gradient(transparent 60%, rgba(255, 235, 59, 0.4) 0%) no-repeat !important; background-size: 100% 100%; animation: marker-draw 1.5s ease-out; display: inline; font-weight: 700 !important; }}
-
     @keyframes wave-text {{ 0%, 100% {{ transform: translateY(0); }} 25% {{ transform: translateY(-4px) rotate(-1deg); }} 75% {{ transform: translateY(4px) rotate(1deg); }} }}
     .wave-active {{ display: inline-block; animation: wave-text 2s infinite ease-in-out !important; }}
-
     @keyframes focus-text {{ 0% {{ filter: blur(8px); opacity: 0; }} 100% {{ filter: blur(0); opacity: 1; }} }}
     .mystery-active {{ animation: focus-text 4s forwards !important; }}
     </style>
@@ -244,7 +235,7 @@ try:
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             priority_emoji = None
             
-            # --- キーワード判定 (上昇絵文字演出) ---
+            # キーワード判定
             if any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
             elif any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
             elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
@@ -296,7 +287,6 @@ try:
             if any(word in msg_body for word in ["びっくり", "すごい", "光る", "指輪"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
             
-            # 流れるテロップ (marquee)
             if any(w in msg_body for w in ["w", "笑", "草", "うける", "爆笑", "すご", "最高", "天才", "神", "優勝", "飲みに行", "ビール", "大好き"]):
                 m_html = '<div class="marquee-wrapper">'
                 txt = (msg_body[:20] + '..') if len(msg_body) > 20 else msg_body
@@ -323,7 +313,6 @@ try:
         m_body = m.get("message_body", "")
         img_html = f'<div><img src="{m["image_url"]}" class="chat-image"></div>' if m.get("image_url") else ""
 
-        # 文字装飾エフェクト
         eff = ""
         if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]): eff = "rainbow-active"
         elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "乾杯"]): eff = "neon-active"
