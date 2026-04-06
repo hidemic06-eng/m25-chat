@@ -163,15 +163,11 @@ st.markdown(f"""
         font-weight: 800 !important;
     }}
 
-    /* G. ネオンテキスト演出 (追加) */
+    /* G. ネオンテキスト演出 */
     @keyframes neon-flicker {{
         0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {{
             color: #fff;
-            text-shadow: 
-                0 0 4px #fff,
-                0 0 10px #fff,
-                0 0 18px #ff00de,
-                0 0 30px #ff00de;
+            text-shadow: 0 0 4px #fff, 0 0 10px #fff, 0 0 18px #ff00de, 0 0 30px #ff00de;
         }}
         20%, 22%, 24%, 55% {{
             color: #444;
@@ -181,6 +177,37 @@ st.markdown(f"""
     .neon-active {{
         animation: neon-flicker 4s infinite alternate !important;
         font-weight: 700 !important;
+    }}
+
+    /* H. 燃える文字（ファイヤー） */
+    @keyframes fire-glow {{
+        0% {{ text-shadow: 0 0 4px #fff, 0 -1px 4px #ff0, 0 -2px 10px #ff8000, 0 -10px 20px #ff4000; color: #fff; }}
+        50% {{ text-shadow: 0 0 4px #fff, 0 -3px 4px #ff0, 0 -5px 15px #ff8000, 0 -12px 25px #ff4000; color: #ffeeee; }}
+        100% {{ text-shadow: 0 0 4px #fff, 0 -1px 4px #ff0, 0 -2px 10px #ff8000, 0 -10px 20px #ff4000; color: #fff; }}
+    }}
+    .fire-active {{
+        animation: fire-glow 0.1s infinite alternate !important;
+        font-weight: 800 !important;
+    }}
+
+    /* I. ゆれる文字（ウェーブ） */
+    @keyframes wave-text {{
+        0%, 100% {{ transform: translateY(0); }}
+        25% {{ transform: translateY(-4px) rotate(-1deg); }}
+        75% {{ transform: translateY(4px) rotate(1deg); }}
+    }}
+    .wave-active {{
+        display: inline-block;
+        animation: wave-text 2s infinite ease-in-out !important;
+    }}
+
+    /* J. ボケる文字（ミステリアス） */
+    @keyframes focus-text {{
+        0% {{ filter: blur(8px); opacity: 0; }}
+        100% {{ filter: blur(0); opacity: 1; }}
+    }}
+    .mystery-active {{
+        animation: focus-text 4s forwards !important;
     }}
 
     </style>
@@ -344,12 +371,23 @@ try:
         
         # 【演出用クラスの判定】
         effect_class = ""
-        # 優先度1: レインボー
-        if any(word in m["message_body"] for word in ["大好き", "くっつ", "最高", "優勝"]):
+        m_body = m["message_body"]
+        
+        # 1: レインボー
+        if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝"]):
             effect_class = "rainbow-active"
-        # 優先度2: ネオン
-        elif any(word in m["message_body"] for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ"]):
+        # 2: ネオン
+        elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "飲みに行こう", "ビール", "乾杯"]):
             effect_class = "neon-active"
+        # 3: 燃える（ファイヤー）
+        elif any(word in m_body for word in ["暑い", "情熱", "燃える", "激アツ"]):
+            effect_class = "fire-active"
+        # 4: ゆれる（ウェーブ）
+        elif any(word in m_body for word in ["海", "水族館", "ゆらゆら", "おやしゅみ", "ねむい"]):
+            effect_class = "wave-active"
+        # 5: ボケる（ミステリアス）
+        elif any(word in m_body for word in ["秘密", "実は", "ここだけの話", "内緒"]):
+            effect_class = "mystery-active"
         
         st.markdown(f"""
             <div class="chat-row {align}">
