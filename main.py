@@ -363,7 +363,7 @@ try:
         m_body = m["message_body"]
         
         # 1: レインボー
-        if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝"]):
+        if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]):
             effect_class = "rainbow-active"
         # 2: ネオン
         elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "飲みに行こう", "ビール", "乾杯"]):
@@ -372,7 +372,7 @@ try:
         elif any(word in m_body for word in ["海", "水族館", "ゆらゆら", "おやすみ", "ねむい"]):
             effect_class = "wave-active"
         # 5: ボケる（ミステリアス）
-        elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒"]):
+        elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "おはよー"]):
             effect_class = "mystery-active"
         
         st.markdown(f"""
