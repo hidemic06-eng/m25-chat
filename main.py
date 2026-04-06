@@ -373,7 +373,7 @@ try:
             effect_class = "rainbow-active"
         elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "飲みに行こう", "ビール", "乾杯"]):
             effect_class = "neon-active"
-        elif any(word in m_body for word in ["記念日", "おめでとう", "特別", "大切", "プレゼント", "ケーキ"]):
+        elif any(word in m_body for word in ["予約", "集合", "待ち合わせ", "予定", "計画", "約束"]):
             effect_class = "marker-active" # マーカー演出
         elif any(word in m_body for word in ["海", "水族館", "ゆらゆら", "おやすみ", "ねむい", "おはよー"]):
             effect_class = "wave-active"
