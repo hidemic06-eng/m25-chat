@@ -5,7 +5,7 @@ import streamlit.components.v1 as components
 from datetime import datetime, timedelta
 import random
 import re
-from PIL import Image
+from PIL import Image, ImageOps  # ImageOpsを追加
 import io
 import uuid
 
@@ -42,11 +42,7 @@ st.markdown(f"""
     #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
     .stAppDeployButton {{display:none;}}
     [data-testid="bundle-viewer-container"] {{display: none !important;}}
-    
-    /* 余白の調整箇所: padding-bottomを80pxから40pxに短縮 */
     .block-container {{ padding-top: 1rem; padding-bottom: 40px !important; max-width: 100% !important; }}
-    
-    /* 入力エリア自体の余白も少し詰める */
     [data-testid="stChatInput"] {{ margin-bottom: -10px; }}
 
     .stButton > button {{
@@ -55,7 +51,6 @@ st.markdown(f"""
         border: 1px solid #4f545c !important;
     }}
 
-    /* メッセージの塊ごとの余白 */
     .chat-row {{ display: flex; flex-direction: column; margin-bottom: 20px; width: 100%; }}
     
     .message-text {{ 
@@ -72,11 +67,17 @@ st.markdown(f"""
         padding: 0; 
     }}
 
+    /* ポラロイド風フレームのデザイン */
     .chat-image {{
         max-width: 280px;
-        border-radius: 12px;
-        margin-top: 8px;
-        border: 1px solid #4f545c;
+        border-radius: 4px;
+        margin-top: 10px;
+        /* 白いフチとしっかりめの影 */
+        border: 8px solid #ffffff !important;
+        box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+        /* わずかに傾けてランダムな配置感を出す */
+        transform: rotate(-1.5deg);
+        display: inline-block;
     }}
 
     .stChatInput textarea {{
@@ -125,6 +126,10 @@ st.markdown(f"""
 # --- 4. 画像圧縮用関数 ---
 def compress_image(uploaded_file):
     img = Image.open(uploaded_file)
+    
+    # 【追加】向き情報を読み取って自動回転させる
+    img = ImageOps.exif_transpose(img)
+    
     if img.mode != "RGB": img = img.convert("RGB")
     if img.width > 1200:
         ratio = 1200 / img.width
@@ -163,6 +168,7 @@ if "password_correct" not in st.session_state:
 if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "uploader_key" not in st.session_state: st.session_state["uploader_key"] = str(uuid.uuid4())
+if "last_compression_info" not in st.session_state: st.session_state["last_compression_info"] = None
 
 current_user_raw = st.session_state.get("username", "Hide")
 current_user_upper = current_user_raw.upper()
@@ -183,6 +189,9 @@ with col_prev:
     
     if st.session_state["page_offset"] == 0:
         with st.expander("📷 写真をアップロード", expanded=False):
+            if st.session_state["last_compression_info"]:
+                st.info(st.session_state["last_compression_info"])
+
             img_file = st.file_uploader("画像選択", type=['png', 'jpg', 'jpeg'], key=st.session_state["uploader_key"])
             if img_file and st.button("🖼️ 画像を送信"):
                 try:
@@ -197,8 +206,7 @@ with col_prev:
                         final_url = supabase.storage.from_("images").get_public_url(file_path)
                         supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": "", "image_url": final_url}).execute()
                         
-                        st.toast(f"送信完了！ {original_size:.1f}KB → {compressed_size:.1f}KB")
-                        
+                        st.session_state["last_compression_info"] = f"✅ 送信完了！ {original_size:.1f}KB → {compressed_size:.1f}KB"
                         st.session_state["uploader_key"] = str(uuid.uuid4())
                         st.rerun()
                 except Exception as e: st.error(f"Error: {e}")
@@ -220,39 +228,55 @@ try:
         latest_msg = messages[-1]
         msg_id = latest_msg.get("id")
         msg_body = latest_msg.get("message_body", "")
+        img_url_latest = latest_msg.get("image_url")
         
         if msg_id != st.session_state["last_effect_id"]:
-            emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             priority_emoji = None
-            if any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
-            elif any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
-            elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
-            elif "おにぎり" in msg_body: priority_emoji = "🍙"
-            elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]): priority_emoji = "🏸"
-            elif any(word in msg_body for word in ["ラーメン", "山岡家"]): priority_emoji = "🍜"
-            elif any(word in msg_body for word in ["野菜", "サラダ", "レタス"]): priority_emoji = "🥬"
-            elif any(word in msg_body for word in ["おやすみ", "眠い", "寝る"]): priority_emoji = "💤"
-            elif any(word in msg_body for word in ["綺麗", "きれい", "すごい", "最高"]): priority_emoji = "✨"
-            elif any(word in msg_body for word in ["コーヒー", "カフェ", "休憩"]): priority_emoji = "☕️"
-            elif any(word in msg_body for word in ["ドライブ"]): priority_emoji = "🚗"
-            elif any(word in msg_body for word in ["ワイン", "ハイボール", "乾杯"]): priority_emoji = "🥂"
-            elif any(word in msg_body for word in ["花見", "さくら", "桜"]): priority_emoji = "🌸"
-            elif any(word in msg_body for word in ["楽しみ", "ルンルン", "うれしい"]): priority_emoji = "🥳"
-            elif any(word in msg_body for word in ["ケーキ", "スイーツ", "甘いもの"]): priority_emoji = "🍰"
-            elif any(word in msg_body for word in ["ラッキー", "幸せ", "しあわせ", "ハッピー"]): priority_emoji = "🍀"
-            elif any(word in msg_body for word in ["熊", "困った"]): priority_emoji = "🐻"
-            elif any(word in msg_body for word in ["おやつ", "プリン"]): priority_emoji = "🍮"
-            elif any(word in msg_body for word in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
-            elif any(word in msg_body for word in ["キノコ", "きのこ"]): priority_emoji = "🍄"
+            
+            # --- 画像がある場合の演出 ---
+            if img_url_latest:
+                priority_emoji = "📷"
+                # 画面を一瞬光らせるフラッシュ演出
+                components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
+            
+            # --- 画像がない場合のテキスト演出 ---
+            else:
+                emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
+                if any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
+                elif any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
+                elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
+                elif "おにぎり" in msg_body: priority_emoji = "🍙"
+                elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]): priority_emoji = "🏸"
+                elif any(word in msg_body for word in ["ラーメン", "山岡家"]): priority_emoji = "🍜"
+                elif any(word in msg_body for word in ["野菜", "サラダ", "レタス"]): priority_emoji = "🥬"
+                elif any(word in msg_body for word in ["おやすみ", "眠い", "寝る"]): priority_emoji = "💤"
+                elif any(word in msg_body for word in ["綺麗", "きれい", "すごい", "最高"]): priority_emoji = "✨"
+                elif any(word in msg_body for word in ["コーヒー", "カフェ", "休憩"]): priority_emoji = "☕️"
+                elif any(word in msg_body for word in ["ドライブ"]): priority_emoji = "🚗"
+                elif any(word in msg_body for word in ["ワイン", "ハイボール", "乾杯"]): priority_emoji = "🥂"
+                elif any(word in msg_body for word in ["花見", "さくら", "桜"]): priority_emoji = "🌸"
+                elif any(word in msg_body for word in ["楽しみ", "ルンルン", "うれしい"]): priority_emoji = "🥳"
+                elif any(word in msg_body for word in ["ケーキ", "スイーツ", "甘いもの"]): priority_emoji = "🍰"
+                elif any(word in msg_body for word in ["ラッキー", "幸せ", "しあわせ", "ハッピー"]): priority_emoji = "🍀"
+                elif any(word in msg_body for word in ["熊", "困った"]): priority_emoji = "🐻"
+                elif any(word in msg_body for word in ["おやつ", "プリン"]): priority_emoji = "🍮"
+                elif any(word in msg_body for word in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
+                elif any(word in msg_body for word in ["キノコ", "きのこ"]): priority_emoji = "🍄"
 
+            # 共通の上昇アニメーション実行
             if priority_emoji:
                 effect_html = '<div class="rising-emoji">'
                 for i in range(25):
-                    left, size = random.randint(5, 95), random.uniform(2.5, 4.5)
+                    left = random.randint(5, 95)
+                    # 画像（カメラ）の場合はサイズをより大胆にバラけさせる
+                    if priority_emoji == "📷":
+                        size = random.uniform(2.0, 5.5)
+                    else:
+                        size = random.uniform(2.5, 4.5)
                     delay, duration = random.uniform(0, 0.5), random.uniform(5.5, 6.5)
                     effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{priority_emoji}</div>'
                 st.markdown(effect_html + '</div>', unsafe_allow_html=True)
-            elif emoji_in_text:
+            elif not img_url_latest and emoji_in_text: # 画像がない場合のみピーキング演出
                 target_emoji = emoji_in_text[-1]
                 peek_html = '<div>'
                 for i in range(5):
@@ -262,6 +286,7 @@ try:
                     peek_html += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
                 st.markdown(peek_html + '</div>', unsafe_allow_html=True)
 
+            # その他の特殊演出
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             
@@ -323,6 +348,7 @@ prompt = st.chat_input(input_placeholder)
 if prompt:
     try:
         supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
+        st.session_state["last_compression_info"] = None
         st.session_state["page_offset"] = 0; st.rerun()
     except Exception as e: st.error(f"送信エラー: {e}")
 
