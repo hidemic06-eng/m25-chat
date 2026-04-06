@@ -179,28 +179,6 @@ st.markdown(f"""
         font-weight: 700 !important;
     }}
 
-    /* H. 燃える文字（ファイヤー） - 視認性向上版 */
-    @keyframes fire-glow {{
-        0% {{ 
-            text-shadow: 0 0 4px #fff, 0 -2px 4px #ff0, 0 -4px 10px #ff8000, 0 -10px 20px #ff4000; 
-            color: #ff8000;
-        }}
-        50% {{ 
-            text-shadow: 0 0 4px #fff, 0 -4px 6px #ff0, 0 -8px 15px #ff8000, 0 -15px 30px #ff4000; 
-            color: #ff4000;
-        }}
-        100% {{ 
-            text-shadow: 0 0 4px #fff, 0 -2px 4px #ff0, 0 -4px 10px #ff8000, 0 -10px 20px #ff4000; 
-            color: #ff8000;
-        }}
-    }}
-    .fire-active {{
-        animation: fire-glow 0.2s infinite alternate !important;
-        font-weight: 900 !important;
-        -webkit-text-stroke: 0.5px #000; /* 文字に薄い黒い縁取りを追加 */
-        display: inline-block;
-    }}
-
     /* I. ゆれる文字（ウェーブ） */
     @keyframes wave-text {{
         0%, 100% {{ transform: translateY(0); }}
@@ -390,9 +368,6 @@ try:
         # 2: ネオン
         elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "飲みに行こう", "ビール", "乾杯"]):
             effect_class = "neon-active"
-        # 3: 燃える（ファイヤー）
-        elif any(word in m_body for word in ["暑い", "頑張", "燃える", "がんばる"]):
-            effect_class = "fire-active"
         # 4: ゆれる（ウェーブ）
         elif any(word in m_body for word in ["海", "水族館", "ゆらゆら", "おやすみ", "ねむい"]):
             effect_class = "wave-active"
