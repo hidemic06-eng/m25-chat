@@ -348,7 +348,7 @@ try:
         if any(word in m["message_body"] for word in ["大好き", "くっつ", "最高", "優勝"]):
             effect_class = "rainbow-active"
         # 優先度2: ネオン
-        elif any(word in m["message_body"] for word in ["飲みに行こう", "ビール", "乾杯"]):
+        elif any(word in m["message_body"] for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ"]):
             effect_class = "neon-active"
         
         st.markdown(f"""
