@@ -42,11 +42,7 @@ st.markdown(f"""
     #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
     .stAppDeployButton {{display:none;}}
     [data-testid="bundle-viewer-container"] {{display: none !important;}}
-    
-    /* 余白の調整箇所: padding-bottomを80pxから40pxに短縮 */
     .block-container {{ padding-top: 1rem; padding-bottom: 40px !important; max-width: 100% !important; }}
-    
-    /* 入力エリア自体の余白も少し詰める */
     [data-testid="stChatInput"] {{ margin-bottom: -10px; }}
 
     .stButton > button {{
@@ -55,7 +51,6 @@ st.markdown(f"""
         border: 1px solid #4f545c !important;
     }}
 
-    /* メッセージの塊ごとの余白 */
     .chat-row {{ display: flex; flex-direction: column; margin-bottom: 20px; width: 100%; }}
     
     .message-text {{ 
@@ -163,6 +158,7 @@ if "password_correct" not in st.session_state:
 if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "uploader_key" not in st.session_state: st.session_state["uploader_key"] = str(uuid.uuid4())
+if "last_compression_info" not in st.session_state: st.session_state["last_compression_info"] = None
 
 current_user_raw = st.session_state.get("username", "Hide")
 current_user_upper = current_user_raw.upper()
@@ -183,6 +179,11 @@ with col_prev:
     
     if st.session_state["page_offset"] == 0:
         with st.expander("📷 写真をアップロード", expanded=False):
+            # 前回の送信結果があればここに表示する
+            if st.session_state["last_compression_info"]:
+                st.info(st.session_state["last_compression_info"])
+                # 一度表示したら消す場合はここをクリアするが、今回は残す設定にします
+
             img_file = st.file_uploader("画像選択", type=['png', 'jpg', 'jpeg'], key=st.session_state["uploader_key"])
             if img_file and st.button("🖼️ 画像を送信"):
                 try:
@@ -197,7 +198,8 @@ with col_prev:
                         final_url = supabase.storage.from_("images").get_public_url(file_path)
                         supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": "", "image_url": final_url}).execute()
                         
-                        st.toast(f"送信完了！ {original_size:.1f}KB → {compressed_size:.1f}KB")
+                        # 情報をセッションに保存（再読み込み後も消えないように）
+                        st.session_state["last_compression_info"] = f"✅ 送信完了！ {original_size:.1f}KB → {compressed_size:.1f}KB"
                         
                         st.session_state["uploader_key"] = str(uuid.uuid4())
                         st.rerun()
@@ -323,6 +325,8 @@ prompt = st.chat_input(input_placeholder)
 if prompt:
     try:
         supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
+        # メッセージ送信時は前回の画像送信結果をクリアする
+        st.session_state["last_compression_info"] = None
         st.session_state["page_offset"] = 0; st.rerun()
     except Exception as e: st.error(f"送信エラー: {e}")
 
