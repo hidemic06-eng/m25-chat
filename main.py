@@ -42,7 +42,13 @@ st.markdown(f"""
     #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
     .stAppDeployButton {{display:none;}}
     [data-testid="bundle-viewer-container"] {{display: none !important;}}
-    .block-container {{ padding-top: 1rem; padding-bottom: 120px !important; max-width: 100% !important; }}
+    
+    /* --- 【重要】下部の余白を最適化 --- */
+    .block-container {{ 
+        padding-top: 1rem; 
+        padding-bottom: 5rem !important; /* 120pxから5remへ縮小し、無駄な空白を削除 */
+        max-width: 100% !important; 
+    }}
     
     .stButton > button {{
         background-color: #424549 !important;
