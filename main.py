@@ -139,24 +139,29 @@ st.markdown(f"""
     }}
     .marquee-wrapper {{
         position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        z-index: 9998;
-        overflow: hidden;
+        top: 0; left: 0; width: 100%; height: 100%;
+        pointer-events: none; z-index: 9998; overflow: hidden;
     }}
     .marquee-text {{
-        position: absolute;
-        white-space: nowrap;
-        font-size: 2.5rem;
-        font-weight: 800;
-        color: rgba(255, 255, 255, 0.5);
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        position: absolute; white-space: nowrap; font-size: 2.5rem; font-weight: 800;
+        color: rgba(255, 255, 255, 0.5); text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         animation: marquee 5s linear forwards;
     }}
 
+    /* F. レインボーテキスト演出（追加分） */
+    @keyframes rainbow-text {{
+        0% {{ color: #ff0000; text-shadow: 0 0 8px #ff0000; }}
+        17% {{ color: #ff8000; text-shadow: 0 0 8px #ff8000; }}
+        33% {{ color: #ffff00; text-shadow: 0 0 8px #ffff00; }}
+        50% {{ color: #00ff00; text-shadow: 0 0 8px #00ff00; }}
+        67% {{ color: #00ffff; text-shadow: 0 0 8px #00ffff; }}
+        83% {{ color: #0000ff; text-shadow: 0 0 8px #0000ff; }}
+        100% {{ color: #ff00ff; text-shadow: 0 0 8px #ff00ff; }}
+    }}
+    .rainbow-active {{
+        animation: rainbow-text 2s infinite linear !important;
+        font-weight: 800 !important;
+    }}
 
     </style>
 """, unsafe_allow_html=True)
@@ -185,10 +190,7 @@ if "password_correct" not in st.session_state:
             detected_user = "Hide"
         elif "Windows" in ua:
             os_info = "Windows"
-            if url_user:
-                detected_user = url_user
-            else:
-                detected_user = "Hide"
+            detected_user = url_user if url_user else "Hide"
         
         st.write(f"👤 User: **{detected_user}**")
         st.caption(f"Device: {os_info}")
@@ -280,10 +282,8 @@ try:
                 target_emoji = emoji_in_text[-1]
                 peek_html = '<div>'
                 for i in range(5):
-                    side = random.choice(["left", "right"])
-                    top = random.randint(20, 80)
-                    delay = random.uniform(0, 2.0)
-                    duration = random.uniform(3.0, 4.0)
+                    side = random.choice(["left", "right"]); top = random.randint(20, 80)
+                    delay = random.uniform(0, 2.0); duration = random.uniform(3.0, 4.0)
                     anim_name = "peek-left" if side == "left" else "peek-right"
                     peek_html += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
                 st.markdown(peek_html + '</div>', unsafe_allow_html=True)
@@ -306,14 +306,13 @@ try:
                 marquee_html = '<div class="marquee-wrapper">'
                 display_text = (msg_body[:20] + '..') if len(msg_body) > 20 else msg_body
                 for i in range(3):
-                    top_pos = random.randint(10, 80)
-                    delay = i * 0.7
+                    top_pos = random.randint(10, 80); delay = i * 0.7
                     marquee_html += f'<div class="marquee-text" style="top:{top_pos}vh; animation-delay:{delay}s;">{display_text}</div>'
                 st.markdown(marquee_html + '</div>', unsafe_allow_html=True)
 
             st.session_state["last_effect_id"] = msg_id
 
-    # チャットログ表示
+    # --- 8-2. チャットログ表示 ---
     for m in messages:
         utc_time = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
         jst_time = utc_time + timedelta(hours=9)
@@ -323,13 +322,18 @@ try:
         h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
         n_class = "name-maki" if "MAKI" in s_up else "name-hide" if "HIDE" in s_up else ""
         
+        # 【レインボー判定】
+        rainbow_class = ""
+        if any(word in m["message_body"] for word in ["天才", "神", "最高", "優勝"]):
+            rainbow_class = "rainbow-active"
+        
         st.markdown(f"""
             <div class="chat-row {align}">
                 <div class="chat-header" style="{h_style}">
                     <span class="{n_class}">{m["sender_name"]}</span>
                     <span class="timestamp">{time_display}</span>
                 </div>
-                <div class="message-text">{m["message_body"]}</div>
+                <div class="message-text {rainbow_class}">{m["message_body"]}</div>
             </div>
         """, unsafe_allow_html=True)
 except Exception as e:
@@ -340,8 +344,7 @@ prompt = st.chat_input(input_placeholder)
 if prompt:
     try:
         supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
-        st.session_state["page_offset"] = 0
-        st.rerun()
+        st.session_state["page_offset"] = 0; st.rerun()
     except Exception as e:
         st.error(f"送信エラー: {e}")
 
