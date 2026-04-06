@@ -384,32 +384,50 @@ try:
 except Exception as e:
     st.error(f"表示エラー: {e}")
 
-# --- 10. 送信エリア (画像アップロード対応) ---
+# --- 10. 送信エリア (画像アップロード対応修正版) ---
 st.divider()
-img_file = st.file_uploader("📷 写真を選択", type=['png', 'jpg', 'jpeg'], label_visibility="collapsed")
+
+# 写真選択と送信ボタンを並べる
+col_img, col_btn = st.columns([3, 1])
+with col_img:
+    img_file = st.file_uploader("📷 写真を選択", type=['png', 'jpg', 'jpeg'], label_visibility="collapsed")
+
+# チャット入力（Enterで送信可能）
 prompt = st.chat_input(input_placeholder)
 
-if prompt or img_file:
+# 送信トリガー：文字入力 or 写真送信ボタン押下
+if prompt or (img_file and st.button("🖼️ 写真を送信")):
     try:
-        final_img_url = None
-        if img_file:
-            # 圧縮
-            compressed_data = compress_image(img_file)
-            file_name = f"{uuid.uuid4()}.jpg"
-            file_path = f"public/{file_name}"
-            # Storageへ
-            supabase.storage.from_("images").upload(file_path, compressed_data.getvalue(), {"content-type": "image/jpeg"})
-            final_img_url = supabase.storage.from_("images").get_public_url(file_path)
+        with st.spinner("送信中..."):
+            final_img_url = None
+            if img_file:
+                # 圧縮処理
+                compressed_data = compress_image(img_file)
+                # 拡張子を取得してユニークなファイル名を作成
+                ext = img_file.name.split('.')[-1]
+                file_name = f"{uuid.uuid4()}.{ext}"
+                file_path = f"public/{file_name}"
+                
+                # Storageへアップロード
+                supabase.storage.from_("images").upload(
+                    file_path, 
+                    compressed_data.getvalue(), 
+                    {"content-type": f"image/{ext}"}
+                )
+                # 公開URLを取得
+                final_img_url = supabase.storage.from_("images").get_public_url(file_path)
 
-        # DBへ保存
-        supabase.table(table_name).insert({
-            "sender_name": current_user_raw, 
-            "message_body": prompt if prompt else "",
-            "image_url": final_img_url
-        }).execute()
+            # DBへメッセージを保存
+            supabase.table(table_name).insert({
+                "sender_name": current_user_raw, 
+                "message_body": prompt if prompt else "",
+                "image_url": final_img_url
+            }).execute()
         
+        # 送信成功後、最新状態を表示するためにリセットしてリロード
         st.session_state["page_offset"] = 0
         st.rerun()
+        
     except Exception as e:
         st.error(f"送信エラー: {e}")
 
