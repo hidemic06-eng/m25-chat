@@ -183,12 +183,20 @@ with col_prev:
             if img_file and st.button("🖼️ 画像を送信"):
                 try:
                     with st.spinner("送信中..."):
+                        # サイズ計算用の処理を追加
+                        original_size = img_file.size / 1024  # KB単位
                         compressed_data = compress_image(img_file)
+                        compressed_size = compressed_data.getbuffer().nbytes / 1024  # KB単位
+                        
                         ext = img_file.name.split('.')[-1]
                         file_path = f"public/{uuid.uuid4()}.{ext}"
                         supabase.storage.from_("images").upload(file_path, compressed_data.getvalue(), {"content-type": f"image/{ext}"})
                         final_url = supabase.storage.from_("images").get_public_url(file_path)
                         supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": "", "image_url": final_url}).execute()
+                        
+                        # 圧縮結果を表示
+                        st.toast(f"送信完了！ {original_size:.1f}KB → {compressed_size:.1f}KB")
+                        
                         st.session_state["uploader_key"] = str(uuid.uuid4())
                         st.rerun()
                 except Exception as e: st.error(f"Error: {e}")
