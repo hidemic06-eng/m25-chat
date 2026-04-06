@@ -324,7 +324,7 @@ try:
         
         # 【レインボー判定】
         rainbow_class = ""
-        if any(word in m["message_body"] for word in ["天才", "神", "最高", "優勝"]):
+        if any(word in m["message_body"] for word in ["大好き", "くっつ", "最高", "優勝"]):
             rainbow_class = "rainbow-active"
         
         st.markdown(f"""
