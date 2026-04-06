@@ -213,7 +213,7 @@ def compress_image(uploaded_file):
     img_io.seek(0)
     return img_io
 
-# --- 5. 認証機能 (Hideさんの全ロジック) ---
+# --- 5. 認証機能 ---
 if "password_correct" not in st.session_state:
     st.write("🔒 Enter Password")
     pw = st.text_input("Password", type="password", key="login")
@@ -281,7 +281,6 @@ try:
         if msg_id != st.session_state["last_effect_id"]:
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             priority_emoji = None
-            # 絵文字キーワード判定 (完全復元)
             if any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
             elif any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
             elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
@@ -323,7 +322,6 @@ try:
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             
-            # 画面全体の演出
             if any(word in msg_body for word in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
             if any(word in msg_body for word in ["さみしい", "淋しい", "悲しい", "疲れた"]):
@@ -333,7 +331,6 @@ try:
             if any(word in msg_body for word in ["びっくり", "すごい", "光る", "指輪"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
 
-            # ニコニコ風テロップ
             if any(word in msg_body for word in ["w", "笑", "草", "うける", "爆笑", "すご", "最高", "天才", "神", "優勝", "飲みに行", "ビール", "大好き"]):
                 marquee_html = '<div class="marquee-wrapper">'
                 display_text = (msg_body[:20] + '..') if len(msg_body) > 20 else msg_body
@@ -357,7 +354,6 @@ try:
         effect_class = ""
         m_body = m.get("message_body", "")
         
-        # インライン演出 (完全復元)
         if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]):
             effect_class = "rainbow-active"
         elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "乾杯"]):
@@ -384,47 +380,59 @@ try:
 except Exception as e:
     st.error(f"表示エラー: {e}")
 
-# --- 10. 送信エリア (画像アップロード対応修正版) ---
+# --- 10. 送信エリア (二重アップロード防止修正版) ---
 st.divider()
 
-# 写真選択と送信ボタンを並べる
+# uploaderのキーを管理して、送信後にリセットできるようにする
+if "uploader_key" not in st.session_state:
+    st.session_state["uploader_key"] = str(uuid.uuid4())
+
 col_img, col_btn = st.columns([3, 1])
 with col_img:
-    img_file = st.file_uploader("📷 写真を選択", type=['png', 'jpg', 'jpeg'], label_visibility="collapsed")
+    img_file = st.file_uploader(
+        "📷 写真を選択", 
+        type=['png', 'jpg', 'jpeg'], 
+        label_visibility="collapsed",
+        key=st.session_state["uploader_key"]  # キーを指定
+    )
 
-# チャット入力（Enterで送信可能）
 prompt = st.chat_input(input_placeholder)
 
-# 送信トリガー：文字入力 or 写真送信ボタン押下
-if prompt or (img_file and st.button("🖼️ 写真を送信")):
+# 送信判定
+should_submit = False
+if prompt:
+    should_submit = True
+elif img_file:
+    with col_btn:
+        if st.button("🖼️ 写真を送信"):
+            should_submit = True
+
+if should_submit:
     try:
         with st.spinner("送信中..."):
             final_img_url = None
             if img_file:
-                # 圧縮処理
                 compressed_data = compress_image(img_file)
-                # 拡張子を取得してユニークなファイル名を作成
                 ext = img_file.name.split('.')[-1]
                 file_name = f"{uuid.uuid4()}.{ext}"
                 file_path = f"public/{file_name}"
                 
-                # Storageへアップロード
                 supabase.storage.from_("images").upload(
                     file_path, 
                     compressed_data.getvalue(), 
                     {"content-type": f"image/{ext}"}
                 )
-                # 公開URLを取得
                 final_img_url = supabase.storage.from_("images").get_public_url(file_path)
 
-            # DBへメッセージを保存
             supabase.table(table_name).insert({
                 "sender_name": current_user_raw, 
                 "message_body": prompt if prompt else "",
                 "image_url": final_img_url
             }).execute()
         
-        # 送信成功後、最新状態を表示するためにリセットしてリロード
+        # --- 送信完了後のリセット処理 ---
+        # アップローダーのキーを更新して、選択中のファイルを消去する
+        st.session_state["uploader_key"] = str(uuid.uuid4())
         st.session_state["page_offset"] = 0
         st.rerun()
         
