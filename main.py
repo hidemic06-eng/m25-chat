@@ -177,6 +177,19 @@ st.markdown(f"""
         font-weight: 700 !important;
     }}
 
+    /* H. 蛍光ペン（マーカー）演出 */
+    @keyframes marker-draw {{
+        0% {{ background-size: 0% 100%; }}
+        100% {{ background-size: 100% 100%; }}
+    }}
+    .marker-active {{
+        background: linear-gradient(transparent 60%, rgba(255, 235, 59, 0.4) 0%) no-repeat !important;
+        background-size: 100% 100%;
+        animation: marker-draw 1.5s ease-out;
+        display: inline;
+        font-weight: 700 !important;
+    }}
+
     /* I. ゆれる文字（ウェーブ） */
     @keyframes wave-text {{
         0%, 100% {{ transform: translateY(0); }}
@@ -281,7 +294,7 @@ try:
         if msg_id != st.session_state["last_effect_id"]:
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             
-            # A. 昇る演出
+            # 昇る演出などの共通処理...
             priority_emoji = None
             if any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
             elif any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
@@ -360,6 +373,8 @@ try:
             effect_class = "rainbow-active"
         elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "飲みに行こう", "ビール", "乾杯"]):
             effect_class = "neon-active"
+        elif any(word in m_body for word in ["記念日", "おめでとう", "特別", "大切", "プレゼント", "ケーキ"]):
+            effect_class = "marker-active" # マーカー演出
         elif any(word in m_body for word in ["海", "水族館", "ゆらゆら", "おやすみ", "ねむい", "おはよー"]):
             effect_class = "wave-active"
         elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "本当"]):
