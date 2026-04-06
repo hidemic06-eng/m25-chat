@@ -148,7 +148,7 @@ st.markdown(f"""
         animation: marquee 5s linear forwards;
     }}
 
-    /* F. レインボーテキスト演出（追加分） */
+    /* F. レインボーテキスト演出 */
     @keyframes rainbow-text {{
         0% {{ color: #ff0000; text-shadow: 0 0 8px #ff0000; }}
         17% {{ color: #ff8000; text-shadow: 0 0 8px #ff8000; }}
@@ -161,6 +161,26 @@ st.markdown(f"""
     .rainbow-active {{
         animation: rainbow-text 2s infinite linear !important;
         font-weight: 800 !important;
+    }}
+
+    /* G. ネオンテキスト演出 (追加) */
+    @keyframes neon-flicker {{
+        0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {{
+            color: #fff;
+            text-shadow: 
+                0 0 4px #fff,
+                0 0 10px #fff,
+                0 0 18px #ff00de,
+                0 0 30px #ff00de;
+        }}
+        20%, 22%, 24%, 55% {{
+            color: #444;
+            text-shadow: none;
+        }}
+    }}
+    .neon-active {{
+        animation: neon-flicker 4s infinite alternate !important;
+        font-weight: 700 !important;
     }}
 
     </style>
@@ -322,10 +342,14 @@ try:
         h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
         n_class = "name-maki" if "MAKI" in s_up else "name-hide" if "HIDE" in s_up else ""
         
-        # 【レインボー判定】
-        rainbow_class = ""
+        # 【演出用クラスの判定】
+        effect_class = ""
+        # 優先度1: レインボー
         if any(word in m["message_body"] for word in ["大好き", "くっつ", "最高", "優勝"]):
-            rainbow_class = "rainbow-active"
+            effect_class = "rainbow-active"
+        # 優先度2: ネオン
+        elif any(word in m["message_body"] for word in ["飲みに行こう", "ビール", "乾杯"]):
+            effect_class = "neon-active"
         
         st.markdown(f"""
             <div class="chat-row {align}">
@@ -333,7 +357,7 @@ try:
                     <span class="{n_class}">{m["sender_name"]}</span>
                     <span class="timestamp">{time_display}</span>
                 </div>
-                <div class="message-text {rainbow_class}">{m["message_body"]}</div>
+                <div class="message-text {effect_class}">{m["message_body"]}</div>
             </div>
         """, unsafe_allow_html=True)
 except Exception as e:
