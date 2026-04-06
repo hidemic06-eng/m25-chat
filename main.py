@@ -179,15 +179,26 @@ st.markdown(f"""
         font-weight: 700 !important;
     }}
 
-    /* H. 燃える文字（ファイヤー） */
+    /* H. 燃える文字（ファイヤー） - 視認性向上版 */
     @keyframes fire-glow {{
-        0% {{ text-shadow: 0 0 4px #fff, 0 -1px 4px #ff0, 0 -2px 10px #ff8000, 0 -10px 20px #ff4000; color: #fff; }}
-        50% {{ text-shadow: 0 0 4px #fff, 0 -3px 4px #ff0, 0 -5px 15px #ff8000, 0 -12px 25px #ff4000; color: #ffeeee; }}
-        100% {{ text-shadow: 0 0 4px #fff, 0 -1px 4px #ff0, 0 -2px 10px #ff8000, 0 -10px 20px #ff4000; color: #fff; }}
+        0% {{ 
+            text-shadow: 0 0 4px #fff, 0 -2px 4px #ff0, 0 -4px 10px #ff8000, 0 -10px 20px #ff4000; 
+            color: #ff8000;
+        }}
+        50% {{ 
+            text-shadow: 0 0 4px #fff, 0 -4px 6px #ff0, 0 -8px 15px #ff8000, 0 -15px 30px #ff4000; 
+            color: #ff4000;
+        }}
+        100% {{ 
+            text-shadow: 0 0 4px #fff, 0 -2px 4px #ff0, 0 -4px 10px #ff8000, 0 -10px 20px #ff4000; 
+            color: #ff8000;
+        }}
     }}
     .fire-active {{
-        animation: fire-glow 0.1s infinite alternate !important;
-        font-weight: 800 !important;
+        animation: fire-glow 0.2s infinite alternate !important;
+        font-weight: 900 !important;
+        -webkit-text-stroke: 0.5px #000; /* 文字に薄い黒い縁取りを追加 */
+        display: inline-block;
     }}
 
     /* I. ゆれる文字（ウェーブ） */
