@@ -5,7 +5,7 @@ import streamlit.components.v1 as components
 from datetime import datetime, timedelta
 import random
 import re
-from PIL import Image
+from PIL import Image, ImageOps  # ImageOpsを追加
 import io
 import uuid
 
@@ -120,6 +120,10 @@ st.markdown(f"""
 # --- 4. 画像圧縮用関数 ---
 def compress_image(uploaded_file):
     img = Image.open(uploaded_file)
+    
+    # 【追加】向き情報を読み取って自動回転させる
+    img = ImageOps.exif_transpose(img)
+    
     if img.mode != "RGB": img = img.convert("RGB")
     if img.width > 1200:
         ratio = 1200 / img.width
