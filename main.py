@@ -157,12 +157,13 @@ st.markdown(f"""
         animation: marquee 5s linear forwards;
     }}
 
-    /* E. シャトルが飛ぶ演出（スマッシュ） */
-    @keyframes smash-hit {{
-        0% {{ transform: translate(100vw, -100px) rotate(-45deg); opacity: 1; }}
-        100% {{ transform: translate(-100px, 100vh) rotate(-45deg); opacity: 1; }}
-    }}
-    .shuttle-wrapper {{
+/* E. シャトル演出（スマッシュ） */
+    @keyframes smash-hit {
+        /* 開始位置を少し調整し、角度もより鋭角に */
+        0% { transform: translate(100vw, -10vh) rotate(-45deg); opacity: 1; }
+        100% { transform: translate(-20vw, 100vh) rotate(-45deg); opacity: 1; }
+    }
+    .shuttle-wrapper {
         position: fixed;
         top: 0;
         left: 0;
@@ -171,13 +172,12 @@ st.markdown(f"""
         pointer-events: none;
         z-index: 10000;
         overflow: hidden;
-    }}
-    .shuttle-item {{
+    }
+    .shuttle-item {
         position: absolute;
-        font-size: 4rem;
-        animation: smash-hit 0.4s ease-in forwards;
-    }}
-
+        font-size: 6rem; /* 4remから6remに大きくして見やすく */
+        animation: smash-hit 0.8s ease-in forwards; /* 0.4秒から0.8秒に低速化 */
+    }
     </style>
 """, unsafe_allow_html=True)
 
