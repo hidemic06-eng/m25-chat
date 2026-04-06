@@ -42,8 +42,13 @@ st.markdown(f"""
     #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
     .stAppDeployButton {{display:none;}}
     [data-testid="bundle-viewer-container"] {{display: none !important;}}
-    .block-container {{ padding-top: 1rem; padding-bottom: 80px !important; max-width: 100% !important; }}
     
+    /* 余白の調整箇所: padding-bottomを80pxから40pxに短縮 */
+    .block-container {{ padding-top: 1rem; padding-bottom: 40px !important; max-width: 100% !important; }}
+    
+    /* 入力エリア自体の余白も少し詰める */
+    [data-testid="stChatInput"] {{ margin-bottom: -10px; }}
+
     .stButton > button {{
         background-color: #424549 !important;
         color: white !important;
@@ -176,17 +181,15 @@ with col_prev:
         st.session_state["page_offset"] += 20
         st.rerun()
     
-    # 【追加箇所】前の20件ボタンのすぐ下に写真アップロード
     if st.session_state["page_offset"] == 0:
         with st.expander("📷 写真をアップロード", expanded=False):
             img_file = st.file_uploader("画像選択", type=['png', 'jpg', 'jpeg'], key=st.session_state["uploader_key"])
             if img_file and st.button("🖼️ 画像を送信"):
                 try:
                     with st.spinner("送信中..."):
-                        # サイズ計算用の処理を追加
-                        original_size = img_file.size / 1024  # KB単位
+                        original_size = img_file.size / 1024
                         compressed_data = compress_image(img_file)
-                        compressed_size = compressed_data.getbuffer().nbytes / 1024  # KB単位
+                        compressed_size = compressed_data.getbuffer().nbytes / 1024
                         
                         ext = img_file.name.split('.')[-1]
                         file_path = f"public/{uuid.uuid4()}.{ext}"
@@ -194,7 +197,6 @@ with col_prev:
                         final_url = supabase.storage.from_("images").get_public_url(file_path)
                         supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": "", "image_url": final_url}).execute()
                         
-                        # 圧縮結果を表示
                         st.toast(f"送信完了！ {original_size:.1f}KB → {compressed_size:.1f}KB")
                         
                         st.session_state["uploader_key"] = str(uuid.uuid4())
@@ -220,7 +222,6 @@ try:
         msg_body = latest_msg.get("message_body", "")
         
         if msg_id != st.session_state["last_effect_id"]:
-            # キーワード判定・演出ロジック (既存のまま)
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             priority_emoji = None
             if any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
@@ -264,7 +265,6 @@ try:
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             
-            # 画面エフェクト
             if any(word in msg_body for word in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
             if any(word in msg_body for word in ["さみしい", "淋しい", "悲しい", "疲れた"]):
