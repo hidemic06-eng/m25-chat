@@ -369,10 +369,10 @@ try:
         elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "飲みに行こう", "ビール", "乾杯"]):
             effect_class = "neon-active"
         # 4: ゆれる（ウェーブ）
-        elif any(word in m_body for word in ["海", "水族館", "ゆらゆら", "おやすみ", "ねむい"]):
+        elif any(word in m_body for word in ["海", "水族館", "ゆらゆら", "おやすみ", "ねむい", "おはよー"]):
             effect_class = "wave-active"
         # 5: ボケる（ミステリアス）
-        elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "おはよー"]):
+        elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "本当"]):
             effect_class = "mystery-active"
         
         st.markdown(f"""
