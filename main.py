@@ -13,10 +13,10 @@ import uuid
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
 # --- 2. データベース(Supabase)接続設定 ---
+table_name = st.secrets.get("TABLE_NAME", "messages")
 supabase_url = "https://kvqbwknrsdasoipttkpr.supabase.co"
 supabase_key = st.secrets.get("SUPABASE_KEY", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 supabase = create_client(supabase_url, supabase_key)
-table_name = st.secrets.get("TABLE_NAME", "messages")
 
 # --- 3. デザイン設定 ---
 app_bg_color = "#313338"
@@ -42,18 +42,7 @@ st.markdown(f"""
     #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
     .stAppDeployButton {{display:none;}}
     [data-testid="bundle-viewer-container"] {{display: none !important;}}
-    
-    .block-container {{ 
-        padding-top: 1rem; 
-        padding-bottom: 2rem !important; 
-        max-width: 100% !important; 
-    }}
-
-    hr {{ display: none !important; }}
-
-    [data-testid="stVerticalBlock"] {{
-        gap: 0rem !important;
-    }}
+    .block-container {{ padding-top: 1rem; padding-bottom: 80px !important; max-width: 100% !important; }}
     
     .stButton > button {{
         background-color: #424549 !important;
@@ -61,14 +50,8 @@ st.markdown(f"""
         border: 1px solid #4f545c !important;
     }}
 
-    /* --- メッセージ間の余白を調整 --- */
-    .chat-row {{ 
-        display: flex; 
-        flex-direction: column; 
-        margin-top: 20px; /* 前のメッセージとの間隔を確保 */
-        margin-bottom: 5px; 
-        width: 100%; 
-    }}
+    /* メッセージの塊ごとの余白 */
+    .chat-row {{ display: flex; flex-direction: column; margin-bottom: 20px; width: 100%; }}
     
     .message-text {{ 
         font-family: 'M PLUS Rounded 1c', sans-serif !important;
@@ -81,17 +64,7 @@ st.markdown(f"""
         white-space: pre-wrap; 
         word-wrap: break-word; 
         color: {text_main_color} !important; 
-        padding: 2px 0; 
-    }}
-
-    [data-testid="stChatInput"] {{
-        border: none !important;
-        margin-top: -10px !important;
-    }}
-    [data-testid="stChatInput"] div {{
-        border: none !important;
-        box-shadow: none !important;
-        outline: none !important;
+        padding: 0; 
     }}
 
     .chat-image {{
@@ -101,7 +74,10 @@ st.markdown(f"""
         border: 1px solid #4f545c;
     }}
 
-    .stChatInput textarea {{ font-family: 'M PLUS Rounded 1c', sans-serif !important; }}
+    .stChatInput textarea {{
+        font-family: 'M PLUS Rounded 1c', sans-serif !important;
+    }}
+
     .align-right {{ align-items: flex-end; text-align: right; }}
     .align-left {{ align-items: flex-start; text-align: left; }}
     
@@ -110,7 +86,7 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* --- 演出用アニメーション (変更なし) --- */
+    /* --- アニメーション定義 (省略なし) --- */
     @keyframes rise {{ 0% {{ transform: translateY(0); opacity: 0; }} 5% {{ opacity: 1; }} 85% {{ opacity: 1; }} 100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }} }}
     .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
     .emoji-item {{ position: absolute; animation: rise linear forwards; }}
@@ -141,7 +117,7 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. 画像圧縮関数 ---
+# --- 4. 画像圧縮用関数 ---
 def compress_image(uploaded_file):
     img = Image.open(uploaded_file)
     if img.mode != "RGB": img = img.convert("RGB")
@@ -161,11 +137,16 @@ if "password_correct" not in st.session_state:
         ua = st.context.headers.get("User-Agent", "")
         query_params = st.query_params
         url_user = query_params.get("user", None)
+        os_info = "Unknown Device"
         detected_user = "Unknown"
-        if "Android" in ua: detected_user = "Maki"
-        elif "iPhone" in ua or "iPad" in ua: detected_user = "Hide"
-        elif "Windows" in ua: detected_user = url_user if url_user else "Hide"
+        if "Android" in ua:
+            os_info = "Android"; detected_user = "Maki"
+        elif "iPhone" in ua or "iPad" in ua:
+            os_info = "iOS Device"; detected_user = "Hide"
+        elif "Windows" in ua:
+            os_info = "Windows"; detected_user = url_user if url_user else "Hide"
         st.write(f"👤 User: **{detected_user}**")
+        st.caption(f"Device: {os_info}")
         st.session_state["username"] = detected_user
     except: pass
     if pw == "05250206":
@@ -173,7 +154,7 @@ if "password_correct" not in st.session_state:
         st.rerun()
     st.stop()
 
-# --- 6. 状態管理 ---
+# --- 6. 設定 ---
 if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "uploader_key" not in st.session_state: st.session_state["uploader_key"] = str(uuid.uuid4())
@@ -186,6 +167,7 @@ st.title(f"💬 M25-Chat{status_label}")
 auto_update = st.toggle("自動更新(8s)", value=True)
 if auto_update and st.session_state["page_offset"] == 0:
     st_autorefresh(interval=8000, key="chat_ref")
+st.divider()
 
 # --- 8. ナビゲーション ---
 col_prev, col_page, col_next = st.columns([1, 2, 1])
@@ -193,22 +175,12 @@ with col_prev:
     if st.button("⬅️ 前の20件"):
         st.session_state["page_offset"] += 20
         st.rerun()
-with col_page:
-    st.write(f"<div style='text-align:center; font-size:0.8rem;'>{st.session_state['page_offset']+1}〜件目</div>", unsafe_allow_html=True)
-with col_next:
-    if st.session_state["page_offset"] >= 20:
-        if st.button("次の20件 ➡️"):
-            st.session_state["page_offset"] -= 20
-            st.rerun()
-
-# --- 8-2. 上部写真アップロードエリア ---
-if st.session_state["page_offset"] == 0:
-    with st.expander("📷 写真をアップロードする", expanded=False):
-        up_col1, up_col2 = st.columns([3, 1])
-        with up_col1:
-            img_file = st.file_uploader("画像を選択", type=['png', 'jpg', 'jpeg'], key=st.session_state["uploader_key"], label_visibility="collapsed")
-        with up_col2:
-            if img_file and st.button("🖼️ 送信", use_container_width=True):
+    
+    # 【追加箇所】前の20件ボタンのすぐ下に写真アップロード
+    if st.session_state["page_offset"] == 0:
+        with st.expander("📷 写真をアップロード", expanded=False):
+            img_file = st.file_uploader("画像選択", type=['png', 'jpg', 'jpeg'], key=st.session_state["uploader_key"])
+            if img_file and st.button("🖼️ 画像を送信"):
                 try:
                     with st.spinner("送信中..."):
                         compressed_data = compress_image(img_file)
@@ -221,6 +193,14 @@ if st.session_state["page_offset"] == 0:
                         st.rerun()
                 except Exception as e: st.error(f"Error: {e}")
 
+with col_page:
+    st.write(f"<div style='text-align:center; font-size:0.8rem;'>{st.session_state['page_offset']+1}〜件目</div>", unsafe_allow_html=True)
+with col_next:
+    if st.session_state["page_offset"] >= 20:
+        if st.button("次の20件 ➡️"):
+            st.session_state["page_offset"] -= 20
+            st.rerun()
+
 # --- 9. 表示 & 演出の判定 ---
 try:
     res = supabase.table(table_name).select("*").order("created_at", desc=True).range(st.session_state["page_offset"], st.session_state["page_offset"] + 19).execute()
@@ -229,13 +209,12 @@ try:
     if messages and st.session_state["page_offset"] == 0:
         latest_msg = messages[-1]
         msg_id = latest_msg.get("id")
-        msg_body = latest_msg["message_body"]
+        msg_body = latest_msg.get("message_body", "")
         
         if msg_id != st.session_state["last_effect_id"]:
+            # キーワード判定・演出ロジック (既存のまま)
             emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
             priority_emoji = None
-            
-            # キーワード判定
             if any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
             elif any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
             elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
@@ -258,26 +237,26 @@ try:
             elif any(word in msg_body for word in ["キノコ", "きのこ"]): priority_emoji = "🍄"
 
             if priority_emoji:
-                eff_html = '<div class="rising-emoji">'
+                effect_html = '<div class="rising-emoji">'
                 for i in range(25):
-                    l, s = random.randint(5, 95), random.uniform(2.5, 4.5)
-                    de, du = random.uniform(0, 0.5), random.uniform(5.5, 6.5)
-                    eff_html += f'<div class="emoji-item" style="left:{l}%; font-size:{s}rem; animation-delay:{de}s; animation-duration:{du}s;">{priority_emoji}</div>'
-                st.markdown(eff_html + '</div>', unsafe_allow_html=True)
+                    left, size = random.randint(5, 95), random.uniform(2.5, 4.5)
+                    delay, duration = random.uniform(0, 0.5), random.uniform(5.5, 6.5)
+                    effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{priority_emoji}</div>'
+                st.markdown(effect_html + '</div>', unsafe_allow_html=True)
             elif emoji_in_text:
-                target = emoji_in_text[-1]
+                target_emoji = emoji_in_text[-1]
                 peek_html = '<div>'
                 for i in range(5):
                     side = random.choice(["left", "right"]); top = random.randint(20, 80)
-                    de, du = random.uniform(0, 2.0), random.uniform(3.0, 4.0)
-                    anim = "peek-left" if side == "left" else "peek-right"
-                    peek_html += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim} {du}s forwards; animation-delay:{de}s;">{target}</div>'
+                    delay = random.uniform(0, 2.0); duration = random.uniform(3.0, 4.0)
+                    anim_name = "peek-left" if side == "left" else "peek-right"
+                    peek_html += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
                 st.markdown(peek_html + '</div>', unsafe_allow_html=True)
 
-            if any(w in msg_body for w in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
-            if any(w in msg_body for w in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
+            if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
+            if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             
-            # 画面演出スクリプト
+            # 画面エフェクト
             if any(word in msg_body for word in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
             if any(word in msg_body for word in ["さみしい", "淋しい", "悲しい", "疲れた"]):
@@ -286,47 +265,45 @@ try:
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("bounce-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("bounce-screen"); }, 1000);</script>', height=0)
             if any(word in msg_body for word in ["びっくり", "すごい", "光る", "指輪"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
-            
-            if any(w in msg_body for w in ["w", "笑", "草", "うける", "爆笑", "すご", "最高", "天才", "神", "優勝", "飲みに行", "ビール", "大好き"]):
-                m_html = '<div class="marquee-wrapper">'
-                txt = (msg_body[:20] + '..') if len(msg_body) > 20 else msg_body
-                for i in range(3):
-                    t, de = random.randint(10, 80), i * 0.7
-                    m_html += f'<div class="marquee-text" style="top:{t}vh; animation-delay:{de}s;">{txt}</div>'
-                st.markdown(m_html + '</div>', unsafe_allow_html=True)
 
+            if any(word in msg_body for word in ["w", "笑", "草", "うける", "爆笑", "すご", "最高", "天才", "神", "優勝", "飲みに行", "ビール", "大好き"]):
+                marquee_html = '<div class="marquee-wrapper">'
+                display_text = (msg_body[:20] + '..') if len(msg_body) > 20 else msg_body
+                for i in range(3):
+                    top_pos = random.randint(10, 80); delay = i * 0.7
+                    marquee_html += f'<div class="marquee-text" style="top:{top_pos}vh; animation-delay:{delay}s;">{display_text}</div>'
+                st.markdown(marquee_html + '</div>', unsafe_allow_html=True)
             st.session_state["last_effect_id"] = msg_id
 
     # --- 9-2. チャットログ表示 ---
     for m in messages:
-        utc = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
-        jst = utc + timedelta(hours=9)
-        time_str = jst.strftime('%H:%M')
+        utc_time = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
+        jst_time = utc_time + timedelta(hours=9)
+        time_display = jst_time.strftime('%H:%M')
         s_name = m['sender_name']
         s_up = s_name.upper()
-        
-        is_me = (s_up == current_user_upper)
-        align = "align-right" if is_me else "align-left"
-        h_style = "flex-direction: row-reverse;" if is_me else ""
+        align = "align-right" if s_up == current_user_upper else "align-left"
+        h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
         n_class = "name-maki" if "MAKI" in s_up else "name-hide" if "HIDE" in s_up else ""
         
         m_body = m.get("message_body", "")
-        img_html = f'<div><img src="{m["image_url"]}" class="chat-image"></div>' if m.get("image_url") else ""
-
-        eff = ""
-        if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]): eff = "rainbow-active"
-        elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "乾杯"]): eff = "neon-active"
-        elif any(word in m_body for word in ["予約", "集合", "待ち合わせ", "予定", "計画", "約束", "チケット", "行こう"]): eff = "marker-active"
-        elif any(word in m_body for word in ["海", "水族館", "ゆらゆら", "おやすみ", "ねむい", "おはよー"]): eff = "wave-active"
-        elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "本当"]): eff = "mystery-active"
+        img_url = m.get("image_url")
+        img_html = f'<div><img src="{img_url}" class="chat-image"></div>' if img_url else ""
+        
+        effect_class = ""
+        if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]): effect_class = "rainbow-active"
+        elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "乾杯"]): effect_class = "neon-active"
+        elif any(word in m_body for word in ["予約", "集合", "待ち合わせ", "予定", "計画", "約束", "チケット", "行こう"]): effect_class = "marker-active"
+        elif any(word in m_body for word in ["海", "水族館", "ゆらゆら", "おやすみ", "ねむい", "おはよー"]): effect_class = "wave-active"
+        elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "本当"]): effect_class = "mystery-active"
         
         st.markdown(f"""
             <div class="chat-row {align}">
                 <div class="chat-header" style="{h_style}">
                     <span class="{n_class}">{s_name}</span>
-                    <span class="timestamp">{time_str}</span>
+                    <span class="timestamp">{time_display}</span>
                 </div>
-                <div class="message-text {eff}">{m_body}</div>
+                <div class="message-text {effect_class}">{m_body}</div>
                 {img_html}
             </div>
         """, unsafe_allow_html=True)
@@ -337,24 +314,8 @@ except Exception as e:
 prompt = st.chat_input(input_placeholder)
 if prompt:
     try:
-        with st.spinner("送信中..."):
-            final_img_url = None
-            if "img_file" in locals() and img_file:
-                compressed_data = compress_image(img_file)
-                ext = img_file.name.split('.')[-1]
-                file_path = f"public/{uuid.uuid4()}.{ext}"
-                supabase.storage.from_("images").upload(file_path, compressed_data.getvalue(), {"content-type": f"image/{ext}"})
-                final_img_url = supabase.storage.from_("images").get_public_url(file_path)
-
-            supabase.table(table_name).insert({
-                "sender_name": current_user_raw, 
-                "message_body": prompt,
-                "image_url": final_img_url
-            }).execute()
-        
-        st.session_state["uploader_key"] = str(uuid.uuid4())
-        st.session_state["page_offset"] = 0
-        st.rerun()
+        supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": prompt}).execute()
+        st.session_state["page_offset"] = 0; st.rerun()
     except Exception as e: st.error(f"送信エラー: {e}")
 
 if st.session_state["page_offset"] == 0:
