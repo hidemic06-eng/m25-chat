@@ -380,13 +380,13 @@ try:
         elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "飲みに行こう", "ビール", "乾杯"]):
             effect_class = "neon-active"
         # 3: 燃える（ファイヤー）
-        elif any(word in m_body for word in ["暑い", "情熱", "燃える", "激アツ"]):
+        elif any(word in m_body for word in ["暑い", "頑張", "燃える", "がんばる"]):
             effect_class = "fire-active"
         # 4: ゆれる（ウェーブ）
-        elif any(word in m_body for word in ["海", "水族館", "ゆらゆら", "おやしゅみ", "ねむい"]):
+        elif any(word in m_body for word in ["海", "水族館", "ゆらゆら", "おやすみ", "ねむい"]):
             effect_class = "wave-active"
         # 5: ボケる（ミステリアス）
-        elif any(word in m_body for word in ["秘密", "実は", "ここだけの話", "内緒"]):
+        elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒"]):
             effect_class = "mystery-active"
         
         st.markdown(f"""
