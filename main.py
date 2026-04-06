@@ -42,46 +42,66 @@ st.markdown(f"""
     #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
     .stAppDeployButton {{display:none;}}
     [data-testid="bundle-viewer-container"] {{display: none !important;}}
-    .block-container {{ padding-top: 1rem; padding-bottom: 150px !important; max-width: 100% !important; }}
     
+    /* スマホ最適化: メッセージエリアをスクロール可能にし、下部に余白を作る */
+    .block-container {{ 
+        padding-top: 1rem; 
+        padding-bottom: 120px !important; 
+        max-width: 100% !important; 
+    }}
+    
+    /* メッセージのスタイル */
+    .chat-row {{ display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }}
+    .message-text {{ 
+        font-family: 'M PLUS Rounded 1c', sans-serif !important;
+        font-feature-settings: "palt" 1; font-size: 1.15rem; line-height: 1.35; 
+        font-weight: 500 !important; letter-spacing: -0.04rem; 
+        max-width: 80%; white-space: pre-wrap; word-wrap: break-word; 
+        color: {text_main_color} !important; padding: 0; 
+    }}
+    .chat-image {{ max-width: 280px; border-radius: 12px; margin-top: 8px; border: 1px solid #4f545c; }}
+    .align-right {{ align-items: flex-end; text-align: right; }}
+    .align-left {{ align-items: flex-start; text-align: left; }}
+    .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }}
+    .name-maki {{ color: #ffa657 !important; font-weight: 700; }}
+    .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
+    .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
+
+    /* --- LINE風固定入力エリアのCSS --- */
+    div[data-testid="stVerticalBlock"] > div:has(div.fixed-footer) {{
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background-color: {app_bg_color};
+        z-index: 1000;
+        padding: 10px 10px 30px 10px;
+        border-top: 1px solid #4f545c;
+    }}
+    
+    /* 入力欄の丸みと背景 */
+    .stTextInput input {{
+        border-radius: 20px !important;
+        background-color: #1e1f22 !important;
+        border: none !important;
+        color: white !important;
+    }}
+
+    /* ボタン類の微調整 */
     .stButton > button {{
         background-color: #424549 !important;
         color: white !important;
         border: 1px solid #4f545c !important;
     }}
-
-    .chat-row {{ display: flex; flex-direction: column; margin-bottom: 16px; width: 100%; }}
     
-    .message-text {{ 
-        font-family: 'M PLUS Rounded 1c', sans-serif !important;
-        font-feature-settings: "palt" 1; 
-        font-size: 1.15rem; 
-        line-height: 1.35; 
-        font-weight: 500 !important; 
-        letter-spacing: -0.04rem; 
-        max-width: 80%; 
-        white-space: pre-wrap; 
-        word-wrap: break-word; 
-        color: {text_main_color} !important; 
-        padding: 0; 
+    .stPopover > button {{
+        border-radius: 50% !important;
+        width: 40px !important;
+        height: 40px !important;
+        padding: 0 !important;
+        display: flex; justify-content: center; align-items: center;
     }}
 
-    .chat-image {{
-        max-width: 280px;
-        border-radius: 12px;
-        margin-top: 8px;
-        border: 1px solid #4f545c;
-    }}
-
-    .stChatInput textarea {{ font-family: 'M PLUS Rounded 1c', sans-serif !important; }}
-    .align-right {{ align-items: flex-end; text-align: right; }}
-    .align-left {{ align-items: flex-start; text-align: left; }}
-    
-    .chat-header {{ display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; }}
-    .name-maki {{ color: #ffa657 !important; font-weight: 700; }}
-    .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
-    .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
-    
     /* --- アニメーション全維持 --- */
     @keyframes rise {{ 0% {{ transform: translateY(0); opacity: 0; }} 5% {{ opacity: 1; }} 85% {{ opacity: 1; }} 100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }} }}
     .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
@@ -110,17 +130,6 @@ st.markdown(f"""
     .wave-active {{ display: inline-block; animation: wave-text 2s infinite ease-in-out !important; }}
     @keyframes focus-text {{ 0% {{ filter: blur(8px); opacity: 0; }} 100% {{ filter: blur(0); opacity: 1; }} }}
     .mystery-active {{ animation: focus-text 4s forwards !important; }}
-
-    /* ポップオーバーボタンを丸くして入力欄の横にフィットさせる */
-    .stPopover > button {{
-        border-radius: 50% !important;
-        width: 40px !important;
-        height: 40px !important;
-        padding: 0 !important;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -173,14 +182,14 @@ st.divider()
 # --- 8. ナビゲーション ---
 col_prev, col_page, col_next = st.columns([1, 2, 1])
 with col_prev:
-    if st.button("⬅️ 前の20件"):
+    if st.button("⬅️ 前"):
         st.session_state["page_offset"] += 20
         st.rerun()
 with col_page:
     st.write(f"<div style='text-align:center; font-size:0.8rem;'>{st.session_state['page_offset']+1}〜件目</div>", unsafe_allow_html=True)
 with col_next:
     if st.session_state["page_offset"] >= 20:
-        if st.button("次の20件 ➡️"):
+        if st.button("次 ➡️"):
             st.session_state["page_offset"] -= 20
             st.rerun()
 
@@ -277,55 +286,63 @@ try:
 except Exception as e:
     st.error(f"表示エラー: {e}")
 
-# --- 10. 送信エリア (1行スリム版) ---
-st.divider()
-
-# カラムで「＋」ボタンを入力欄の左に配置
-col_plus, col_input = st.columns([1, 8])
-
-with col_plus:
-    with st.popover("➕"):
-        img_file = st.file_uploader(
-            "写真を選択", 
-            type=['png', 'jpg', 'jpeg'], 
-            key=st.session_state["uploader_key"]
-        )
-        if img_file:
-            st.image(img_file, caption="この写真を送ります")
-            if st.button("🖼️ 写真のみ今すぐ送信"):
-                force_submit = True
-            else:
-                force_submit = False
-        else:
-            force_submit = False
-
-with col_input:
-    prompt = st.chat_input(input_placeholder)
+# --- 10. 送信エリア (LINE風・最下部固定版) ---
+# コンテナを作り、CSSで最下部に固定
+with st.container():
+    st.markdown('<div class="fixed-footer">', unsafe_allow_html=True)
+    
+    # フォームを使って横並びのレイアウトを作成
+    with st.form(key="chat_line_form", clear_on_submit=True):
+        col_p, col_i, col_s = st.columns([1.2, 7, 1.8])
+        
+        with col_p:
+            # ＋ボタン（画像選択をポップオーバー内に隠す）
+            with st.popover("＋", use_container_width=True):
+                img_file = st.file_uploader(
+                    "画像を選択", type=['png', 'jpg', 'jpeg'], 
+                    key=st.session_state["uploader_key"],
+                    label_visibility="collapsed"
+                )
+                if img_file:
+                    st.image(img_file)
+        
+        with col_i:
+            # テキスト入力欄（Enterで送信可能）
+            prompt = st.text_input("", placeholder=input_placeholder, label_visibility="collapsed")
+            
+        with col_s:
+            # 送信ボタン
+            submit_button = st.form_submit_button("送信")
+            
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # 送信処理
-if prompt or (img_file and force_submit):
-    try:
-        with st.spinner("送信中..."):
-            final_img_url = None
-            if img_file:
-                compressed_data = compress_image(img_file)
-                ext = img_file.name.split('.')[-1]
-                file_name = f"{uuid.uuid4()}.{ext}"
-                file_path = f"public/{file_name}"
-                supabase.storage.from_("images").upload(file_path, compressed_data.getvalue(), {"content-type": f"image/{ext}"})
-                final_img_url = supabase.storage.from_("images").get_public_url(file_path)
+if submit_button:
+    if prompt or img_file:
+        try:
+            with st.spinner("送信中..."):
+                final_img_url = None
+                if img_file:
+                    compressed_data = compress_image(img_file)
+                    ext = img_file.name.split('.')[-1]
+                    file_name = f"{uuid.uuid4()}.{ext}"
+                    file_path = f"public/{file_name}"
+                    supabase.storage.from_("images").upload(file_path, compressed_data.getvalue(), {"content-type": f"image/{ext}"})
+                    final_img_url = supabase.storage.from_("images").get_public_url(file_path)
 
-            supabase.table(table_name).insert({
-                "sender_name": current_user_raw, 
-                "message_body": prompt if prompt else "",
-                "image_url": final_img_url
-            }).execute()
-        
-        st.session_state["uploader_key"] = str(uuid.uuid4())
-        st.session_state["page_offset"] = 0
-        st.rerun()
-    except Exception as e:
-        st.error(f"送信エラー: {e}")
+                supabase.table(table_name).insert({
+                    "sender_name": current_user_raw, 
+                    "message_body": prompt if prompt else "",
+                    "image_url": final_img_url
+                }).execute()
+            
+            # リセットと再描画
+            st.session_state["uploader_key"] = str(uuid.uuid4())
+            st.session_state["page_offset"] = 0
+            st.rerun()
+        except Exception as e:
+            st.error(f"送信エラー: {e}")
 
+# 自動スクロール（最新メッセージへ）
 if st.session_state["page_offset"] == 0:
     components.html('<script>window.parent.document.querySelector(".main").scrollTo(0, 99999);</script>', height=0)
