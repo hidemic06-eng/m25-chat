@@ -234,7 +234,7 @@ try:
             fixed_marquee_html = '<div class="fixed-marquee-wrapper">'
             for idx, pm in enumerate(pinned_msgs):
                 # 候補の絵文字からランダムに1つ選択
-                icon = random.choice(["💬", "📢", "💡", "📌"])
+                icon = random.choice(["🌈", "📢", "💡", "🚀", "🎉", "💡", "📌", "🐣", "🏃", "📣"])
                 clean_text = f"{icon} {pm['message_body'].lstrip('#').strip()}"
                 
                 # 表示されるたびにランダムな高さと開始タイミングを決定
