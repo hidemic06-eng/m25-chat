@@ -213,11 +213,16 @@ with col_next:
 
 # --- 9. 表示 & 演出の判定 ---
 try:
-    # 演出用に直近50件まで対象を広げて取得
-    res_all = supabase.table(table_name).select("*").order("created_at", desc=True).range(0, 50).execute()
+    # --- 【修正箇所：過去ログ無限取得対応】 ---
+    # 常に0からではなく、現在のオフセット位置からデータを取得するように変更
+    start_range = st.session_state["page_offset"]
+    end_range = start_range + 50
+    
+    res_all = supabase.table(table_name).select("*").order("created_at", desc=True).range(start_range, end_range).execute()
     all_data = res_all.data
-    # ページ表示分を切り出し
-    messages = all_data[st.session_state["page_offset"]:st.session_state["page_offset"] + 20][::-1]
+    # 表示用の20件を切り出し
+    messages = all_data[:20][::-1]
+    # ------------------------------------------
     
     # --- #付きメッセージを1時間流す機能 (完全ランダム位置版) ---
     if st.session_state["page_offset"] == 0:
@@ -306,7 +311,7 @@ try:
             if any(word in msg_body for word in ["びっくり", "すごい", "光る", "指輪"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
             
-            # --- PowerPoint対策の w 判定を含むロジック (変更なし) ---
+            # --- PowerPoint対策の w 判定を含むロジック ---
             if any(word in msg_body for word in ["www", "笑", "草", "うける", "爆笑", "最高", "天才", "神", "優勝", "飲みに行", "ビール", "大好き"]):
                 marquee_html = '<div class="marquee-wrapper">'
                 display_text = (msg_body[:20] + '..') if len(msg_body) > 20 else msg_body
