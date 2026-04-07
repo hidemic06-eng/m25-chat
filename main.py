@@ -233,7 +233,10 @@ try:
         if pinned_msgs:
             fixed_marquee_html = '<div class="fixed-marquee-wrapper">'
             for idx, pm in enumerate(pinned_msgs):
-                clean_text = pm["message_body"].lstrip("#").strip()
+                # 候補の絵文字からランダムに1つ選択
+                icon = random.choice(["💬", "📢", "💡", "📌"])
+                clean_text = f"{icon} {pm['message_body'].lstrip('#').strip()}"
+                
                 # 表示されるたびにランダムな高さと開始タイミングを決定
                 top_pos = random.randint(5, 85) 
                 delay = random.uniform(0, 15)  # アニメーション周期の中でランダムに開始
