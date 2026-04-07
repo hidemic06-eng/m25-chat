@@ -219,12 +219,11 @@ try:
     # ページ表示分を切り出し
     messages = all_data[st.session_state["page_offset"]:st.session_state["page_offset"] + 20][::-1]
     
-    # --- #付きメッセージを1時間流す機能 (修正版) ---
+    # --- #付きメッセージを1時間流す機能 (ランダム位置表示版) ---
     if st.session_state["page_offset"] == 0:
         now = datetime.now(timezone.utc)
         one_hour_ago = now - timedelta(hours=1)
         
-        # message_bodyが存在し、かつNoneでない場合にstartswithを判定するよう修正
         pinned_msgs = [
             m for m in all_data 
             if m.get("message_body") and m["message_body"].startswith("#") 
@@ -235,8 +234,9 @@ try:
             fixed_marquee_html = '<div class="fixed-marquee-wrapper">'
             for idx, pm in enumerate(pinned_msgs):
                 clean_text = pm["message_body"].lstrip("#").strip()
-                top_pos = (idx * 12) % 80 + 5 
-                delay = idx * 3.5
+                # 順番による固定位置計算をやめ、ランダムに変更
+                top_pos = random.randint(5, 85) 
+                delay = random.uniform(0, 15)  # アニメーション周期15秒の中でランダムに開始
                 fixed_marquee_html += f'<div class="fixed-marquee-text" style="top:{top_pos}vh; animation-delay:-{delay}s;">{clean_text}</div>'
             st.markdown(fixed_marquee_html + '</div>', unsafe_allow_html=True)
 
