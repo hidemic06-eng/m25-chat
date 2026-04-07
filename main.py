@@ -219,12 +219,18 @@ try:
     # ページ表示分を切り出し
     messages = all_data[st.session_state["page_offset"]:st.session_state["page_offset"] + 20][::-1]
     
-    # --- #付きメッセージを1時間流す機能 (追加部分) ---
+    # --- #付きメッセージを1時間流す機能 (修正版) ---
     if st.session_state["page_offset"] == 0:
         now = datetime.now(timezone.utc)
         one_hour_ago = now - timedelta(hours=1)
-        pinned_msgs = [m for m in all_data if m.get("message_body", "").startswith("#") 
-                       and datetime.fromisoformat(m['created_at'].replace('Z', '+00:00')) > one_hour_ago]
+        
+        # message_bodyが存在し、かつNoneでない場合にstartswithを判定するよう修正
+        pinned_msgs = [
+            m for m in all_data 
+            if m.get("message_body") and m["message_body"].startswith("#") 
+            and datetime.fromisoformat(m['created_at'].replace('Z', '+00:00')) > one_hour_ago
+        ]
+        
         if pinned_msgs:
             fixed_marquee_html = '<div class="fixed-marquee-wrapper">'
             for idx, pm in enumerate(pinned_msgs):
