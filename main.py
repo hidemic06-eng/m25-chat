@@ -315,7 +315,8 @@ try:
             st.session_state["last_effect_id"] = msg_id
 
     # --- 9-2. チャットログ表示 ---
-    wd_jp = ["月", "火", "水", "木", "金", "土", "日"]
+    # 【変更箇所：英語曜日と土日の色付け】
+    wd_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     now_jst = datetime.now(timezone.utc) + timedelta(hours=9)
     today_str = now_jst.strftime('%Y-%m-%d')
 
@@ -325,13 +326,21 @@ try:
         s_name = m['sender_name']
         s_up = s_name.upper()
 
-        # --- 日付表示のロジック追加 ---
+        # --- 日付表示のロジック修正 ---
         msg_date_str = jst_time.strftime('%Y-%m-%d')
         if msg_date_str == today_str:
             time_display = jst_time.strftime('%H:%M')
         else:
-            weekday = wd_jp[jst_time.weekday()]
-            time_display = jst_time.strftime(f'%m/%d({weekday}) %H:%M')
+            w_idx = jst_time.weekday()  # 0:Mon, 5:Sat, 6:Sun
+            w_name = wd_en[w_idx]
+            
+            # 土日は色を変えるためのスタイル判定
+            w_style = ""
+            if w_idx == 5: w_style = "color: #58a6ff;" # 土曜日: 青
+            elif w_idx == 6: w_style = "color: #ff7b72;" # 日曜日: 赤
+            
+            w_display = f'<span style="{w_style}">{w_name}</span>'
+            time_display = jst_time.strftime(f'%m/%d({w_display}) %H:%M')
         # ----------------------------
 
         align = "align-right" if s_up == current_user_upper else "align-left"
@@ -346,6 +355,7 @@ try:
         elif any(word in m_body for word in ["海", "水族館", "ゆらゆら", "おやすみ", "ねむい", "おはよー"]): effect_class = "wave-active"
         elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "本当"]): effect_class = "mystery-active"
         
+        # unsafe_allow_html=True により曜日スパンのHTMLを有効化
         st.markdown(f"""
             <div class="chat-row {align}">
                 <div class="chat-header" style="{h_style}">
