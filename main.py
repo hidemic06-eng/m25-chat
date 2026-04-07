@@ -315,31 +315,39 @@ try:
             st.session_state["last_effect_id"] = msg_id
 
     # --- 9-2. チャットログ表示 ---
-    # 【変更箇所：英語曜日と土日の色付け】
+    # 【修正：英語曜日と土日の色付けロジック】
     wd_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    
+    # 現在の日本時間を取得（今日かどうかの判定用基準）
     now_jst = datetime.now(timezone.utc) + timedelta(hours=9)
     today_str = now_jst.strftime('%Y-%m-%d')
 
     for m in messages:
+        # DBのUTC時間を日本時間(JST)に変換
         utc_time = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
         jst_time = utc_time + timedelta(hours=9)
+        
         s_name = m['sender_name']
         s_up = s_name.upper()
 
-        # --- 日付表示のロジック修正 ---
+        # --- 日付・曜日表示の判定 ---
         msg_date_str = jst_time.strftime('%Y-%m-%d')
+        
         if msg_date_str == today_str:
+            # 今日なら時間のみ
             time_display = jst_time.strftime('%H:%M')
         else:
-            w_idx = jst_time.weekday()  # 0:Mon, 5:Sat, 6:Sun
+            # 今日以外は日本時間基準の曜日を算出
+            w_idx = jst_time.weekday()  # 日本時間変換済みのjst_timeから取得
             w_name = wd_en[w_idx]
             
-            # 土日は色を変えるためのスタイル判定
+            # 土日は色を変える
             w_style = ""
-            if w_idx == 5: w_style = "color: #58a6ff;" # 土曜日: 青
-            elif w_idx == 6: w_style = "color: #ff7b72;" # 日曜日: 赤
+            if w_idx == 5: w_style = "color: #58a6ff;" # 土曜: 青
+            elif w_idx == 6: w_style = "color: #ff7b72;" # 日曜: 赤
             
             w_display = f'<span style="{w_style}">{w_name}</span>'
+            # 月/日(曜) 時:分 の形式
             time_display = jst_time.strftime(f'%m/%d({w_display}) %H:%M')
         # ----------------------------
 
@@ -355,7 +363,6 @@ try:
         elif any(word in m_body for word in ["海", "水族館", "ゆらゆら", "おやすみ", "ねむい", "おはよー"]): effect_class = "wave-active"
         elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "本当"]): effect_class = "mystery-active"
         
-        # unsafe_allow_html=True により曜日スパンのHTMLを有効化
         st.markdown(f"""
             <div class="chat-row {align}">
                 <div class="chat-header" style="{h_style}">
