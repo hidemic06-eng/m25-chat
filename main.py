@@ -219,7 +219,7 @@ try:
     # ページ表示分を切り出し
     messages = all_data[st.session_state["page_offset"]:st.session_state["page_offset"] + 20][::-1]
     
-    # --- #付きメッセージを1時間流す機能 (完全ランダム位置 & 固着版) ---
+    # --- #付きメッセージを1時間流す機能 (完全ランダム位置版) ---
     if st.session_state["page_offset"] == 0:
         now = datetime.now(timezone.utc)
         one_hour_ago = now - timedelta(hours=1)
@@ -234,17 +234,9 @@ try:
             fixed_marquee_html = '<div class="fixed-marquee-wrapper">'
             for idx, pm in enumerate(pinned_msgs):
                 clean_text = pm["message_body"].lstrip("#").strip()
-                
-                # メッセージのIDを数値化してシードにする（更新のたびに場所が変わるのを防ぐ）
-                m_id_str = str(pm.get("id", idx))
-                m_id_int = sum(ord(c) for c in m_id_str)
-                
-                # IDに基づいて高さを固定 (5%〜85%の間)
-                top_pos = (m_id_int % 80) + 5
-                
-                # アニメーションの開始タイミングもIDでズラす
-                delay = (m_id_int % 15) 
-                
+                # 表示されるたびにランダムな高さと開始タイミングを決定
+                top_pos = random.randint(5, 85) 
+                delay = random.uniform(0, 15)  # アニメーション周期の中でランダムに開始
                 fixed_marquee_html += f'<div class="fixed-marquee-text" style="top:{top_pos}vh; animation-delay:-{delay}s;">{clean_text}</div>'
             st.markdown(fixed_marquee_html + '</div>', unsafe_allow_html=True)
 
