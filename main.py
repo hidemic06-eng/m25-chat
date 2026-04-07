@@ -214,7 +214,6 @@ with col_next:
 # --- 9. 表示 & 演出の判定 ---
 try:
     # --- 【修正箇所：過去ログ無限取得対応】 ---
-    # 常に0からではなく、現在のオフセット位置からデータを取得するように変更
     start_range = st.session_state["page_offset"]
     end_range = start_range + 50
     
@@ -238,16 +237,11 @@ try:
         if pinned_msgs:
             fixed_marquee_html = '<div class="fixed-marquee-wrapper">'
             for idx, pm in enumerate(pinned_msgs):
-                # 候補の絵文字からランダムに1つ選択
                 icon = random.choice(["🌈", "📢", "💡", "🚀", "🎉", "💡", "📌", "🐣", "🏃", "📣"])
                 clean_text = f"{icon} {pm['message_body'].lstrip('#').strip()}"
-                
-                # 送信者によって色を決定 (Maki: ピンク, Hide: ブルー)
                 text_color = "rgba(255, 182, 193, 0.5)" if "MAKI" in pm["sender_name"].upper() else "rgba(135, 206, 235, 0.5)"
-                
-                # 表示されるたびにランダムな高さと開始タイミングを決定
                 top_pos = random.randint(5, 85) 
-                delay = random.uniform(0, 15)  # アニメーション周期の中でランダムに開始
+                delay = random.uniform(0, 15)
                 fixed_marquee_html += f'<div class="fixed-marquee-text" style="top:{top_pos}vh; animation-delay:-{delay}s; color:{text_color};">{clean_text}</div>'
             st.markdown(fixed_marquee_html + '</div>', unsafe_allow_html=True)
 
@@ -311,7 +305,6 @@ try:
             if any(word in msg_body for word in ["びっくり", "すごい", "光る", "指輪"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
             
-            # --- PowerPoint対策の w 判定を含むロジック ---
             if any(word in msg_body for word in ["www", "笑", "草", "うける", "爆笑", "最高", "天才", "神", "優勝", "飲みに行", "ビール", "大好き"]):
                 marquee_html = '<div class="marquee-wrapper">'
                 display_text = (msg_body[:20] + '..') if len(msg_body) > 20 else msg_body
@@ -322,10 +315,25 @@ try:
             st.session_state["last_effect_id"] = msg_id
 
     # --- 9-2. チャットログ表示 ---
+    wd_jp = ["月", "火", "水", "木", "金", "土", "日"]
+    now_jst = datetime.now(timezone.utc) + timedelta(hours=9)
+    today_str = now_jst.strftime('%Y-%m-%d')
+
     for m in messages:
         utc_time = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
-        jst_time, s_name = utc_time + timedelta(hours=9), m['sender_name']
-        time_display, s_up = jst_time.strftime('%H:%M'), s_name.upper()
+        jst_time = utc_time + timedelta(hours=9)
+        s_name = m['sender_name']
+        s_up = s_name.upper()
+
+        # --- 日付表示のロジック追加 ---
+        msg_date_str = jst_time.strftime('%Y-%m-%d')
+        if msg_date_str == today_str:
+            time_display = jst_time.strftime('%H:%M')
+        else:
+            weekday = wd_jp[jst_time.weekday()]
+            time_display = jst_time.strftime(f'%m/%d({weekday}) %H:%M')
+        # ----------------------------
+
         align = "align-right" if s_up == current_user_upper else "align-left"
         h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
         n_class = "name-maki" if "MAKI" in s_up else "name-hide" if "HIDE" in s_up else ""
