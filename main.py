@@ -72,10 +72,8 @@ st.markdown(f"""
         max-width: 280px;
         border-radius: 4px;
         margin-top: 10px;
-        /* 白いフチとしっかりめの影 */
         border: 8px solid #ffffff !important;
         box-shadow: 0 6px 12px rgba(0,0,0,0.4);
-        /* わずかに傾けてランダムな配置感を出す */
         transform: rotate(-1.5deg);
         display: inline-block;
     }}
@@ -96,6 +94,15 @@ st.markdown(f"""
     @keyframes rise {{ 0% {{ transform: translateY(0); opacity: 0; }} 5% {{ opacity: 1; }} 85% {{ opacity: 1; }} 100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }} }}
     .rising-emoji {{ position: fixed; bottom: -12vh; left: 0; width: 100%; height: 0; z-index: 9999; pointer-events: none; }}
     .emoji-item {{ position: absolute; animation: rise linear forwards; }}
+    
+    /* 追加：振り子（スイング）演出 */
+    @keyframes swing-animation {{
+        0% {{ transform: rotate(-20deg); }}
+        100% {{ transform: rotate(20deg); }}
+    }}
+    .swing-container {{ position: fixed; top: -50px; left: 0; width: 100%; display: flex; justify-content: space-around; z-index: 9999; pointer-events: none; }}
+    .swing-item {{ font-size: 5rem; transform-origin: top center; animation: swing-animation 1.5s ease-in-out infinite alternate; text-shadow: 2px 5px 10px rgba(0,0,0,0.3); }}
+
     @keyframes peek-left {{ 0% {{ left: -100px; opacity: 0; }} 20% {{ left: 20px; opacity: 1; }} 80% {{ left: 20px; opacity: 1; }} 100% {{ left: -100px; opacity: 0; }} }}
     @keyframes peek-right {{ 0% {{ right: -100px; opacity: 0; }} 20% {{ right: 20px; opacity: 1; }} 80% {{ right: 20px; opacity: 1; }} 100% {{ right: -100px; opacity: 0; }} }}
     .peek-item {{ position: fixed; z-index: 9999; pointer-events: none; font-size: 4rem; }}
@@ -111,7 +118,6 @@ st.markdown(f"""
     .marquee-wrapper {{ position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9998; overflow: hidden; }}
     .marquee-text {{ position: absolute; white-space: nowrap; font-size: 2.5rem; font-weight: 800; color: rgba(255, 255, 255, 0.5); text-shadow: 2px 2px 4px rgba(0,0,0,0.5); animation: marquee 5s linear forwards; }}
 
-    /* #専用：1時間ループテロップ用CSS --- */
     @keyframes marquee-infinite {{ 0% {{ transform: translateX(100vw); }} 100% {{ transform: translateX(-100vw); }} }}
     .fixed-marquee-wrapper {{ position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9997; overflow: hidden; }}
     .fixed-marquee-text {{ position: absolute; white-space: nowrap; font-size: 1.8rem; font-weight: 700; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); animation: marquee-infinite 15s linear infinite; }}
@@ -122,7 +128,6 @@ st.markdown(f"""
     .neon-active {{ animation: neon-flicker 4s infinite alternate !important; font-weight: 700 !important; }}
     @keyframes marker-draw {{ 0% {{ background-size: 0% 100%; }} 100% {{ background-size: 100% 100%; }} }}
     
-    /* マーカー各色設定 */
     .marker-active {{ background: linear-gradient(transparent 60%, rgba(255, 235, 59, 0.4) 0%) no-repeat !important; background-size: 100% 100%; animation: marker-draw 1.5s ease-out; display: inline; font-weight: 700 !important; }}
     .marker-pink-active {{ background: linear-gradient(transparent 60%, rgba(255, 105, 180, 0.4) 0%) no-repeat !important; background-size: 100% 100%; animation: marker-draw 1.5s ease-out; display: inline; font-weight: 700 !important; }}
     .marker-blue-active {{ background: linear-gradient(transparent 60%, rgba(0, 191, 255, 0.4) 0%) no-repeat !important; background-size: 100% 100%; animation: marker-draw 1.5s ease-out; display: inline; font-weight: 700 !important; }}
@@ -137,7 +142,6 @@ st.markdown(f"""
 # --- 4. 画像圧縮用関数 ---
 def compress_image(uploaded_file):
     img = Image.open(uploaded_file)
-    # 【追加】向き情報を読み取って自動回転させる
     img = ImageOps.exif_transpose(img)
     if img.mode != "RGB": img = img.convert("RGB")
     if img.width > 1200:
@@ -218,17 +222,13 @@ with col_next:
 
 # --- 9. 表示 & 演出の判定 ---
 try:
-    # --- 【修正箇所：過去ログ無限取得対応】 ---
     start_range = st.session_state["page_offset"]
     end_range = start_range + 50
     
     res_all = supabase.table(table_name).select("*").order("created_at", desc=True).range(start_range, end_range).execute()
     all_data = res_all.data
-    # 表示用の20件を切り出し
     messages = all_data[:20][::-1]
-    # ------------------------------------------
     
-    # --- #付きメッセージを1時間流す機能 (完全ランダム位置版) ---
     if st.session_state["page_offset"] == 0:
         now = datetime.now(timezone.utc)
         one_hour_ago = now - timedelta(hours=1)
@@ -250,11 +250,28 @@ try:
                 fixed_marquee_html += f'<div class="fixed-marquee-text" style="top:{top_pos}vh; animation-delay:-{delay}s; color:{text_color};">{clean_text}</div>'
             st.markdown(fixed_marquee_html + '</div>', unsafe_allow_html=True)
 
+    # --- 演出判定ブロックの統合 ---
     if messages and st.session_state["page_offset"] == 0:
         latest_msg = messages[-1]
         msg_id, msg_body, img_url_latest = latest_msg.get("id"), latest_msg.get("message_body", ""), latest_msg.get("image_url")
         
         if msg_id != st.session_state["last_effect_id"]:
+            # --- 1. 振り子（スイング）演出 ---
+            swing_emoji = None
+            if any(word in msg_body for word in ["プレゼント", "ギフト", "サンタ", "贈り物"]): swing_emoji = "🎁"
+            elif any(word in msg_body for word in ["バドミントン", "シャトル", "練習", "試合"]): swing_emoji = "🏸"
+            elif any(word in msg_body for word in ["通知", "ベル", "お知らせ"]): swing_emoji = "🔔"
+            elif any(word in msg_body for word in ["おばけ", "幽霊", "こわい"]): swing_emoji = "👻"
+
+            if swing_emoji:
+                swing_html = f'''<div class="swing-container">
+                    <div class="swing-item" style="animation-delay: 0s;">{swing_emoji}</div>
+                    <div class="swing-item" style="animation-delay: 0.5s;">{swing_emoji}</div>
+                    <div class="swing-item" style="animation-delay: 0.2s;">{swing_emoji}</div>
+                </div>'''
+                st.markdown(swing_html, unsafe_allow_html=True)
+
+            # --- 2. ライジング（上昇）演出 ---
             priority_emoji = None
             if img_url_latest:
                 priority_emoji = "📷"
@@ -289,6 +306,8 @@ try:
                     delay, duration = random.uniform(0, 0.5), random.uniform(5.5, 6.5)
                     effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{priority_emoji}</div>'
                 st.markdown(effect_html + '</div>', unsafe_allow_html=True)
+
+            # --- 3. ピーキング（覗き見）演出 ---
             elif not img_url_latest and emoji_in_text:
                 target_emoji = emoji_in_text[-1]
                 peek_html = '<div>'
@@ -299,6 +318,7 @@ try:
                     peek_html += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
                 st.markdown(peek_html + '</div>', unsafe_allow_html=True)
 
+            # --- 4. 全画面・特殊演出 ---
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             if any(word in msg_body for word in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
@@ -310,6 +330,7 @@ try:
             if any(word in msg_body for word in ["びっくり", "すごい", "光る", "指輪"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
             
+            # --- 5. マーキー演出 ---
             if any(word in msg_body for word in ["www", "笑", "草", "うける", "爆笑", "最高", "天才", "神", "優勝", "飲みに行", "ビール", "大好き"]):
                 marquee_html = '<div class="marquee-wrapper">'
                 display_text = (msg_body[:20] + '..') if len(msg_body) > 20 else msg_body
@@ -317,44 +338,31 @@ try:
                     top_pos = random.randint(10, 80); delay = i * 0.7
                     marquee_html += f'<div class="marquee-text" style="top:{top_pos}vh; animation-delay:{delay}s;">{display_text}</div>'
                 st.markdown(marquee_html + '</div>', unsafe_allow_html=True)
+
             st.session_state["last_effect_id"] = msg_id
 
     # --- 9-2. チャットログ表示 ---
-    # 【修正：英語曜日と土日の色付けロジック】
     wd_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-    
-    # 現在の日本時間を取得（今日かどうかの判定用基準）
     now_jst = datetime.now(timezone.utc) + timedelta(hours=9)
     today_str = now_jst.strftime('%Y-%m-%d')
 
     for m in messages:
-        # DBのUTC時間を日本時間(JST)に変換
         utc_time = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
         jst_time = utc_time + timedelta(hours=9)
-        
         s_name = m['sender_name']
         s_up = s_name.upper()
 
-        # --- 日付・曜日表示の判定 ---
         msg_date_str = jst_time.strftime('%Y-%m-%d')
-        
         if msg_date_str == today_str:
-            # 今日なら時間のみ
             time_display = jst_time.strftime('%H:%M')
         else:
-            # 今日以外は日本時間基準の曜日を算出
-            w_idx = jst_time.weekday()  # 日本時間変換済みのjst_timeから取得
+            w_idx = jst_time.weekday()
             w_name = wd_en[w_idx]
-            
-            # 土日は色を変える
             w_style = ""
-            if w_idx == 5: w_style = "color: #58a6ff;" # 土曜: 青
-            elif w_idx == 6: w_style = "color: #ff7b72;" # 日曜: 赤
-            
+            if w_idx == 5: w_style = "color: #58a6ff;"
+            elif w_idx == 6: w_style = "color: #ff7b72;"
             w_display = f'<span style="{w_style}">{w_name}</span>'
-            # 月/日(曜) 時:分 の形式
             time_display = jst_time.strftime(f'%m/%d({w_display}) %H:%M')
-        # ----------------------------
 
         align = "align-right" if s_up == current_user_upper else "align-left"
         h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
@@ -362,28 +370,14 @@ try:
         m_body, img_url = m.get("message_body", ""), m.get("image_url")
         img_html = f'<div><img src="{img_url}" class="chat-image"></div>' if img_url else ""
         
-        # --- テキストエフェクト判定 ---
         effect_class = ""
-        if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]): 
-            effect_class = "rainbow-active"
-        elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "乾杯"]): 
-            effect_class = "neon-active"
-
-        # 追加：ピンク（デート・楽しみ系）
-        elif any(word in m_body for word in ["デート", "楽しみ", "ワクワク", "会いたい", "ランチ", "映画"]): 
-            effect_class = "marker-pink-active"
-        # 追加：水色（仕事・了解系）
-        elif any(word in m_body for word in ["仕事", "会議", "確認", "了解", "OK", "出張", "資料"]): 
-            effect_class = "marker-blue-active"
-        # 既存：黄色
-        elif any(word in m_body for word in ["予約", "集合", "待ち合わせ", "予定", "計画", "約束", "チケット", "行こう"]): 
-            effect_class = "marker-active"
-
-        elif any(word in m_body for word in ["海", "水族館", "ゆらゆら", "おやすみ", "ねむい", "おはよー"]): 
-            effect_class = "wave-active"
-        elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "本当"]): 
-            effect_class = "mystery-active"
-        # ----------------------------
+        if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]): effect_class = "rainbow-active"
+        elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "乾杯"]): effect_class = "neon-active"
+        elif any(word in m_body for word in ["デート", "楽しみ", "ワクワク", "会いたい", "ランチ", "映画"]): effect_class = "marker-pink-active"
+        elif any(word in m_body for word in ["仕事", "会議", "確認", "了解", "OK", "出張", "資料"]): effect_class = "marker-blue-active"
+        elif any(word in m_body for word in ["予約", "集合", "待ち合わせ", "予定", "計画", "約束", "チケット", "行こう"]): effect_class = "marker-active"
+        elif any(word in m_body for word in ["海", "水族館", "ゆらゆら", "おやすみ", "ねむい", "おはよー"]): effect_class = "wave-active"
+        elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "本当"]): effect_class = "mystery-active"
         
         st.markdown(f"""
             <div class="chat-row {align}">
@@ -404,5 +398,6 @@ if prompt:
         st.session_state["last_compression_info"] = None
         st.session_state["page_offset"] = 0; st.rerun()
     except Exception as e: st.error(f"送信エラー: {e}")
+
 if st.session_state["page_offset"] == 0:
     components.html('<script>window.parent.document.querySelector(".main").scrollTo(0, 99999);</script>', height=0)
