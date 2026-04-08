@@ -133,7 +133,7 @@ st.markdown(f"""
     .mystery-active {{ animation: focus-text 4s forwards !important; }}
 
     /* パルス（鼓動）エフェクトの追加 */
-    @keyframes pulse-text {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.05); }} 100% {{ transform: scale(1); }} }}
+    @keyframes pulse-text {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.2); }} 100% {{ transform: scale(1); }} }}
     .pulse-active {{ display: inline-block; animation: pulse-text 1.5s infinite ease-in-out !important; font-weight: 700 !important; }}
     </style>
 """, unsafe_allow_html=True)
