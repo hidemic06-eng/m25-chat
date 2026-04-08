@@ -5,7 +5,7 @@ import streamlit.components.v1 as components
 from datetime import datetime, timedelta, timezone
 import random
 import re
-from PIL import Image, ImageOps  # ImageOpsを追加
+from PIL import Image, ImageOps
 import io
 import uuid
 
@@ -67,15 +67,12 @@ st.markdown(f"""
         padding: 0; 
     }}
 
-    /* ポラロイド風フレームのデザイン */
     .chat-image {{
         max-width: 280px;
         border-radius: 4px;
         margin-top: 10px;
-        /* 白いフチとしっかりめの影 */
         border: 8px solid #ffffff !important;
         box-shadow: 0 6px 12px rgba(0,0,0,0.4);
-        /* わずかに傾けてランダムな配置感を出す */
         transform: rotate(-1.5deg);
         display: inline-block;
     }}
@@ -111,7 +108,11 @@ st.markdown(f"""
     .marquee-wrapper {{ position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9998; overflow: hidden; }}
     .marquee-text {{ position: absolute; white-space: nowrap; font-size: 2.5rem; font-weight: 800; color: rgba(255, 255, 255, 0.5); text-shadow: 2px 2px 4px rgba(0,0,0,0.5); animation: marquee 5s linear forwards; }}
 
-    /* #専用：1時間ループテロップ用CSS --- */
+    /* 背景タイリング演出用の追加CSS */
+    @keyframes pattern-fade-in {{ 0% {{ opacity: 0; }} 100% {{ opacity: 1; }} }}
+    .bg-pattern-container {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; display: flex; flex-wrap: wrap; justify-content: space-around; align-content: space-around; padding: 20px; animation: pattern-fade-in 2s ease-out forwards; }}
+    .bg-pattern-item {{ font-size: 3.5rem; opacity: 0.07; margin: 15px; filter: grayscale(20%); }}
+
     @keyframes marquee-infinite {{ 0% {{ transform: translateX(100vw); }} 100% {{ transform: translateX(-100vw); }} }}
     .fixed-marquee-wrapper {{ position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9997; overflow: hidden; }}
     .fixed-marquee-text {{ position: absolute; white-space: nowrap; font-size: 1.8rem; font-weight: 700; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); animation: marquee-infinite 15s linear infinite; }}
@@ -122,7 +123,6 @@ st.markdown(f"""
     .neon-active {{ animation: neon-flicker 4s infinite alternate !important; font-weight: 700 !important; }}
     @keyframes marker-draw {{ 0% {{ background-size: 0% 100%; }} 100% {{ background-size: 100% 100%; }} }}
     
-    /* マーカー各色設定 */
     .marker-active {{ background: linear-gradient(transparent 60%, rgba(255, 235, 59, 0.4) 0%) no-repeat !important; background-size: 100% 100%; animation: marker-draw 1.5s ease-out; display: inline; font-weight: 700 !important; }}
     .marker-pink-active {{ background: linear-gradient(transparent 60%, rgba(255, 105, 180, 0.4) 0%) no-repeat !important; background-size: 100% 100%; animation: marker-draw 1.5s ease-out; display: inline; font-weight: 700 !important; }}
     .marker-blue-active {{ background: linear-gradient(transparent 60%, rgba(0, 191, 255, 0.4) 0%) no-repeat !important; background-size: 100% 100%; animation: marker-draw 1.5s ease-out; display: inline; font-weight: 700 !important; }}
@@ -137,7 +137,6 @@ st.markdown(f"""
 # --- 4. 画像圧縮用関数 ---
 def compress_image(uploaded_file):
     img = Image.open(uploaded_file)
-    # 【追加】向き情報を読み取って自動回転させる
     img = ImageOps.exif_transpose(img)
     if img.mode != "RGB": img = img.convert("RGB")
     if img.width > 1200:
@@ -218,17 +217,13 @@ with col_next:
 
 # --- 9. 表示 & 演出の判定 ---
 try:
-    # --- 【修正箇所：過去ログ無限取得対応】 ---
     start_range = st.session_state["page_offset"]
     end_range = start_range + 50
     
     res_all = supabase.table(table_name).select("*").order("created_at", desc=True).range(start_range, end_range).execute()
     all_data = res_all.data
-    # 表示用の20件を切り出し
     messages = all_data[:20][::-1]
-    # ------------------------------------------
     
-    # --- #付きメッセージを1時間流す機能 (完全ランダム位置版) ---
     if st.session_state["page_offset"] == 0:
         now = datetime.now(timezone.utc)
         one_hour_ago = now - timedelta(hours=1)
@@ -255,6 +250,20 @@ try:
         msg_id, msg_body, img_url_latest = latest_msg.get("id"), latest_msg.get("message_body", ""), latest_msg.get("image_url")
         
         if msg_id != st.session_state["last_effect_id"]:
+            # --- 1. 背景タイリング演出 ---
+            tile_emoji = None
+            if any(word in msg_body for word in ["誕生日", "おめでとう", "祝", "記念日"]): tile_emoji = "🎂"
+            elif any(word in msg_body for word in ["ビール", "飲み", "乾杯", "居酒屋", "打ち上げ"]): tile_emoji = "🍺"
+            elif any(word in msg_body for word in ["お疲れ", "おつかれ"]): tile_emoji = "☕"
+            elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]): tile_emoji = "🏸"
+            
+            if tile_emoji:
+                tiles_html = '<div class="bg-pattern-container">'
+                for _ in range(50):
+                    tiles_html += f'<div class="bg-pattern-item">{tile_emoji}</div>'
+                st.markdown(tiles_html + '</div>', unsafe_allow_html=True)
+
+            # --- 2. 優先絵文字（上昇演出） ---
             priority_emoji = None
             if img_url_latest:
                 priority_emoji = "📷"
@@ -320,41 +329,27 @@ try:
             st.session_state["last_effect_id"] = msg_id
 
     # --- 9-2. チャットログ表示 ---
-    # 【修正：英語曜日と土日の色付けロジック】
     wd_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-    
-    # 現在の日本時間を取得（今日かどうかの判定用基準）
     now_jst = datetime.now(timezone.utc) + timedelta(hours=9)
     today_str = now_jst.strftime('%Y-%m-%d')
 
     for m in messages:
-        # DBのUTC時間を日本時間(JST)に変換
         utc_time = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
         jst_time = utc_time + timedelta(hours=9)
-        
         s_name = m['sender_name']
         s_up = s_name.upper()
 
-        # --- 日付・曜日表示の判定 ---
         msg_date_str = jst_time.strftime('%Y-%m-%d')
-        
         if msg_date_str == today_str:
-            # 今日なら時間のみ
             time_display = jst_time.strftime('%H:%M')
         else:
-            # 今日以外は日本時間基準の曜日を算出
-            w_idx = jst_time.weekday()  # 日本時間変換済みのjst_timeから取得
+            w_idx = jst_time.weekday()
             w_name = wd_en[w_idx]
-            
-            # 土日は色を変える
             w_style = ""
-            if w_idx == 5: w_style = "color: #58a6ff;" # 土曜: 青
-            elif w_idx == 6: w_style = "color: #ff7b72;" # 日曜: 赤
-            
+            if w_idx == 5: w_style = "color: #58a6ff;"
+            elif w_idx == 6: w_style = "color: #ff7b72;"
             w_display = f'<span style="{w_style}">{w_name}</span>'
-            # 月/日(曜) 時:分 の形式
             time_display = jst_time.strftime(f'%m/%d({w_display}) %H:%M')
-        # ----------------------------
 
         align = "align-right" if s_up == current_user_upper else "align-left"
         h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
@@ -368,22 +363,16 @@ try:
             effect_class = "rainbow-active"
         elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "乾杯"]): 
             effect_class = "neon-active"
-
-        # 追加：ピンク（デート・楽しみ系）
         elif any(word in m_body for word in ["デート", "楽しみ", "ワクワク", "会いたい", "ランチ", "映画"]): 
             effect_class = "marker-pink-active"
-        # 追加：水色（仕事・了解系）
         elif any(word in m_body for word in ["仕事", "会議", "確認", "了解", "OK", "出張", "資料"]): 
             effect_class = "marker-blue-active"
-        # 既存：黄色
         elif any(word in m_body for word in ["予約", "集合", "待ち合わせ", "予定", "計画", "約束", "チケット", "行こう"]): 
             effect_class = "marker-active"
-
         elif any(word in m_body for word in ["海", "水族館", "ゆらゆら", "おやすみ", "ねむい", "おはよー"]): 
             effect_class = "wave-active"
         elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "本当"]): 
             effect_class = "mystery-active"
-        # ----------------------------
         
         st.markdown(f"""
             <div class="chat-row {align}">
