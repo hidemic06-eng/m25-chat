@@ -131,6 +131,10 @@ st.markdown(f"""
     .wave-active {{ display: inline-block; animation: wave-text 2s infinite ease-in-out !important; }}
     @keyframes focus-text {{ 0% {{ filter: blur(8px); opacity: 0; }} 100% {{ filter: blur(0); opacity: 1; }} }}
     .mystery-active {{ animation: focus-text 4s forwards !important; }}
+
+    /* パルス（鼓動）エフェクトの追加 */
+    @keyframes pulse-text {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.2); }} 100% {{ transform: scale(1); }} }}
+    .pulse-active {{ display: inline-block; animation: pulse-text 1.5s infinite ease-in-out !important; font-weight: 700 !important; }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -366,11 +370,15 @@ try:
         effect_class = ""
         if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]): 
             effect_class = "rainbow-active"
-        elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "乾杯"]): 
+        elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "ちょい飲み"]): 
             effect_class = "neon-active"
 
+        # 追加：パルス（ドキドキ系）
+        elif any(word in m_body for word in ["ドキドキ", "ワクワク", "楽しみ", "待ってる"]): 
+            effect_class = "pulse-active"
+
         # 追加：ピンク（デート・楽しみ系）
-        elif any(word in m_body for word in ["デート", "楽しみ", "ワクワク", "会いたい", "ランチ", "映画"]): 
+        elif any(word in m_body for word in ["デート", "楽しみ", "また行きたい", "会いたい", "ランチ", "映画"]): 
             effect_class = "marker-pink-active"
         # 追加：水色（仕事・了解系）
         elif any(word in m_body for word in ["仕事", "会議", "確認", "了解", "OK", "出張", "資料"]): 
@@ -379,7 +387,7 @@ try:
         elif any(word in m_body for word in ["予約", "集合", "待ち合わせ", "予定", "計画", "約束", "チケット", "行こう"]): 
             effect_class = "marker-active"
 
-        elif any(word in m_body for word in ["海", "水族館", "ゆらゆら", "おやすみ", "ねむい", "おはよー"]): 
+        elif any(word in m_body for word in ["海", "お風呂", "ゆらゆら", "おやすみ", "ねむい", "おはよー"]): 
             effect_class = "wave-active"
         elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "本当"]): 
             effect_class = "mystery-active"
