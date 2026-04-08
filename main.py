@@ -284,7 +284,7 @@ try:
 
             if priority_emoji:
                 effect_html = '<div class="rising-emoji">'
-                for i in range(25):
+                for i in range(12):
                     left, size = random.randint(5, 95), (random.uniform(2.0, 5.5) if priority_emoji == "📷" else random.uniform(2.5, 4.5))
                     delay, duration = random.uniform(0, 0.5), random.uniform(5.5, 6.5)
                     effect_html += f'<div class="emoji-item" style="left:{left}%; font-size:{size}rem; animation-delay:{delay}s; animation-duration:{duration}s;">{priority_emoji}</div>'
@@ -368,6 +368,7 @@ try:
             effect_class = "rainbow-active"
         elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "乾杯"]): 
             effect_class = "neon-active"
+
         # 追加：ピンク（デート・楽しみ系）
         elif any(word in m_body for word in ["デート", "楽しみ", "ワクワク", "会いたい", "ランチ", "映画"]): 
             effect_class = "marker-pink-active"
@@ -377,6 +378,7 @@ try:
         # 既存：黄色
         elif any(word in m_body for word in ["予約", "集合", "待ち合わせ", "予定", "計画", "約束", "チケット", "行こう"]): 
             effect_class = "marker-active"
+
         elif any(word in m_body for word in ["海", "水族館", "ゆらゆら", "おやすみ", "ねむい", "おはよー"]): 
             effect_class = "wave-active"
         elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "本当"]): 
