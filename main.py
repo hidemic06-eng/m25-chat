@@ -131,6 +131,10 @@ st.markdown(f"""
     .wave-active {{ display: inline-block; animation: wave-text 2s infinite ease-in-out !important; }}
     @keyframes focus-text {{ 0% {{ filter: blur(8px); opacity: 0; }} 100% {{ filter: blur(0); opacity: 1; }} }}
     .mystery-active {{ animation: focus-text 4s forwards !important; }}
+
+    /* パルス（鼓動）エフェクトの追加 */
+    @keyframes pulse-text {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.05); }} 100% {{ transform: scale(1); }} }}
+    .pulse-active {{ display: inline-block; animation: pulse-text 1.5s infinite ease-in-out !important; font-weight: 700 !important; }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -368,6 +372,10 @@ try:
             effect_class = "rainbow-active"
         elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "乾杯"]): 
             effect_class = "neon-active"
+
+        # 追加：パルス（ドキドキ系）
+        elif any(word in m_body for word in ["ドキドキ", "ワクワク", "楽しみ", "待ってる"]): 
+            effect_class = "pulse-active"
 
         # 追加：ピンク（デート・楽しみ系）
         elif any(word in m_body for word in ["デート", "楽しみ", "ワクワク", "会いたい", "ランチ", "映画"]): 
