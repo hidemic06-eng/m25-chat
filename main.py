@@ -91,14 +91,16 @@ st.markdown(f"""
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
     /* --- アニメーション定義 --- */
-    /* 新規追加：最新1件のみ適用される浮き上がりエフェクト */
-    @keyframes letter-pop {{
-      0% {{ opacity: 0; transform: translateY(10px); filter: blur(5px); }}
-      100% {{ opacity: 1; transform: translateY(0); filter: blur(0); }}
+    /* 修正：1文字ずつ一定速度で表示されるタイピング演出 */
+    .typewriter-char {{
+        display: inline-block;
+        opacity: 0;
+        animation: char-reveal 0.1s forwards;
     }}
-    .new-arrival-text {{
-      display: inline-block;
-      animation: letter-pop 0.8s ease-out forwards;
+
+    @keyframes char-reveal {{
+        from {{ opacity: 0; transform: translateY(5px); }}
+        to {{ opacity: 1; transform: translateY(0); }}
     }}
 
     @keyframes rise {{ 0% {{ transform: translateY(0); opacity: 0; }} 5% {{ opacity: 1; }} 85% {{ opacity: 1; }} 100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }} }}
@@ -358,16 +360,21 @@ try:
         m_body, img_url = m.get("message_body", ""), m.get("image_url")
         img_html = f'<div><img src="{img_url}" class="chat-image"></div>' if img_url else ""
         
-        # --- タイプライター(最新1件のみ)判定 ---
-        # 1. 1ページ目(page_offset=0) 
-        # 2. 全体の中で一番最新のメッセージ
-        # 3. まだこのセッションで演出を表示していない
+        # --- タイピング演出(最新1件のみ)判定とHTML生成 ---
         is_new_msg = (m_id == latest_id) and (st.session_state["page_offset"] == 0) and (m_id not in st.session_state["shown_ids"])
-        arrival_class = "new-arrival-text" if is_new_msg else ""
         
-        # 演出済みリストへ追加
         if is_new_msg:
+            # 1文字ずつ分割して、0.05秒ずつ遅らせるHTMLを生成
+            typed_html = ""
+            for i, char in enumerate(m_body):
+                delay = i * 0.05  # 一定速度（0.05秒間隔）
+                char_display = "<br>" if char == "\n" else char
+                typed_html += f'<span class="typewriter-char" style="animation-delay: {delay}s;">{char_display}</span>'
+            display_body = typed_html
             st.session_state["shown_ids"].add(m_id)
+        else:
+            # 過去ログや演出済みはそのまま表示
+            display_body = m_body.replace("\n", "<br>")
 
         # --- テキストエフェクト判定 ---
         effect_class = ""
@@ -393,7 +400,7 @@ try:
                 <div class="chat-header" style="{h_style}">
                     <span class="{n_class}">{s_name}</span><span class="timestamp">{time_display}</span>
                 </div>
-                <div class="message-text {effect_class} {arrival_class}">{m_body}</div>
+                <div class="message-text {effect_class}">{display_body}</div>
                 {img_html}
             </div>
         """, unsafe_allow_html=True)
