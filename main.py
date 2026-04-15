@@ -155,30 +155,33 @@ def compress_image(uploaded_file):
     img_io.seek(0)
     return img_io
 
-# --- 5. 認証機能 (SessionStorage 完結版) ---
+# --- 5. 認証機能 (確実なログイン＋PWA復帰対応) ---
 
-# ブラウザのSessionStorageに保存されているフラグを、URLパラメータ経由で取得する
-# スマホで別アプリから戻った際、ここが「合図」になります
-if "auth" in st.query_params:
-    st.session_state["password_correct"] = True
-
+# A. ブラウザの記憶(SessionStorage)をチェックして、Python側が忘れていたら復帰させるJS
+# これを最初に入れておくことで、別のアプリから戻った際に自動ログインを試みます
 if "password_correct" not in st.session_state:
-    # ページ読み込み時に一度だけJSを動かして、SessionStorageがあればURLに付与してリロード
     components.html("""
         <script>
         const savedLogin = sessionStorage.getItem('m25_login_success');
-        const url = new URL(window.parent.location.href);
-        if (savedLogin === 'true' && !url.searchParams.has('auth')) {
-            url.searchParams.set('auth', '1');
-            window.parent.location.href = url.href;
+        if (savedLogin === 'true') {
+            const url = new URL(window.parent.location.href);
+            if (!url.searchParams.has('auth')) {
+                url.searchParams.set('auth', '1');
+                window.parent.location.href = url.href;
+            }
         }
         </script>
     """, height=0)
 
+    # URLパラメータに合図があればログイン状態にする
+    if st.query_params.get("auth") == "1":
+        st.session_state["password_correct"] = True
+        st.rerun()
+
     st.write("🔒 Enter Password")
     pw = st.text_input("Password", type="password", key="login")
     
-    # デバイス判定
+    # デバイス判定（既存）
     ua = st.context.headers.get("User-Agent", "")
     url_user = st.query_params.get("user", None)
     detected_user = "Maki" if "Android" in ua else "Hide"
@@ -186,24 +189,21 @@ if "password_correct" not in st.session_state:
     st.write(f"👤 User: **{detected_user}**")
     st.session_state["username"] = detected_user
 
+    # B. パスワード送信時の処理
     if pw == "05250206":
-        # 1. まずPython側のセッションをTrueにする
+        # まずPython側で即座にログイン
         st.session_state["password_correct"] = True
-        # 2. JSでSessionStorageに書き込みつつ、URLに目印をつけてリロード
-        components.html("""
+        
+        # 同時にブラウザにも保存命令を出す（失敗してもログイン自体は進むようにする）
+        st.components.v1.html("""
             <script>
             sessionStorage.setItem('m25_login_success', 'true');
-            const url = new URL(window.parent.location.href);
-            url.searchParams.set('auth', '1');
-            window.parent.location.href = url.href;
             </script>
         """, height=0)
-        st.stop()
-    st.stop()
-
-# ログイン成功後、URLをスッキリさせたい場合はここ（オプション）
-# st.query_params.clear()
         
+        st.rerun()  # JSの完了を待たずにPython側で画面を切り替える
+    st.stop()
+            
 # --- 6. 設定 ---
 if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
