@@ -303,7 +303,7 @@ try:
                 elif any(word in msg_body for word in ["野菜", "サラダ", "レタス"]): priority_emoji = random.choice(["🥬", "🥗", "🍅", "🥦", "🍆", "🥕"])
                 elif any(word in msg_body for word in ["おやすみ", "眠い", "寝る"]): priority_emoji = random.choice(["💤", "😴", "🥱", "🌙", "🛌", "🐑"])
                 elif any(word in msg_body for word in ["綺麗", "きれい", "すごい", "最高"]): priority_emoji = "✨"
-                elif any(word in msg_body for word in ["コーヒー", "カフェ", "休憩"]): priority_emoji = "☕️"
+                elif any(word in msg_body for word in ["コーヒー", "カフェ", "休憩"]): priority_emoji = random.choice(["☕️", "☕️", "🍵",  "🧋"])
                 elif any(word in msg_body for word in ["ドライブ"]): priority_emoji = "🚗"
                 elif any(word in msg_body for word in ["ワイン", "ハイボール", "乾杯"]): priority_emoji = "🥂"
                 elif any(word in msg_body for word in ["花見", "さくら", "桜"]): priority_emoji = "🌸"
