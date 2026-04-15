@@ -141,25 +141,27 @@ st.markdown(f"""
     @keyframes pulse-text {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.2); }} 100% {{ transform: scale(1); }} }}
     .pulse-active {{ display: inline-block; animation: pulse-text 1.5s infinite ease-in-out !important; font-weight: 700 !important; }}
 
-    /* --- ぱらぱら雨の演出用CSS --- */
+/* --- ぱらぱら雨の演出用CSS (太く・長く調整) --- */
     @keyframes rain-drop {{ 
-        0% {{ transform: translateY(-10vh); opacity: 0; }}
-        20% {{ opacity: 0.3; }}
-        80% {{ opacity: 0.3; }}
+        0% {{ transform: translateY(-20vh); opacity: 0; }}
+        10% {{ opacity: 0.6; }}
+        90% {{ opacity: 0.6; }}
         100% {{ transform: translateY(110vh); opacity: 0; }}
     }}
     .rain-container {{
         position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
         pointer-events: none; z-index: 1; overflow: hidden;
-        background-color: rgba(0, 5, 15, 0.1);
+        background-color: rgba(10, 20, 40, 0.15); /* 画面を少し暗くして雨を目立たせる */
     }}
     .rain-line {{
-        position: absolute; width: 1px; height: 40px;
-        background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(200,230,255,0.4));
-        animation: rain-drop 2.5s linear infinite;
+        position: absolute; 
+        width: 2px; /* 太さを1pxから2pxへ */
+        height: 60px; /* 長さを40pxから60pxへ */
+        background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(175,210,255,0.7)); /* 青みを強めて視認性アップ */
+        animation: rain-drop 1.8s linear infinite; /* 少し速くして雨らしく */
     }}
     @keyframes rain-text-glow {{ 0%, 100% {{ text-shadow: 0 0 5px #58a6ff; }} 50% {{ text-shadow: 0 0 15px #58a6ff; }} }}
-    .rain-active {{ color: #87ceeb !important; animation: rain-text-glow 2s infinite ease-in-out !important; font-weight: 700 !important; }}
+    .rain-active {{ color: #a0d8ef !important; animation: rain-text-glow 2s infinite ease-in-out !important; font-weight: 700 !important; }}
     </style>
 """, unsafe_allow_html=True)
 
