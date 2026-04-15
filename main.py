@@ -155,32 +155,26 @@ def compress_image(uploaded_file):
     img_io.seek(0)
     return img_io
 
-# --- 5. 認証機能 (PWA復帰・SessionStorage対応 安定版) ---
+# --- 5. 認証機能 (SessionStorage 完結版) ---
 
-# 1. まずブラウザのSessionStorageをチェックして、フラグがあればsession_stateを書き換えるJSを表示
-# これを「パスワード入力欄」より前に置くことで、復帰時にパスワード画面を一瞬でスルーさせます
+# ブラウザのSessionStorageに保存されているフラグを、URLパラメータ経由で取得する
+# スマホで別アプリから戻った際、ここが「合図」になります
+if "auth" in st.query_params:
+    st.session_state["password_correct"] = True
+
 if "password_correct" not in st.session_state:
-    # URLパラメータに復帰の合図があるかチェック
-    if st.query_params.get("auth") == "recovered":
-        st.session_state["password_correct"] = True
-        st.rerun()
-
-    # ブラウザの保存情報を確認するJS
+    # ページ読み込み時に一度だけJSを動かして、SessionStorageがあればURLに付与してリロード
     components.html("""
         <script>
         const savedLogin = sessionStorage.getItem('m25_login_success');
-        if (savedLogin === 'true') {
-            const url = new URL(window.parent.location.href);
-            // 無限ループ防止のため、まだパラメータがない場合のみセットしてリロード
-            if (url.searchParams.get('auth') !== 'recovered') {
-                url.searchParams.set('auth', 'recovered');
-                window.parent.location.href = url.href;
-            }
+        const url = new URL(window.parent.location.href);
+        if (savedLogin === 'true' && !url.searchParams.has('auth')) {
+            url.searchParams.set('auth', '1');
+            window.parent.location.href = url.href;
         }
         </script>
     """, height=0)
 
-    # パスワード入力画面の表示
     st.write("🔒 Enter Password")
     pw = st.text_input("Password", type="password", key="login")
     
@@ -193,19 +187,22 @@ if "password_correct" not in st.session_state:
     st.session_state["username"] = detected_user
 
     if pw == "05250206":
-        # 成功時：SessionStorageに保存してからリロード
+        # 1. まずPython側のセッションをTrueにする
         st.session_state["password_correct"] = True
+        # 2. JSでSessionStorageに書き込みつつ、URLに目印をつけてリロード
         components.html("""
             <script>
             sessionStorage.setItem('m25_login_success', 'true');
-            // リロードせず、そのままクエリパラメータを付けて画面を遷移させる
             const url = new URL(window.parent.location.href);
-            url.searchParams.set('auth', 'recovered');
+            url.searchParams.set('auth', '1');
             window.parent.location.href = url.href;
             </script>
         """, height=0)
         st.stop()
     st.stop()
+
+# ログイン成功後、URLをスッキリさせたい場合はここ（オプション）
+# st.query_params.clear()
         
 # --- 6. 設定 ---
 if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
