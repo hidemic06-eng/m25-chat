@@ -142,6 +142,19 @@ st.markdown(f"""
 
     @keyframes pulse-text {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.2); }} 100% {{ transform: scale(1); }} }}
     .pulse-active {{ display: inline-block; animation: pulse-text 1.5s infinite ease-in-out !important; font-weight: 700 !important; }}
+
+    /* 追加：雨の演出アニメーション */
+    @keyframes rain-animation {{ 0% {{ background-position: 0 0; }} 100% {{ background-position: 20px 100vh; }} }}
+    .rain-bg {{
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        pointer-events: none; z-index: 0;
+        background-image: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 100%);
+        background-size: 2px 300px;
+        animation: rain-animation 0.8s linear infinite;
+        opacity: 0.5;
+    }}
+    @keyframes rain-text {{ 0%, 100% {{ text-shadow: 0 0 5px #58a6ff; transform: translateY(0); }} 50% {{ text-shadow: 0 0 15px #58a6ff; transform: translateY(2px); }} }}
+    .rain-active {{ color: #87ceeb !important; animation: rain-text 2s infinite ease-in-out !important; font-weight: 700 !important; }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -308,6 +321,11 @@ try:
 
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
+            
+            # 追加：雨の背景演出判定
+            if any(word in msg_body for word in ["雨", "あめ", "梅雨", "どしゃ降り", "レイニー"]):
+                st.markdown('<div class="rain-bg"></div>', unsafe_allow_html=True)
+
             if any(word in msg_body for word in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
             if any(word in msg_body for word in ["さみしい", "淋しい", "悲しい", "疲れた"]):
@@ -390,10 +408,13 @@ try:
             effect_class = "marker-blue-active"
         elif any(word in m_body for word in ["予約", "集合", "待ち合わせ", "予定", "計画", "約束", "チケット", "行こう"]): 
             effect_class = "marker-active"
-        elif any(word in m_body for word in ["海", "お風呂", "ゆらゆら", "おやすみ", "ねむい", "おはよー"]): 
+        elif any(word in m_body for word in ["海", "お風呂", "ゆらゆら", "おやすみ", "ねむい", "おはよ"]): 
             effect_class = "wave-active"
         elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "本当"]): 
             effect_class = "mystery-active"
+        # 追加：雨のテキストエフェクト判定
+        elif any(word in m_body for word in ["雨", "あめ", "梅雨", "傘", "ぬれる", "レイニー"]): 
+            effect_class = "rain-active"
         
         st.markdown(f"""
             <div class="chat-row {align}">
