@@ -277,7 +277,7 @@ try:
             st.markdown(fixed_marquee_html + '</div>', unsafe_allow_html=True)
 
     # --- 演出判定 (背景のぱらぱら雨) ---
-    show_rain = any(any(word in m.get("message_body", "").lower() for word in ["雨", "あめ", "梅雨", "どしゃ降り", "レイニー", "傘"]) for m in messages)
+    show_rain = any(any(word in m.get("message_body", "").lower() for word in ["雨", "あめ", "梅雨", "どしゃ降り", "レイニー", "傘"]) for m in messages[-5:])
     if show_rain:
         rain_lines = "".join([f'<div class="rain-line" style="left:{random.randint(0,100)}%; animation-delay:{random.uniform(0,2.5)}s; animation-duration:{random.uniform(2.0,3.0)}s;"></div>' for _ in range(15)])
         st.markdown(f'<div class="rain-container">{rain_lines}</div>', unsafe_allow_html=True)
