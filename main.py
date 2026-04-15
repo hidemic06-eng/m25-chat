@@ -155,54 +155,57 @@ def compress_image(uploaded_file):
     img_io.seek(0)
     return img_io
 
-# --- 5. 認証機能 (SessionStorage実装) ---
-# JavaScriptからのログイン復帰信号を受け取るためのクエリパラメータ
-if "logged_in" in st.query_params:
+# --- 5. 認証機能 (PWA復帰・SessionStorage対応) ---
+# JSから「ログイン済み」の通知を受け取るためのコールバック
+def remote_login():
     st.session_state["password_correct"] = True
 
 if "password_correct" not in st.session_state:
-    # ブラウザのSessionStorageをチェックして、既にあればリロードしてログイン状態にするJS
+    # ブラウザのSessionStorageをチェックし、あればPython側に即座に同期する
+    # 別のアプリから戻ってきた際、Pythonが忘れていてもここですぐに復帰させます
     components.html("""
         <script>
         const savedLogin = sessionStorage.getItem('m25_login_success');
         if (savedLogin === 'true') {
-            const url = new URL(window.parent.location.href);
-            url.searchParams.set('logged_in', 'true');
-            window.parent.location.href = url.href;
+            // 親ウィンドウ（Streamlit）にログイン復帰をリクエスト
+            window.parent.postMessage({
+                type: 'streamlit:set_query_params',
+                query_params: {auth: 'recovered'}
+            }, '*');
         }
         </script>
     """, height=0)
 
+    # URLに復帰フラグがついているか、パスワードが一致すればログイン
+    if st.query_params.get("auth") == "recovered":
+        st.session_state["password_correct"] = True
+        # URLを綺麗にする（オプション）
+        st.query_params.clear()
+        st.rerun()
+
     st.write("🔒 Enter Password")
     pw = st.text_input("Password", type="password", key="login")
     
-    try:
-        ua = st.context.headers.get("User-Agent", "")
-        query_params = st.query_params
-        url_user = query_params.get("user", None)
-        os_info = "Unknown Device"; detected_user = "Unknown"
-        if "Android" in ua: os_info = "Android"; detected_user = "Maki"
-        elif "iPhone" in ua or "iPad" in ua: os_info = "iOS Device"; detected_user = "Hide"
-        elif "Windows" in ua: os_info = "Windows"; detected_user = url_user if url_user else "Hide"
-        st.write(f"👤 User: **{detected_user}**")
-        st.caption(f"Device: {os_info}")
-        st.session_state["username"] = detected_user
-    except: pass
+    # デバイス判定（既存機能）
+    ua = st.context.headers.get("User-Agent", "")
+    url_user = st.query_params.get("user", None)
+    detected_user = "Maki" if "Android" in ua else "Hide"
+    if "Windows" in ua and url_user: detected_user = url_user
+    st.write(f"👤 User: **{detected_user}**")
+    st.session_state["username"] = detected_user
 
     if pw == "05250206":
-        # ログイン成功時にSessionStorageに保存するJS
+        # ログイン成功時にSessionStorageへ書き込み
         components.html("""
             <script>
             sessionStorage.setItem('m25_login_success', 'true');
-            const url = new URL(window.parent.location.href);
-            url.searchParams.set('logged_in', 'true');
-            window.parent.location.href = url.href;
+            window.parent.location.reload(); 
             </script>
         """, height=0)
         st.session_state["password_correct"] = True
         st.stop()
     st.stop()
-
+    
 # --- 6. 設定 ---
 if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
