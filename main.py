@@ -5,7 +5,7 @@ import streamlit.components.v1 as components
 from datetime import datetime, timedelta, timezone
 import random
 import re
-from PIL import Image, ImageOps  # ImageOpsを追加
+from PIL import Image, ImageOps 
 import io
 import uuid
 
@@ -67,7 +67,6 @@ st.markdown(f"""
         padding: 0; 
     }}
 
-    /* ポラロイド風フレームのデザイン */
     .chat-image {{
         max-width: 280px;
         border-radius: 4px;
@@ -90,8 +89,6 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* --- アニメーション定義 --- */
-    /* 修正：1文字ずつ一定速度で表示されるタイピング演出 */
     .typewriter-char {{
         display: inline-block;
         opacity: 0;
@@ -158,10 +155,27 @@ def compress_image(uploaded_file):
     img_io.seek(0)
     return img_io
 
-# --- 5. 認証機能 ---
+# --- 5. 認証機能 (SessionStorage実装) ---
+# JavaScriptからのログイン復帰信号を受け取るためのクエリパラメータ
+if "logged_in" in st.query_params:
+    st.session_state["password_correct"] = True
+
 if "password_correct" not in st.session_state:
+    # ブラウザのSessionStorageをチェックして、既にあればリロードしてログイン状態にするJS
+    components.html("""
+        <script>
+        const savedLogin = sessionStorage.getItem('m25_login_success');
+        if (savedLogin === 'true') {
+            const url = new URL(window.parent.location.href);
+            url.searchParams.set('logged_in', 'true');
+            window.parent.location.href = url.href;
+        }
+        </script>
+    """, height=0)
+
     st.write("🔒 Enter Password")
     pw = st.text_input("Password", type="password", key="login")
+    
     try:
         ua = st.context.headers.get("User-Agent", "")
         query_params = st.query_params
@@ -174,9 +188,19 @@ if "password_correct" not in st.session_state:
         st.caption(f"Device: {os_info}")
         st.session_state["username"] = detected_user
     except: pass
+
     if pw == "05250206":
+        # ログイン成功時にSessionStorageに保存するJS
+        components.html("""
+            <script>
+            sessionStorage.setItem('m25_login_success', 'true');
+            const url = new URL(window.parent.location.href);
+            url.searchParams.set('logged_in', 'true');
+            window.parent.location.href = url.href;
+            </script>
+        """, height=0)
         st.session_state["password_correct"] = True
-        st.rerun()
+        st.stop()
     st.stop()
 
 # --- 6. 設定 ---
@@ -184,7 +208,6 @@ if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "uploader_key" not in st.session_state: st.session_state["uploader_key"] = str(uuid.uuid4())
 if "last_compression_info" not in st.session_state: st.session_state["last_compression_info"] = None
-# 新規追加：演出済みIDを記録するセット
 if "shown_ids" not in st.session_state: st.session_state["shown_ids"] = set()
 
 current_user_raw = st.session_state.get("username", "Hide")
@@ -237,7 +260,6 @@ try:
     all_data = res_all.data
     messages = all_data[:20][::-1]
     
-    # --- #付きメッセージを1時間流す機能 ---
     if st.session_state["page_offset"] == 0:
         now = datetime.now(timezone.utc)
         one_hour_ago = now - timedelta(hours=1)
@@ -326,32 +348,23 @@ try:
                 st.markdown(marquee_html + '</div>', unsafe_allow_html=True)
             st.session_state["last_effect_id"] = msg_id
 
-    # --- 9-2. チャットログ表示 ---
     wd_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     now_jst = datetime.now(timezone.utc) + timedelta(hours=9)
     today_str = now_jst.strftime('%Y-%m-%d')
-
-    # 最新メッセージのIDを取得（演出判定用）
     latest_id = messages[-1].get("id") if messages else None
 
     for m in messages:
         utc_time = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
         jst_time = utc_time + timedelta(hours=9)
-        s_name = m['sender_name']
+        s_name, m_id = m['sender_name'], m.get("id")
         s_up = s_name.upper()
-        m_id = m.get("id")
 
-        # --- 日付・曜日表示の判定 ---
         msg_date_str = jst_time.strftime('%Y-%m-%d')
         if msg_date_str == today_str:
             time_display = jst_time.strftime('%H:%M')
         else:
             w_idx = jst_time.weekday()
-            w_name = wd_en[w_idx]
-            w_style = ""
-            if w_idx == 5: w_style = "color: #58a6ff;"
-            elif w_idx == 6: w_style = "color: #ff7b72;"
-            w_display = f'<span style="{w_style}">{w_name}</span>'
+            w_display = f'<span style="{"color: #58a6ff;" if w_idx==5 else "color: #ff7b72;" if w_idx==6 else ""}">{wd_en[w_idx]}</span>'
             time_display = jst_time.strftime(f'%m/%d({w_display}) %H:%M')
 
         align = "align-right" if s_up == current_user_upper else "align-left"
@@ -360,40 +373,27 @@ try:
         m_body, img_url = m.get("message_body", ""), m.get("image_url")
         img_html = f'<div><img src="{img_url}" class="chat-image"></div>' if img_url else ""
         
-        # --- タイピング演出(最新1件のみ)判定とHTML生成 ---
         is_new_msg = (m_id == latest_id) and (st.session_state["page_offset"] == 0) and (m_id not in st.session_state["shown_ids"])
         
         if is_new_msg:
-            # 1文字ずつ分割して、0.05秒ずつ遅らせるHTMLを生成
             typed_html = ""
             for i, char in enumerate(m_body):
-                delay = i * 0.05  # 一定速度（0.05秒間隔）
-                char_display = "<br>" if char == "\n" else char
-                typed_html += f'<span class="typewriter-char" style="animation-delay: {delay}s;">{char_display}</span>'
+                delay = i * 0.05
+                typed_html += f'<span class="typewriter-char" style="animation-delay: {delay}s;">{"<br>" if char == "\\n" else char}</span>'
             display_body = typed_html
             st.session_state["shown_ids"].add(m_id)
         else:
-            # 過去ログや演出済みはそのまま表示
             display_body = m_body.replace("\n", "<br>")
 
-        # --- テキストエフェクト判定 ---
         effect_class = ""
-        if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]): 
-            effect_class = "rainbow-active"
-        elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "ちょい飲み"]): 
-            effect_class = "neon-active"
-        elif any(word in m_body for word in ["ドキドキ", "ワクワク", "楽しみ", "待ってる"]): 
-            effect_class = "pulse-active"
-        elif any(word in m_body for word in ["デート", "楽しみ", "また行きたい", "会いたい", "ランチ", "映画"]): 
-            effect_class = "marker-pink-active"
-        elif any(word in m_body for word in ["仕事", "会議", "確認", "了解", "OK", "出張", "資料"]): 
-            effect_class = "marker-blue-active"
-        elif any(word in m_body for word in ["予約", "集合", "待ち合わせ", "予定", "計画", "約束", "チケット", "行こう"]): 
-            effect_class = "marker-active"
-        elif any(word in m_body for word in ["海", "お風呂", "ゆらゆら", "おやすみ", "ねむい", "おはよー"]): 
-            effect_class = "wave-active"
-        elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "本当"]): 
-            effect_class = "mystery-active"
+        if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]): effect_class = "rainbow-active"
+        elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "ビール"]): effect_class = "neon-active"
+        elif any(word in m_body for word in ["ドキドキ", "ワクワク", "楽しみ"]): effect_class = "pulse-active"
+        elif any(word in m_body for word in ["デート", "ランチ", "映画"]): effect_class = "marker-pink-active"
+        elif any(word in m_body for word in ["仕事", "会議", "確認", "了解"]): effect_class = "marker-blue-active"
+        elif any(word in m_body for word in ["予約", "集合", "待ち合わせ"]): effect_class = "marker-active"
+        elif any(word in m_body for word in ["海", "お風呂", "おやすみ"]): effect_class = "wave-active"
+        elif any(word in m_body for word in ["秘密", "実は", "内緒", "おはよう"]): effect_class = "mystery-active"
         
         st.markdown(f"""
             <div class="chat-row {align}">
