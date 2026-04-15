@@ -294,13 +294,14 @@ try:
             else:
                 emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
                 if any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
-                elif any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
-                elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
+                elif any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = random.choice([ "💖", "💕", "❤️‍🔥", "👩‍❤️‍👨", "💍"])
+                elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ"]): priority_emoji = random.choice(["🍺", "✨", "🙌", "🍵"]) # ランダムで出るようにする
+                elif any(word in msg_body for word in ["ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = random.choice(["🍺", "🍻", "🥂", "🍷", "🥃", "🍶"])
                 elif "おにぎり" in msg_body: priority_emoji = "🍙"
-                elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]): priority_emoji = "🏸"
+                elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]): priority_emoji = random.choice(["🏸", "🏸", "🏸",  "👟", "🏅"])
                 elif any(word in msg_body for word in ["ラーメン", "山岡家"]): priority_emoji = "🍜"
-                elif any(word in msg_body for word in ["野菜", "サラダ", "レタス"]): priority_emoji = "🥬"
-                elif any(word in msg_body for word in ["おやすみ", "眠い", "寝る"]): priority_emoji = "💤"
+                elif any(word in msg_body for word in ["野菜", "サラダ", "レタス"]): priority_emoji = random.choice(["🥬", "🥗", "🍅", "🥦", "🍆", "🥕"])
+                elif any(word in msg_body for word in ["おやすみ", "眠い", "寝る"]): priority_emoji = random.choice(["💤", "😴", "🥱", "🌙", "🛌", "🐑"])
                 elif any(word in msg_body for word in ["綺麗", "きれい", "すごい", "最高"]): priority_emoji = "✨"
                 elif any(word in msg_body for word in ["コーヒー", "カフェ", "休憩"]): priority_emoji = "☕️"
                 elif any(word in msg_body for word in ["ドライブ"]): priority_emoji = "🚗"
@@ -310,8 +311,8 @@ try:
                 elif any(word in msg_body for word in ["ケーキ", "スイーツ", "甘いもの"]): priority_emoji = "🍰"
                 elif any(word in msg_body for word in ["ラッキー", "幸せ", "しあわせ", "ハッピー"]): priority_emoji = "🍀"
                 elif any(word in msg_body for word in ["熊", "困った"]): priority_emoji = "🐻"
-                elif any(word in msg_body for word in ["おやつ", "プリン"]): priority_emoji = "プリン"
-                elif any(word in msg_body for word in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
+                elif any(word in msg_body for word in ["おやつ", "プリン"]): priority_emoji = random.choice(["🍮", "🍰", "🍦", "🍩", "🍪", "🍫", "🥞"])
+                elif any(word in msg_body for word in ["バーガー", "マクド", "朝マック"]): priority_emoji = random.choice(["🍔", "🍟", "🥤",  "🍔", "😋"])
                 elif any(word in msg_body for word in ["キノコ", "きのこ"]): priority_emoji = "🍄"
 
             if priority_emoji:
