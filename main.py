@@ -32,7 +32,8 @@ else:
 
 st.markdown(f"""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
+    /* Google Fontsからフォントをインポート (Yomogiを追加) */
+    @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&family=DotGothic16&family=Dela+Gothic+One&family=Yomogi&display=swap');
 
     .stApp {{ 
         background-color: {app_bg_color}; 
@@ -44,6 +45,11 @@ st.markdown(f"""
     [data-testid="bundle-viewer-container"] {{display: none !important;}}
     .block-container {{ padding-top: 1rem; padding-bottom: 40px !important; max-width: 100% !important; }}
     [data-testid="stChatInput"] {{ margin-bottom: -10px; }}
+
+    /* 追加フォントのクラス定義 */
+    .font-game {{ font-family: 'DotGothic16', sans-serif !important; color: #00ff00 !important; text-shadow: 1px 1px 0px #000; }}
+    .font-kanban {{ font-family: 'Dela Gothic One', cursive !important; font-size: 1.4rem !important; line-height: 1.1 !important; }}
+    .font-handwriting {{ font-family: 'Yomogi', cursive !important; font-size: 1.25rem !important; line-height: 1.4 !important; }}
 
     .stButton > button {{
         background-color: #424549 !important;
@@ -299,7 +305,7 @@ try:
                 elif any(word in msg_body for word in ["ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = random.choice(["🍺", "🍻", "🥂", "🍷", "🥃", "🍶"])
                 elif "おにぎり" in msg_body: priority_emoji = "🍙"
                 elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]): priority_emoji = random.choice(["🏸", "🏸", "🏸",  "👟", "🏅"])
-                elif any(word in msg_body for word in ["ラーメン", "山岡家"]): priority_emoji = "🍜"
+                elif "ラーメン" in msg_body or "山岡家" in msg_body: priority_emoji = "🍜"
                 elif any(word in msg_body for word in ["野菜", "サラダ", "レタス"]): priority_emoji = random.choice(["🥬", "🥗", "🍅", "🥦", "🍆", "🥕"])
                 elif any(word in msg_body for word in ["おやすみ", "眠い", "寝る"]): priority_emoji = random.choice(["💤", "😴", "🥱", "🌙", "🛌", "🐑"])
                 elif any(word in msg_body for word in ["綺麗", "きれい", "すごい", "最高"]): priority_emoji = "✨"
@@ -390,7 +396,13 @@ try:
 
         # --- テキストエフェクト判定 ---
         effect_class = ""
-        if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]): effect_class = "rainbow-active"
+        # 特殊フォントの判定
+        if any(word in m_body for word in ["疲れた", "ダメだ", "勝負", "対戦", "戦う"]): effect_class = "font-game"
+        elif any(word in m_body for word in ["決定", "驚き", "驚く", "おなかいっぱい", "注目", "##"]): effect_class = "font-kanban"
+        elif any(word in m_body for word in ["お疲れ", "おつかれ", "ありがとう", "感謝", "ほっこり", "のんびり", "癒やし"]): effect_class = "font-handwriting"
+        
+        # 既存のアニメーション・装飾系（elifで繋ぐことでフォント変更を優先）
+        elif any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]): effect_class = "rainbow-active"
         elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "ちょい飲み"]): effect_class = "neon-active"
         elif any(word in m_body for word in ["ドキドキ", "ワクワク", "楽しみ", "待ってる"]): effect_class = "pulse-active"
         elif any(word in m_body for word in ["デート", "楽しみ", "また行きたい", "会いたい", "ランチ", "映画"]): effect_class = "marker-pink-active"
