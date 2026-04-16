@@ -276,11 +276,14 @@ try:
                 fixed_marquee_html += f'<div class="fixed-marquee-text" style="top:{top_pos}vh; animation-delay:-{delay}s; color:{text_color};">{clean_text}</div>'
             st.markdown(fixed_marquee_html + '</div>', unsafe_allow_html=True)
 
-    # --- 演出判定 (背景のぱらぱら雨) ---
-    show_rain = any(any(word in m.get("message_body", "").lower() for word in ["雨", "あめ", "梅雨", "どしゃ降り", "レイニー", "傘"]) for m in messages[-5:])
-    if show_rain:
-        rain_lines = "".join([f'<div class="rain-line" style="left:{random.randint(0,100)}%; animation-delay:{random.uniform(0,2.5)}s; animation-duration:{random.uniform(2.0,3.0)}s;"></div>' for _ in range(15)])
-        st.markdown(f'<div class="rain-container">{rain_lines}</div>', unsafe_allow_html=True)
+    # --- 【修正点】演出判定 (背景のぱらぱら雨) ---
+    # 最新の1件(messages[-1])のみを判定対象に変更
+    if messages and st.session_state["page_offset"] == 0:
+        latest_text = messages[-1].get("message_body", "").lower()
+        show_rain = any(word in latest_text for word in ["雨", "あめ", "梅雨", "どしゃ降り", "レイニー", "傘"])
+        if show_rain:
+            rain_lines = "".join([f'<div class="rain-line" style="left:{random.randint(0,100)}%; animation-delay:{random.uniform(0,2.5)}s; animation-duration:{random.uniform(2.0,3.0)}s;"></div>' for _ in range(15)])
+            st.markdown(f'<div class="rain-container">{rain_lines}</div>', unsafe_allow_html=True)
 
     if messages and st.session_state["page_offset"] == 0:
         latest_msg = messages[-1]
