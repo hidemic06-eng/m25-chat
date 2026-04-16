@@ -179,6 +179,7 @@ def compress_image(uploaded_file):
     return img_io
 
 # --- 5. 認証機能 ---
+# 【修正】認証チェックを「もし未認証なら即終了」という構造に変更して被りを防止
 if "password_correct" not in st.session_state:
     st.write("🔒 Enter Password")
     pw = st.text_input("Password", type="password", key="login")
@@ -194,10 +195,12 @@ if "password_correct" not in st.session_state:
         st.caption(f"Device: {os_info}")
         st.session_state["username"] = detected_user
     except: pass
+    
     if pw == "05250206":
         st.session_state["password_correct"] = True
         st.rerun()
-    st.stop()
+    else:
+        st.stop() # パスワードが正しく入力されるまで、これ以降のコードを実行させない
 
 # --- 6. 設定 ---
 if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
@@ -276,8 +279,7 @@ try:
                 fixed_marquee_html += f'<div class="fixed-marquee-text" style="top:{top_pos}vh; animation-delay:-{delay}s; color:{text_color};">{clean_text}</div>'
             st.markdown(fixed_marquee_html + '</div>', unsafe_allow_html=True)
 
-    # --- 【修正点】演出判定 (背景のぱらぱら雨) ---
-    # 最新の1件(messages[-1])のみを判定対象に変更
+    # --- 演出判定 (背景のぱらぱら雨) ---
     if messages and st.session_state["page_offset"] == 0:
         latest_text = messages[-1].get("message_body", "").lower()
         show_rain = any(word in latest_text for word in ["雨", "あめ", "梅雨", "どしゃ降り", "レイニー", "傘"])
@@ -298,7 +300,7 @@ try:
                 emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
                 if any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
                 elif any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = random.choice([ "💖", "💕", "❤️‍🔥", "👩‍❤️‍👨", "💍"])
-                elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ"]): priority_emoji = random.choice(["🍺", "✨", "🙌", "🍵"]) # ランダムで出るようにする
+                elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ"]): priority_emoji = random.choice(["🍺", "✨", "🙌", "🍵"]) 
                 elif any(word in msg_body for word in ["ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = random.choice(["🍺", "🍻", "🥂", "🍷", "🥃", "🍶"])
                 elif "おにぎり" in msg_body: priority_emoji = "🍙"
                 elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]): priority_emoji = random.choice(["🏸", "🏸", "🏸",  "👟", "🏅"])
