@@ -192,9 +192,9 @@ current_user_upper = current_user_raw.upper()
 
 # --- 7. ヘッダー ---
 st.title(f"💬 M25-Chat{status_label}")
-auto_update = st.toggle("自動更新(15s)", value=True)
+auto_update = st.toggle("自動更新(8s)", value=True)
 if auto_update and st.session_state["page_offset"] == 0:
-    st_autorefresh(interval=15000, key="chat_ref")
+    st_autorefresh(interval=8000, key="chat_ref")
 st.divider()
 
 # --- 8. ナビゲーション ---
