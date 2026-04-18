@@ -415,3 +415,4 @@ if prompt:
         st.session_state["page_offset"] = 0; st.rerun()
     except Exception as e: st.error(f"送信エラー: {e}")
 if st.session_state["page_offset"] == 0:
+    components.html('<script>window.parent.document.querySelector(".main").scrollTo(0, 99999);</script>', height=0)
