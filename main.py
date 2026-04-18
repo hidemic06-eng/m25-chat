@@ -51,7 +51,7 @@ st.markdown(f"""
         border: 1px solid #4f545c !important;
     }}
 
-    .chat-row {{ display: flex; flex-direction: column; margin-bottom: 20px; width: 100%; position: relative; z-index: 2; }}
+    .chat-row {{ display: flex; flex-direction: column; margin-bottom: 20px; width: 100%; }}
     
     .message-text {{ 
         font-family: 'M PLUS Rounded 1c', sans-serif !important;
@@ -91,6 +91,7 @@ st.markdown(f"""
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
     /* --- アニメーション定義 --- */
+    /* 修正：1文字ずつ一定速度で表示されるタイピング演出 */
     .typewriter-char {{
         display: inline-block;
         opacity: 0;
@@ -138,30 +139,9 @@ st.markdown(f"""
     .wave-active {{ display: inline-block; animation: wave-text 2s infinite ease-in-out !important; }}
     @keyframes focus-text {{ 0% {{ filter: blur(8px); opacity: 0; }} 100% {{ filter: blur(0); opacity: 1; }} }}
     .mystery-active {{ animation: focus-text 4s forwards !important; }}
+
     @keyframes pulse-text {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.2); }} 100% {{ transform: scale(1); }} }}
     .pulse-active {{ display: inline-block; animation: pulse-text 1.5s infinite ease-in-out !important; font-weight: 700 !important; }}
-
-/* --- ぱらぱら雨の演出用CSS (太く・長く調整) --- */
-    @keyframes rain-drop {{ 
-        0% {{ transform: translateY(-20vh); opacity: 0; }}
-        10% {{ opacity: 0.6; }}
-        90% {{ opacity: 0.6; }}
-        100% {{ transform: translateY(110vh); opacity: 0; }}
-    }}
-    .rain-container {{
-        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-        pointer-events: none; z-index: 1; overflow: hidden;
-        background-color: rgba(10, 20, 40, 0.15); /* 画面を少し暗くして雨を目立たせる */
-    }}
-    .rain-line {{
-        position: absolute; 
-        width: 2px; /* 太さを1pxから2pxへ */
-        height: 60px; /* 長さを40pxから60pxへ */
-        background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(175,210,255,0.7)); /* 青みを強めて視認性アップ */
-        animation: rain-drop 1.8s linear infinite; /* 少し速くして雨らしく */
-    }}
-    @keyframes rain-text-glow {{ 0%, 100% {{ text-shadow: 0 0 5px #58a6ff; }} 50% {{ text-shadow: 0 0 15px #58a6ff; }} }}
-    .rain-active {{ color: #a0d8ef !important; animation: rain-text-glow 2s infinite ease-in-out !important; font-weight: 700 !important; }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -204,6 +184,7 @@ if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "uploader_key" not in st.session_state: st.session_state["uploader_key"] = str(uuid.uuid4())
 if "last_compression_info" not in st.session_state: st.session_state["last_compression_info"] = None
+# 新規追加：演出済みIDを記録するセット
 if "shown_ids" not in st.session_state: st.session_state["shown_ids"] = set()
 
 current_user_raw = st.session_state.get("username", "Hide")
@@ -211,9 +192,9 @@ current_user_upper = current_user_raw.upper()
 
 # --- 7. ヘッダー ---
 st.title(f"💬 M25-Chat{status_label}")
-auto_update = st.toggle("自動更新(15s)", value=True)
+auto_update = st.toggle("自動更新(8s)", value=True)
 if auto_update and st.session_state["page_offset"] == 0:
-    st_autorefresh(interval=15000, key="chat_ref")
+    st_autorefresh(interval=8000, key="chat_ref")
 st.divider()
 
 # --- 8. ナビゲーション ---
@@ -276,15 +257,6 @@ try:
                 fixed_marquee_html += f'<div class="fixed-marquee-text" style="top:{top_pos}vh; animation-delay:-{delay}s; color:{text_color};">{clean_text}</div>'
             st.markdown(fixed_marquee_html + '</div>', unsafe_allow_html=True)
 
-    # --- 【修正点】演出判定 (背景のぱらぱら雨) ---
-    # 最新の1件(messages[-1])のみを判定対象に変更
-    if messages and st.session_state["page_offset"] == 0:
-        latest_text = messages[-1].get("message_body", "").lower()
-        show_rain = any(word in latest_text for word in ["雨", "あめ", "梅雨", "どしゃ降り", "レイニー", "傘"])
-        if show_rain:
-            rain_lines = "".join([f'<div class="rain-line" style="left:{random.randint(0,100)}%; animation-delay:{random.uniform(0,2.5)}s; animation-duration:{random.uniform(2.0,3.0)}s;"></div>' for _ in range(15)])
-            st.markdown(f'<div class="rain-container">{rain_lines}</div>', unsafe_allow_html=True)
-
     if messages and st.session_state["page_offset"] == 0:
         latest_msg = messages[-1]
         msg_id, msg_body, img_url_latest = latest_msg.get("id"), latest_msg.get("message_body", ""), latest_msg.get("image_url")
@@ -297,16 +269,15 @@ try:
             else:
                 emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
                 if any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
-                elif any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = random.choice([ "💖", "💕", "❤️‍🔥", "👩‍❤️‍👨", "💍"])
-                elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ"]): priority_emoji = random.choice(["🍺", "✨", "🙌", "🍵"]) # ランダムで出るようにする
-                elif any(word in msg_body for word in ["ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = random.choice(["🍺", "🍻", "🥂", "🍷", "🥃", "🍶"])
+                elif any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
+                elif any(word in msg_body for word in ["お疲れ様", "おつかれさま", "お疲れ", "ちょい飲み", "ちょい呑み", "ビール", "酒"]): priority_emoji = "🍺"
                 elif "おにぎり" in msg_body: priority_emoji = "🍙"
-                elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]): priority_emoji = random.choice(["🏸", "🏸", "🏸",  "👟", "🏅"])
+                elif any(word in msg_body for word in ["バドミントン", "練習", "試合"]): priority_emoji = "🏸"
                 elif any(word in msg_body for word in ["ラーメン", "山岡家"]): priority_emoji = "🍜"
-                elif any(word in msg_body for word in ["野菜", "サラダ", "レタス"]): priority_emoji = random.choice(["🥬", "🥗", "🍅", "🥦", "🍆", "🥕"])
-                elif any(word in msg_body for word in ["おやすみ", "眠い", "寝る"]): priority_emoji = random.choice(["💤", "😴", "🥱", "🌙", "🛌", "🐑"])
+                elif any(word in msg_body for word in ["野菜", "サラダ", "レタス"]): priority_emoji = "🥬"
+                elif any(word in msg_body for word in ["おやすみ", "眠い", "寝る"]): priority_emoji = "💤"
                 elif any(word in msg_body for word in ["綺麗", "きれい", "すごい", "最高"]): priority_emoji = "✨"
-                elif any(word in msg_body for word in ["コーヒー", "カフェ", "休憩"]): priority_emoji = random.choice(["☕️", "☕️", "🍵",  "🧋"])
+                elif any(word in msg_body for word in ["コーヒー", "カフェ", "休憩"]): priority_emoji = "☕️"
                 elif any(word in msg_body for word in ["ドライブ"]): priority_emoji = "🚗"
                 elif any(word in msg_body for word in ["ワイン", "ハイボール", "乾杯"]): priority_emoji = "🥂"
                 elif any(word in msg_body for word in ["花見", "さくら", "桜"]): priority_emoji = "🌸"
@@ -314,8 +285,8 @@ try:
                 elif any(word in msg_body for word in ["ケーキ", "スイーツ", "甘いもの"]): priority_emoji = "🍰"
                 elif any(word in msg_body for word in ["ラッキー", "幸せ", "しあわせ", "ハッピー"]): priority_emoji = "🍀"
                 elif any(word in msg_body for word in ["熊", "困った"]): priority_emoji = "🐻"
-                elif any(word in msg_body for word in ["おやつ", "プリン"]): priority_emoji = random.choice(["🍮", "🍰", "🍦", "🍩", "🍪", "🍫", "🥞"])
-                elif any(word in msg_body for word in ["バーガー", "マクド", "朝マック"]): priority_emoji = random.choice(["🍔", "🍟", "🥤",  "🍔", "😋"])
+                elif any(word in msg_body for word in ["おやつ", "プリン"]): priority_emoji = "🍮"
+                elif any(word in msg_body for word in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
                 elif any(word in msg_body for word in ["キノコ", "きのこ"]): priority_emoji = "🍄"
 
             if priority_emoji:
@@ -337,7 +308,6 @@ try:
 
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
-            
             if any(word in msg_body for word in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("shake-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("shake-screen"); }, 2000);</script>', height=0)
             if any(word in msg_body for word in ["さみしい", "淋しい", "悲しい", "疲れた"]):
@@ -361,21 +331,28 @@ try:
     now_jst = datetime.now(timezone.utc) + timedelta(hours=9)
     today_str = now_jst.strftime('%Y-%m-%d')
 
+    # 最新メッセージのIDを取得（演出判定用）
     latest_id = messages[-1].get("id") if messages else None
 
     for m in messages:
         utc_time = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))
         jst_time = utc_time + timedelta(hours=9)
-        s_name = m['sender_name']; s_up = s_name.upper(); m_id = m.get("id")
+        s_name = m['sender_name']
+        s_up = s_name.upper()
+        m_id = m.get("id")
 
+        # --- 日付・曜日表示の判定 ---
         msg_date_str = jst_time.strftime('%Y-%m-%d')
         if msg_date_str == today_str:
             time_display = jst_time.strftime('%H:%M')
         else:
-            w_idx = jst_time.weekday(); w_name = wd_en[w_idx]; w_style = ""
+            w_idx = jst_time.weekday()
+            w_name = wd_en[w_idx]
+            w_style = ""
             if w_idx == 5: w_style = "color: #58a6ff;"
             elif w_idx == 6: w_style = "color: #ff7b72;"
-            time_display = jst_time.strftime(f'%m/%d(<span style="{w_style}">{w_name}</span>) %H:%M')
+            w_display = f'<span style="{w_style}">{w_name}</span>'
+            time_display = jst_time.strftime(f'%m/%d({w_display}) %H:%M')
 
         align = "align-right" if s_up == current_user_upper else "align-left"
         h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
@@ -383,25 +360,40 @@ try:
         m_body, img_url = m.get("message_body", ""), m.get("image_url")
         img_html = f'<div><img src="{img_url}" class="chat-image"></div>' if img_url else ""
         
+        # --- タイピング演出(最新1件のみ)判定とHTML生成 ---
         is_new_msg = (m_id == latest_id) and (st.session_state["page_offset"] == 0) and (m_id not in st.session_state["shown_ids"])
         
         if is_new_msg:
-            typed_html = "".join([f'<span class="typewriter-char" style="animation-delay: {i*0.05}s;">{"<br>" if char == "\n" else char}</span>' for i, char in enumerate(m_body)])
-            display_body = typed_html; st.session_state["shown_ids"].add(m_id)
+            # 1文字ずつ分割して、0.05秒ずつ遅らせるHTMLを生成
+            typed_html = ""
+            for i, char in enumerate(m_body):
+                delay = i * 0.05  # 一定速度（0.05秒間隔）
+                char_display = "<br>" if char == "\n" else char
+                typed_html += f'<span class="typewriter-char" style="animation-delay: {delay}s;">{char_display}</span>'
+            display_body = typed_html
+            st.session_state["shown_ids"].add(m_id)
         else:
+            # 過去ログや演出済みはそのまま表示
             display_body = m_body.replace("\n", "<br>")
 
         # --- テキストエフェクト判定 ---
         effect_class = ""
-        if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]): effect_class = "rainbow-active"
-        elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "ちょい飲み"]): effect_class = "neon-active"
-        elif any(word in m_body for word in ["ドキドキ", "ワクワク", "楽しみ", "待ってる"]): effect_class = "pulse-active"
-        elif any(word in m_body for word in ["デート", "楽しみ", "また行きたい", "会いたい", "ランチ", "映画"]): effect_class = "marker-pink-active"
-        elif any(word in m_body for word in ["仕事", "会議", "確認", "了解", "OK", "出張", "資料"]): effect_class = "marker-blue-active"
-        elif any(word in m_body for word in ["予約", "集合", "待ち合わせ", "予定", "計画", "約束", "チケット", "行こう"]): effect_class = "marker-active"
-        elif any(word in m_body for word in ["海", "お風呂", "ゆらゆら", "おやすみ", "ねむい", "おはよ"]): effect_class = "wave-active"
-        elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "本当"]): effect_class = "mystery-active"
-        elif any(word in m_body for word in ["雨", "あめ", "梅雨", "傘", "ぬれる", "レイニー"]): effect_class = "rain-active"
+        if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]): 
+            effect_class = "rainbow-active"
+        elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "ちょい飲み"]): 
+            effect_class = "neon-active"
+        elif any(word in m_body for word in ["ドキドキ", "ワクワク", "楽しみ", "待ってる"]): 
+            effect_class = "pulse-active"
+        elif any(word in m_body for word in ["デート", "楽しみ", "また行きたい", "会いたい", "ランチ", "映画"]): 
+            effect_class = "marker-pink-active"
+        elif any(word in m_body for word in ["仕事", "会議", "確認", "了解", "OK", "出張", "資料"]): 
+            effect_class = "marker-blue-active"
+        elif any(word in m_body for word in ["予約", "集合", "待ち合わせ", "予定", "計画", "約束", "チケット", "行こう"]): 
+            effect_class = "marker-active"
+        elif any(word in m_body for word in ["海", "お風呂", "ゆらゆら", "おやすみ", "ねむい", "おはよー"]): 
+            effect_class = "wave-active"
+        elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "本当"]): 
+            effect_class = "mystery-active"
         
         st.markdown(f"""
             <div class="chat-row {align}">
