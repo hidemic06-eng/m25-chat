@@ -1,4 +1,38 @@
 import streamlit as st
+
+# --- 1. 認証機能 (最優先実行) ---
+# パスワードが正解するまで、下のすべてのコードを読み込ませない
+if "password_correct" not in st.session_state:
+    st.session_state["password_correct"] = False
+
+if not st.session_state["password_correct"]:
+    # 認証前は最小限のUIのみ表示
+    st.write("🔒 Enter Password")
+    pw = st.text_input("Password", type="password", key="login_field")
+    
+    try:
+        ua = st.context.headers.get("User-Agent", "")
+        url_user = st.query_params.get("user", None)
+        detected_user = "Unknown"
+        if "Android" in ua: detected_user = "Maki"
+        elif "iPhone" in ua or "iPad" in ua: detected_user = "Hide"
+        elif "Windows" in ua: detected_user = url_user if url_user else "Hide"
+        st.write(f"👤 User: **{detected_user}**")
+        st.session_state["username"] = detected_user
+    except:
+        pass
+    
+    if pw == "05250206":
+        st.session_state["password_correct"] = True
+        st.rerun()
+    
+    # ここで物理的に止める。これより下の st.title や st.chat_input は存在しないことになる。
+    st.stop()
+
+# ==========================================================
+# 2. 認証成功後のみ読み込まれるメインコード (演出はすべて維持)
+# ==========================================================
+
 from supabase import create_client
 from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
@@ -9,63 +43,23 @@ from PIL import Image, ImageOps
 import io
 import uuid
 
-# --- 1. アプリの基本設定 ---
+# --- 基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
-# --- 2. データベース(Supabase)接続設定 ---
 table_name = st.secrets.get("TABLE_NAME", "messages")
 supabase_url = "https://kvqbwknrsdasoipttkpr.supabase.co"
 supabase_key = st.secrets.get("SUPABASE_KEY", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 supabase = create_client(supabase_url, supabase_key)
-
-# --- 3. 認証機能 (物理的な完全分離) ---
-if "password_correct" not in st.session_state:
-    st.session_state["password_correct"] = False
-
-# 💡 認証がまだの場合
-if not st.session_state["password_correct"]:
-    st.write("🔒 Enter Password")
-    pw = st.text_input("Password", type="password", key="login_field")
-    
-    # ユーザー情報の取得（表示用）
-    try:
-        ua = st.context.headers.get("User-Agent", "")
-        query_params = st.query_params
-        url_user = query_params.get("user", None)
-        os_info = "Unknown Device"; detected_user = "Unknown"
-        if "Android" in ua: os_info = "Android"; detected_user = "Maki"
-        elif "iPhone" in ua or "iPad" in ua: os_info = "iOS Device"; detected_user = "Hide"
-        elif "Windows" in ua: os_info = "Windows"; detected_user = url_user if url_user else "Hide"
-        st.write(f"👤 User: **{detected_user}**")
-        st.caption(f"Device: {os_info}")
-        st.session_state["username"] = detected_user
-    except:
-        pass
-    
-    if pw == "05250206":
-        st.session_state["password_correct"] = True
-        st.rerun()
-    
-    # 💡 認証が通るまでは、ここで実行を完全に止める。これより下のコードは一切読み込まれない。
-    st.stop()
-
-# ==========================================================
-# 4. これ以降は、認証が「True」の時だけ実行される（メインコード）
-# ==========================================================
 
 # デザイン設定
 app_bg_color = "#313338"
 text_main_color = "#dbdee1"
 sub_text_color = "#949ba4"
 
-if table_name == "messages_test":
-    status_label = " 🧪 TEST"
-    input_placeholder = "テストメッセージを入力..."
-else:
-    status_label = ""
-    input_placeholder = "メッセージを入力..."
+status_label = " 🧪 TEST" if table_name == "messages_test" else ""
+input_placeholder = "テストメッセージを入力..." if table_name == "messages_test" else "メッセージを入力..."
 
-# スタイル適用
+# スタイル適用（アニメーション演出CSSをすべて維持）
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
@@ -90,7 +84,7 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
 
-    /* アニメーション演出 */
+    /* 全アニメーション演出 CSS を完全維持 */
     .typewriter-char {{ display: inline-block; opacity: 0; animation: char-reveal 0.1s forwards; }}
     @keyframes char-reveal {{ from {{ opacity: 0; transform: translateY(5px); }} to {{ opacity: 1; transform: translateY(0); }} }}
     @keyframes rise {{ 0% {{ transform: translateY(0); opacity: 0; }} 5% {{ opacity: 1; }} 85% {{ opacity: 1; }} 100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }} }}
@@ -162,7 +156,6 @@ if auto_update and st.session_state["page_offset"] == 0:
     st_autorefresh(interval=8000, key="chat_ref")
 st.divider()
 
-# 以下、チャット表示・送信ロジック（中略：ロジックは前回同様、完璧に維持）
 # --- ナビゲーション ---
 col_prev, col_page, col_next = st.columns([1, 2, 1])
 with col_prev:
@@ -194,7 +187,7 @@ with col_next:
     if st.session_state["page_offset"] >= 20:
         if st.button("次の20件 ➡️"): st.session_state["page_offset"] -= 20; st.rerun()
 
-# 演出判定・チャットログ表示（元のコードを100%維持）
+# --- チャットログ表示・演出ロジック (完全維持) ---
 try:
     start_range = st.session_state["page_offset"]
     end_range = start_range + 50
@@ -216,7 +209,7 @@ try:
                 fixed_marquee_html += f'<div class="fixed-marquee-text" style="top:{random.randint(5, 85)}vh; animation-delay:-{random.uniform(0, 15)}s; color:{text_color};">{clean_text}</div>'
             st.markdown(fixed_marquee_html + '</div>', unsafe_allow_html=True)
 
-    # メイン演出
+    # メイン演出 (エフェクト発動判定)
     if messages and st.session_state["page_offset"] == 0:
         latest_msg = messages[-1]
         msg_id, msg_body, img_url_latest = latest_msg.get("id"), latest_msg.get("message_body", ""), latest_msg.get("image_url")
@@ -227,6 +220,7 @@ try:
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
             else:
                 emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
+                # エフェクトキーワード判定 (省略せず維持)
                 if any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
                 elif any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
                 elif any(word in msg_body for word in ["お疲れ様", "お疲れ", "ちょい飲み", "ビール", "酒"]): priority_emoji = "🍺"
@@ -278,7 +272,7 @@ try:
                 st.markdown(marquee_html + '</div>', unsafe_allow_html=True)
             st.session_state["last_effect_id"] = msg_id
 
-    # チャットログ
+    # チャットログ表示部
     wd_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     now_jst = datetime.now(timezone.utc) + timedelta(hours=9)
     today_str = now_jst.strftime('%Y-%m-%d')
@@ -293,6 +287,8 @@ try:
         h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
         n_class = "name-maki" if "MAKI" in s_up else "name-hide" if "HIDE" in s_up else ""
         m_body, img_url = m.get("message_body", ""), m.get("image_url")
+        
+        # タイピング演出判定
         is_new = (m_id == latest_id) and (st.session_state["page_offset"] == 0) and (m_id not in st.session_state["shown_ids"])
         if is_new:
             display_body = "".join([f'<span class="typewriter-char" style="animation-delay:{i*0.05}s;">{"<br>" if char=="\\n" else char}</span>' for i, char in enumerate(m_body)])
@@ -300,6 +296,7 @@ try:
         else:
             display_body = m_body.replace("\n", "<br>")
 
+        # 文字エフェクトクラス
         eff_class = ""
         if any(w in m_body for w in ["大好き", "くっつ", "最高", "優勝", "指輪"]): eff_class = "rainbow-active"
         elif any(w in m_body for w in ["福島", "京橋", "居酒屋", "ビール", "ちょい飲み"]): eff_class = "neon-active"
