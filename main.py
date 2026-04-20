@@ -18,14 +18,16 @@ supabase_url = "https://kvqbwknrsdasoipttkpr.supabase.co"
 supabase_key = st.secrets.get("SUPABASE_KEY", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 supabase = create_client(supabase_url, supabase_key)
 
-# --- 3. 認証機能 (物理的分離) ---
+# --- 3. 認証機能 (物理的な完全分離) ---
 if "password_correct" not in st.session_state:
     st.session_state["password_correct"] = False
 
+# 💡 認証がまだの場合
 if not st.session_state["password_correct"]:
-    # ログイン画面（認証が通るまで、下のメインコードは一切読み込まれません）
     st.write("🔒 Enter Password")
     pw = st.text_input("Password", type="password", key="login_field")
+    
+    # ユーザー情報の取得（表示用）
     try:
         ua = st.context.headers.get("User-Agent", "")
         query_params = st.query_params
@@ -37,18 +39,21 @@ if not st.session_state["password_correct"]:
         st.write(f"👤 User: **{detected_user}**")
         st.caption(f"Device: {os_info}")
         st.session_state["username"] = detected_user
-    except: pass
+    except:
+        pass
     
     if pw == "05250206":
         st.session_state["password_correct"] = True
         st.rerun()
-    st.stop() # 💡 認証前はここで完全に停止。下の演出CSSやロジックとの「重なり」を物理的に排除
+    
+    # 💡 認証が通るまでは、ここで実行を完全に止める。これより下のコードは一切読み込まれない。
+    st.stop()
 
 # ==========================================================
-# これ以降は認証通過後のみ実行されるメインロジック（いただいたソースを完全維持）
+# 4. これ以降は、認証が「True」の時だけ実行される（メインコード）
 # ==========================================================
 
-# --- 4. デザイン設定 ---
+# デザイン設定
 app_bg_color = "#313338"
 text_main_color = "#dbdee1"
 sub_text_color = "#949ba4"
@@ -60,6 +65,7 @@ else:
     status_label = ""
     input_placeholder = "メッセージを入力..."
 
+# スタイル適用
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
@@ -84,7 +90,7 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
 
-    /* --- アニメーション定義 (ここから演出ロジック) --- */
+    /* アニメーション演出 */
     .typewriter-char {{ display: inline-block; opacity: 0; animation: char-reveal 0.1s forwards; }}
     @keyframes char-reveal {{ from {{ opacity: 0; transform: translateY(5px); }} to {{ opacity: 1; transform: translateY(0); }} }}
     @keyframes rise {{ 0% {{ transform: translateY(0); opacity: 0; }} 5% {{ opacity: 1; }} 85% {{ opacity: 1; }} 100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }} }}
@@ -126,7 +132,7 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 5. 画像圧縮用関数 ---
+# ヘルパー関数
 def compress_image(uploaded_file):
     img = Image.open(uploaded_file)
     img = ImageOps.exif_transpose(img)
@@ -139,7 +145,7 @@ def compress_image(uploaded_file):
     img_io.seek(0)
     return img_io
 
-# --- 6. 設定初期化 ---
+# 状態初期化
 if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "uploader_key" not in st.session_state: st.session_state["uploader_key"] = str(uuid.uuid4())
@@ -149,14 +155,15 @@ if "shown_ids" not in st.session_state: st.session_state["shown_ids"] = set()
 current_user_raw = st.session_state.get("username", "Hide")
 current_user_upper = current_user_raw.upper()
 
-# --- 7. ヘッダー ---
+# メイン表示
 st.title(f"💬 M25-Chat{status_label}")
 auto_update = st.toggle("自動更新(8s)", value=True)
 if auto_update and st.session_state["page_offset"] == 0:
     st_autorefresh(interval=8000, key="chat_ref")
 st.divider()
 
-# --- 8. ナビゲーション ---
+# 以下、チャット表示・送信ロジック（中略：ロジックは前回同様、完璧に維持）
+# --- ナビゲーション ---
 col_prev, col_page, col_next = st.columns([1, 2, 1])
 with col_prev:
     if st.button("⬅️ 前の20件"):
@@ -187,7 +194,7 @@ with col_next:
     if st.session_state["page_offset"] >= 20:
         if st.button("次の20件 ➡️"): st.session_state["page_offset"] -= 20; st.rerun()
 
-# --- 9. 表示 & 演出の判定 ---
+# 演出判定・チャットログ表示（元のコードを100%維持）
 try:
     start_range = st.session_state["page_offset"]
     end_range = start_range + 50
@@ -195,7 +202,7 @@ try:
     all_data = res_all.data
     messages = all_data[:20][::-1]
 
-    # --- #付きメッセージ ---
+    # #付きメッセージ（流れる文字）
     if st.session_state["page_offset"] == 0:
         now = datetime.now(timezone.utc)
         one_hour_ago = now - timedelta(hours=1)
@@ -209,11 +216,10 @@ try:
                 fixed_marquee_html += f'<div class="fixed-marquee-text" style="top:{random.randint(5, 85)}vh; animation-delay:-{random.uniform(0, 15)}s; color:{text_color};">{clean_text}</div>'
             st.markdown(fixed_marquee_html + '</div>', unsafe_allow_html=True)
 
-    # --- メイン演出判定 ---
+    # メイン演出
     if messages and st.session_state["page_offset"] == 0:
         latest_msg = messages[-1]
         msg_id, msg_body, img_url_latest = latest_msg.get("id"), latest_msg.get("message_body", ""), latest_msg.get("image_url")
-        
         if msg_id != st.session_state["last_effect_id"]:
             priority_emoji = None
             if img_url_latest:
@@ -221,7 +227,6 @@ try:
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
             else:
                 emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
-                # キーワード判定 (完全復元版)
                 if any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
                 elif any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
                 elif any(word in msg_body for word in ["お疲れ様", "お疲れ", "ちょい飲み", "ビール", "酒"]): priority_emoji = "🍺"
@@ -232,7 +237,7 @@ try:
                 elif any(word in msg_body for word in ["おやすみ", "眠い", "寝る"]): priority_emoji = "💤"
                 elif any(word in msg_body for word in ["綺麗", "きれい", "すごい", "最高"]): priority_emoji = "✨"
                 elif any(word in msg_body for word in ["コーヒー", "カフェ", "休憩"]): priority_emoji = "☕️"
-                elif any(word in msg_body for word in ["ドライブ"]): priority_emoji = "🚗"
+                elif "ドライブ" in msg_body: priority_emoji = "🚗"
                 elif any(word in msg_body for word in ["ワイン", "ハイボール", "乾杯"]): priority_emoji = "🥂"
                 elif any(word in msg_body for word in ["花見", "さくら", "桜"]): priority_emoji = "🌸"
                 elif any(word in msg_body for word in ["楽しみ", "ルンルン", "うれしい"]): priority_emoji = "🥳"
@@ -266,7 +271,6 @@ try:
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("mood-dark"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("mood-dark"); }, 3500);</script>', height=0)
             if any(word in msg_body for word in ["マジで", "えー", "正解", "おー"]):
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("bounce-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("bounce-screen"); }, 1000);</script>', height=0)
-            
             if any(word in msg_body for word in ["www", "笑", "草", "うける", "爆笑", "最高", "天才", "神", "優勝", "ビール", "大好き"]):
                 marquee_html = '<div class="marquee-wrapper">'
                 display_text = (msg_body[:20] + '..') if len(msg_body) > 20 else msg_body
@@ -274,7 +278,7 @@ try:
                 st.markdown(marquee_html + '</div>', unsafe_allow_html=True)
             st.session_state["last_effect_id"] = msg_id
 
-    # --- チャットログ表示 ---
+    # チャットログ
     wd_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     now_jst = datetime.now(timezone.utc) + timedelta(hours=9)
     today_str = now_jst.strftime('%Y-%m-%d')
@@ -284,13 +288,11 @@ try:
         jst_time = datetime.fromisoformat(m['created_at'].replace('Z', '+00:00')) + timedelta(hours=9)
         msg_date_str = jst_time.strftime('%Y-%m-%d')
         time_display = jst_time.strftime('%H:%M') if msg_date_str == today_str else jst_time.strftime(f'%m/%d({wd_en[jst_time.weekday()]}) %H:%M')
-        
         s_name, s_up, m_id = m['sender_name'], m['sender_name'].upper(), m.get("id")
         align = "align-right" if s_up == current_user_upper else "align-left"
         h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
         n_class = "name-maki" if "MAKI" in s_up else "name-hide" if "HIDE" in s_up else ""
         m_body, img_url = m.get("message_body", ""), m.get("image_url")
-        
         is_new = (m_id == latest_id) and (st.session_state["page_offset"] == 0) and (m_id not in st.session_state["shown_ids"])
         if is_new:
             display_body = "".join([f'<span class="typewriter-char" style="animation-delay:{i*0.05}s;">{"<br>" if char=="\\n" else char}</span>' for i, char in enumerate(m_body)])
@@ -319,7 +321,7 @@ try:
         """, unsafe_allow_html=True)
 except Exception as e: st.error(f"表示エラー: {e}")
 
-# --- 10. 送信エリア ---
+# 送信エリア
 prompt = st.chat_input(input_placeholder)
 if prompt:
     try:
