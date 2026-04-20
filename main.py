@@ -1,33 +1,38 @@
 import streamlit as st
 
 # --- 1. 認証機能 (最優先実行) ---
-# パスワードが正解するまで、下のすべてのコードを読み込ませない
+# 💡 画面全体を制御するための「器」を作成
+main_placeholder = st.empty()
+
 if "password_correct" not in st.session_state:
     st.session_state["password_correct"] = False
 
 if not st.session_state["password_correct"]:
-    # 認証前は最小限のUIのみ表示
-    st.write("🔒 Enter Password")
-    pw = st.text_input("Password", type="password", key="login_field")
-    
-    try:
-        ua = st.context.headers.get("User-Agent", "")
-        url_user = st.query_params.get("user", None)
-        detected_user = "Unknown"
-        if "Android" in ua: detected_user = "Maki"
-        elif "iPhone" in ua or "iPad" in ua: detected_user = "Hide"
-        elif "Windows" in ua: detected_user = url_user if url_user else "Hide"
-        st.write(f"👤 User: **{detected_user}**")
-        st.session_state["username"] = detected_user
-    except:
-        pass
-    
-    if pw == "05250206":
-        st.session_state["password_correct"] = True
-        st.rerun()
-    
-    # ここで物理的に止める。これより下の st.title や st.chat_input は存在しないことになる。
-    st.stop()
+    # 💡 placeholderを使用して、ログイン画面以外の要素が入り込む隙をなくします
+    with main_placeholder.container():
+        st.write("🔒 Enter Password")
+        pw = st.text_input("Password", type="password", key="login_field")
+        
+        try:
+            ua = st.context.headers.get("User-Agent", "")
+            url_user = st.query_params.get("user", None)
+            detected_user = "Unknown"
+            if "Android" in ua: detected_user = "Maki"
+            elif "iPhone" in ua or "iPad" in ua: detected_user = "Hide"
+            elif "Windows" in ua: detected_user = url_user if url_user else "Hide"
+            st.write(f"👤 User: **{detected_user}**")
+            st.session_state["username"] = detected_user
+        except:
+            pass
+        
+        if pw == "05250206":
+            st.session_state["password_correct"] = True
+            st.rerun()
+        
+        st.stop()
+
+# 💡 認証成功後、placeholderを空にしてメイン画面を表示できるようにします
+main_placeholder.empty()
 
 # ==========================================================
 # 2. 認証成功後のみ読み込まれるメインコード (演出はすべて維持)
@@ -220,7 +225,7 @@ try:
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
             else:
                 emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
-                # エフェクトキーワード判定 (省略せず維持)
+                # エフェクトキーワード判定
                 if any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
                 elif any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
                 elif any(word in msg_body for word in ["お疲れ様", "お疲れ", "ちょい飲み", "ビール", "酒"]): priority_emoji = "🍺"
@@ -288,7 +293,6 @@ try:
         n_class = "name-maki" if "MAKI" in s_up else "name-hide" if "HIDE" in s_up else ""
         m_body, img_url = m.get("message_body", ""), m.get("image_url")
         
-        # タイピング演出判定
         is_new = (m_id == latest_id) and (st.session_state["page_offset"] == 0) and (m_id not in st.session_state["shown_ids"])
         if is_new:
             display_body = "".join([f'<span class="typewriter-char" style="animation-delay:{i*0.05}s;">{"<br>" if char=="\\n" else char}</span>' for i, char in enumerate(m_body)])
@@ -296,7 +300,6 @@ try:
         else:
             display_body = m_body.replace("\n", "<br>")
 
-        # 文字エフェクトクラス
         eff_class = ""
         if any(w in m_body for w in ["大好き", "くっつ", "最高", "優勝", "指輪"]): eff_class = "rainbow-active"
         elif any(w in m_body for w in ["福島", "京橋", "居酒屋", "ビール", "ちょい飲み"]): eff_class = "neon-active"
