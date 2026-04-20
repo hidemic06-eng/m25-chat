@@ -18,11 +18,19 @@ supabase_url = "https://kvqbwknrsdasoipttkpr.supabase.co"
 supabase_key = st.secrets.get("SUPABASE_KEY", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
 supabase = create_client(supabase_url, supabase_key)
 
-# --- 3. 認証機能 (物理的分離) ---
+# --- 3. 認証機能 (物理的分離 & 重なり防止) ---
 if "password_correct" not in st.session_state:
     st.session_state["password_correct"] = False
 
 if not st.session_state["password_correct"]:
+    # ログイン画面専用：背景を白に固定し、メインの黒背景との重なりを物理的に防ぐ
+    st.markdown("""
+        <style>
+        .stApp { background-color: white !important; }
+        .stTextInput > div > div > input { background-color: #f0f2f6 !important; color: black !important; }
+        </style>
+    """, unsafe_allow_html=True)
+    
     st.write("🔒 Enter Password")
     pw = st.text_input("Password", type="password", key="login_field")
     try:
@@ -41,7 +49,7 @@ if not st.session_state["password_correct"]:
     if pw == "05250206":
         st.session_state["password_correct"] = True
         st.rerun()
-    st.stop() # 💡 ここで停止させることで、下のメインコードとの「重なり」を防ぎます
+    st.stop() # ここで止めることで、未認証時は下の演出コードを一切読み込ませない
 
 # ==========================================================
 # これ以降は認証通過後のみ実行されるメインロジック（全演出維持）
@@ -83,7 +91,7 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
 
-    /* --- アニメーション定義 (省略なし) --- */
+    /* --- アニメーション定義 --- */
     .typewriter-char {{ display: inline-block; opacity: 0; animation: char-reveal 0.1s forwards; }}
     @keyframes char-reveal {{ from {{ opacity: 0; transform: translateY(5px); }} to {{ opacity: 1; transform: translateY(0); }} }}
     @keyframes rise {{ 0% {{ transform: translateY(0); opacity: 0; }} 5% {{ opacity: 1; }} 85% {{ opacity: 1; }} 100% {{ transform: translateY(-125vh) rotate(360deg); opacity: 0; }} }}
@@ -107,7 +115,7 @@ st.markdown(f"""
     .fixed-marquee-wrapper {{ position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9997; overflow: hidden; }}
     .fixed-marquee-text {{ position: absolute; white-space: nowrap; font-size: 1.8rem; font-weight: 700; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); animation: marquee-infinite 15s linear infinite; }}
 
-    /* テキストエフェクト (省略なし) */
+    /* --- テキストエフェクト --- */
     @keyframes rainbow-text {{ 0% {{ color: #ff0000; text-shadow: 0 0 8px #ff0000; }} 17% {{ color: #ff8000; text-shadow: 0 0 8px #ff8000; }} 33% {{ color: #ffff00; text-shadow: 0 0 8px #ffff00; }} 50% {{ color: #00ff00; text-shadow: 0 0 8px #00ff00; }} 67% {{ color: #00ffff; text-shadow: 0 0 8px #00ffff; }} 83% {{ color: #0000ff; text-shadow: 0 0 8px #0000ff; }} 100% {{ color: #ff00ff; text-shadow: 0 0 8px #ff00ff; }} }}
     .rainbow-active {{ animation: rainbow-text 2s infinite linear !important; font-weight: 800 !important; }}
     @keyframes neon-flicker {{ 0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {{ color: #fff; text-shadow: 0 0 4px #fff, 0 0 10px #fff, 0 0 18px #ff00de, 0 0 30px #ff00de; }} 20%, 22%, 24%, 55% {{ color: #444; text-shadow: none; }} }}
@@ -186,7 +194,7 @@ with col_next:
     if st.session_state["page_offset"] >= 20:
         if st.button("次の20件 ➡️"): st.session_state["page_offset"] -= 20; st.rerun()
 
-# --- 9. 表示 & 演出の判定 ---
+# --- 9. 表示 & 演出の判定 (ここから下の判定ロジックは一切変えていません) ---
 try:
     start_range = st.session_state["page_offset"]
     end_range = start_range + 50
@@ -194,7 +202,7 @@ try:
     all_data = res_all.data
     messages = all_data[:20][::-1]
 
-    # --- #付きメッセージを1時間流す機能 ---
+    # --- #付きメッセージ ---
     if st.session_state["page_offset"] == 0:
         now = datetime.now(timezone.utc)
         one_hour_ago = now - timedelta(hours=1)
@@ -208,7 +216,7 @@ try:
                 fixed_marquee_html += f'<div class="fixed-marquee-text" style="top:{random.randint(5, 85)}vh; animation-delay:-{random.uniform(0, 15)}s; color:{text_color};">{clean_text}</div>'
             st.markdown(fixed_marquee_html + '</div>', unsafe_allow_html=True)
 
-    # --- メイン演出判定 (全キーワード・エフェクト維持) ---
+    # --- メイン演出判定 ---
     if messages and st.session_state["page_offset"] == 0:
         latest_msg = messages[-1]
         msg_id, msg_body, img_url_latest = latest_msg.get("id"), latest_msg.get("message_body", ""), latest_msg.get("image_url")
@@ -220,7 +228,7 @@ try:
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
             else:
                 emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
-                # キーワード判定 (フルリスト)
+                # キーワード判定 (フルリスト完全復元)
                 if any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
                 elif any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
                 elif any(word in msg_body for word in ["お疲れ様", "お疲れ", "ちょい飲み", "ビール", "酒"]): priority_emoji = "🍺"
@@ -273,7 +281,7 @@ try:
                 st.markdown(marquee_html + '</div>', unsafe_allow_html=True)
             st.session_state["last_effect_id"] = msg_id
 
-    # --- チャットログ表示 (タイピング・エフェクト) ---
+    # --- チャットログ表示 ---
     wd_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     now_jst = datetime.now(timezone.utc) + timedelta(hours=9)
     today_str = now_jst.strftime('%Y-%m-%d')
@@ -290,7 +298,6 @@ try:
         n_class = "name-maki" if "MAKI" in s_up else "name-hide" if "HIDE" in s_up else ""
         m_body, img_url = m.get("message_body", ""), m.get("image_url")
         
-        # タイピング演出
         is_new = (m_id == latest_id) and (st.session_state["page_offset"] == 0) and (m_id not in st.session_state["shown_ids"])
         if is_new:
             display_body = "".join([f'<span class="typewriter-char" style="animation-delay:{i*0.05}s;">{"<br>" if char=="\\n" else char}</span>' for i, char in enumerate(m_body)])
@@ -298,7 +305,6 @@ try:
         else:
             display_body = m_body.replace("\n", "<br>")
 
-        # テキストエフェクト
         eff_class = ""
         if any(w in m_body for w in ["大好き", "くっつ", "最高", "優勝", "指輪"]): eff_class = "rainbow-active"
         elif any(w in m_body for w in ["福島", "京橋", "居酒屋", "ビール", "ちょい飲み"]): eff_class = "neon-active"
