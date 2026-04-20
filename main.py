@@ -1,15 +1,17 @@
 import streamlit as st
 
-# --- 1. 認証機能 (最優先実行) ---
-# 💡 画面全体を制御するための「器」を作成
-main_placeholder = st.empty()
-
+# ==========================================================
+# 1. ログインガード（ここが全ての入り口）
+# ==========================================================
 if "password_correct" not in st.session_state:
     st.session_state["password_correct"] = False
 
+# ログインしていない場合は、ここで処理を完全に「隔離」する
 if not st.session_state["password_correct"]:
-    # 💡 placeholderを使用して、ログイン画面以外の要素が入り込む隙をなくします
-    with main_placeholder.container():
+    # 画面全体を一旦真っ白（デフォルト）にする器
+    login_area = st.empty()
+    
+    with login_area.container():
         st.write("🔒 Enter Password")
         pw = st.text_input("Password", type="password", key="login_field")
         
@@ -27,17 +29,17 @@ if not st.session_state["password_correct"]:
         
         if pw == "05250206":
             st.session_state["password_correct"] = True
+            login_area.empty() # ログインUIを消去
             st.rerun()
-        
-        st.stop()
-
-# 💡 認証成功後、placeholderを空にしてメイン画面を表示できるようにします
-main_placeholder.empty()
+    
+    # 💡 重要：ログインしていない時は、これ以下のコード（importすら）読ませない
+    st.stop()
 
 # ==========================================================
-# 2. 認証成功後のみ読み込まれるメインコード (演出はすべて維持)
+# 2. 認証成功後のみ読み込まれるメインコード（ここから下は安全地帯）
 # ==========================================================
 
+# 💡 インポートもスタイル定義も、ここから始めることで「透け」を防止します
 from supabase import create_client
 from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
@@ -64,7 +66,7 @@ sub_text_color = "#949ba4"
 status_label = " 🧪 TEST" if table_name == "messages_test" else ""
 input_placeholder = "テストメッセージを入力..." if table_name == "messages_test" else "メッセージを入力..."
 
-# スタイル適用（アニメーション演出CSSをすべて維持）
+# 💡 スタイル適用（ここより上に書くとログイン画面に漏れるので、ここで実行）
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
@@ -192,7 +194,7 @@ with col_next:
     if st.session_state["page_offset"] >= 20:
         if st.button("次の20件 ➡️"): st.session_state["page_offset"] -= 20; st.rerun()
 
-# --- チャットログ表示・演出ロジック (完全維持) ---
+# --- チャットログ表示・演出ロジック ---
 try:
     start_range = st.session_state["page_offset"]
     end_range = start_range + 50
@@ -225,7 +227,6 @@ try:
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
             else:
                 emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
-                # エフェクトキーワード判定
                 if any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
                 elif any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
                 elif any(word in msg_body for word in ["お疲れ様", "お疲れ", "ちょい飲み", "ビール", "酒"]): priority_emoji = "🍺"
