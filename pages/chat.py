@@ -24,9 +24,16 @@ if "password_correct" not in st.session_state or not st.session_state["password_
 # ==========================================================
 # 2. 基本設定
 # ==========================================================
-table_name = st.secrets.get("TABLE_NAME", "messages")
+# --- 修正前 ---
+# table_name = st.secrets.get("TABLE_NAME", "messages")
+# supabase_url = "https://kvqbwknrsdasoipttkpr.supabase.co"
+# supabase_key = st.secrets.get("SUPABASE_KEY", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
+# supabase = create_client(supabase_url, supabase_key)
+
+# --- 修正後（これを貼り付けてください） ---
+table_name = "messages" # 直接指定
 supabase_url = "https://kvqbwknrsdasoipttkpr.supabase.co"
-supabase_key = st.secrets.get("SUPABASE_KEY", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
+supabase_key = "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT" # 直接指定
 supabase = create_client(supabase_url, supabase_key)
 
 app_bg_color = "#313338"
