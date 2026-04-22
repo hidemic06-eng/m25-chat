@@ -1,9 +1,10 @@
 import streamlit as st
+from streamlit_javascript import st_javascript
 
-# 1. ページ設定（一番最初に1回だけ）
+# 1. ページ設定
 st.set_page_config(page_title="M25-Login", page_icon="🔒")
 
-# --- CSS（文字色と背景を強制固定） ---
+# --- CSS（背景色と文字色の調整） ---
 st.markdown("""
     <style>
     .stApp { background-color: #313338; color: #dbdee1; }
@@ -12,28 +13,42 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. 状態の初期化
-if "password_correct" not in st.session_state:
-    st.session_state["password_correct"] = False
+# 2. ユーザー自動判定ロジック
+if "username" not in st.session_state:
+    # URL引数を確認 (?user=Maki など)
+    url_user = st.query_params.get("user", "")
+    
+    if url_user.capitalize() in ["Hide", "Maki"]:
+        st.session_state["username"] = url_user.capitalize()
+    else:
+        # User-Agentを取得してOS判定
+        ua = st_javascript("window.navigator.userAgent")
+        if ua:
+            if "Android" in ua:
+                st.session_state["username"] = "Maki"
+            elif "iPhone" in ua or "iPad" in ua or "Macintosh" in ua:
+                st.session_state["username"] = "Hide"
+            else:
+                st.session_state["username"] = "Hide" # デフォルト
 
-# 3. ログイン済みなら即遷移して終了
-if st.session_state["password_correct"]:
+# 3. ログイン済みなら即遷移
+if st.session_state.get("password_correct", False):
     st.switch_page("pages/chat.py")
     st.stop()
 
-# 4. ログイン画面（ここが1回しか通らないようにします）
-st.title("🔐 M25-Chat Login")
+# 4. ログイン画面（入力エリアはパスワードの「1つ」だけになります）
+st.title(f"🔐 M25-Chat Login")
+st.write(f"User: **{st.session_state.get('username', 'Detecting...')}**")
 
-# 入力欄を配置（ボタンなし・Enterキーで確定）
-u_input = st.text_input("名前（Hide or Maki）", key="user_field")
-p_input = st.text_input("パスワード", type="password", key="pass_field")
+# パスワード入力欄（ここだけが表示されます）
+p_input = st.text_input("パスワードを入力してEnter", type="password", key="p_input")
 
-# パスワードが入力された（Enterが押された）瞬間に判定
 if p_input:
-    u_val = u_input.strip().capitalize()
-    if u_val in ["Hide", "Maki"] and p_input == st.secrets["PASSWORD"]:
+    if p_input == st.secrets["PASSWORD"]:
         st.session_state["password_correct"] = True
-        st.session_state["username"] = u_val
-        st.rerun() # 成功したら即座に再起動して上の switch_page を発動
+        st.rerun()
     else:
-        st.error("😕 名前かパスワードが違います")
+        st.error("😕 パスワードが違います")
+
+# ログインしていない時はここで止める
+st.stop()
