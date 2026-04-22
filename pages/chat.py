@@ -1,4 +1,15 @@
 import streamlit as st
+
+# --- 0. ログインチェック（最優先） ---
+# セッションが切れている場合、警告を出すのではなく即座にログイン画面へ飛ばす
+if "password_correct" not in st.session_state or not st.session_state["password_correct"]:
+    st.switch_page("main.py")
+    st.stop()
+
+# --- 1. アプリの基本設定 ---
+# ログイン済みの場合のみ、以下の重いインポートや設定が実行される
+st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
+
 from supabase import create_client
 from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
@@ -9,16 +20,7 @@ from PIL import Image, ImageOps
 import io
 import uuid
 
-# --- 1. アプリの基本設定 ---
-st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
-
-# 【追加】ログインチェック：未ログインならメイン画面へ戻す
-if "password_correct" not in st.session_state or not st.session_state["password_correct"]:
-    st.warning("ログインしてください。")
-    st.stop()
-
 # --- 2. データベース(Supabase)接続設定 ---
-# 元のロジックを完全復元：Secretsの設定があればそれを使い、なければデフォルトを適用
 table_name = st.secrets.get("TABLE_NAME", "messages")
 supabase_url = "https://kvqbwknrsdasoipttkpr.supabase.co"
 supabase_key = st.secrets.get("SUPABASE_KEY", "sb_publishable_rm5x4m4thlpmVY9pKJ5Nug_aTO32nsT")
