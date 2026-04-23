@@ -1,9 +1,7 @@
 [client]
 toolbarMode = "hidden"
 
-[server]
-# 必要なのはこれだけ！
-maxUploadSize = 20
+
 
 [browser]
 gatherUsageStats = false
