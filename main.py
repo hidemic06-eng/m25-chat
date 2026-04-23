@@ -12,6 +12,11 @@ import uuid
 # --- 1. アプリの基本設定 ---
 st.set_page_config(page_title="M25", page_icon="💬", layout="wide")
 
+import os
+# Configファイルと数値を合わせて、二重に制限を解除します
+os.environ["STREAMLIT_SERVER_MAX_UPLOAD_SIZE"] = "20"
+os.environ["STREAMLIT_SERVER_MAX_MESSAGE_SIZE"] = "20"
+
 # --- 2. データベース(Supabase)接続設定 ---
 table_name = st.secrets.get("TABLE_NAME", "messages")
 supabase_url = "https://kvqbwknrsdasoipttkpr.supabase.co"
