@@ -67,7 +67,6 @@ st.markdown(f"""
         padding: 0; 
     }}
 
-    /* ポラロイド風フレームのデザイン */
     .chat-image {{
         max-width: 280px;
         border-radius: 4px;
@@ -90,7 +89,6 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* --- アニメーション定義 --- */
     .typewriter-char {{
         display: inline-block;
         opacity: 0;
@@ -191,8 +189,7 @@ current_user_upper = current_user_raw.upper()
 # --- 7. ヘッダー ---
 st.title(f"💬 M25-Chat{status_label}")
 auto_update = st.toggle("自動更新(8s)", value=True)
-if auto_update and st.session_state["page_offset"] == 0:
-    st_autorefresh(interval=8000, key="chat_ref")
+# ※autorefreshは干渉を防ぐため、一番最後に移動しました
 st.divider()
 
 # --- 8. ナビゲーション & アップロードエリア ---
@@ -218,7 +215,10 @@ if st.session_state["page_offset"] == 0:
         if st.session_state["last_compression_info"]: 
             st.info(st.session_state["last_compression_info"])
         
+        # アップローダー本体
         img_file = st.file_uploader("画像選択", type=['png', 'jpg', 'jpeg'], key=st.session_state["uploader_key"])
+        
+        # ボタン判定を分離し、過去の安定した構造を再現
         if img_file:
             if st.button("🖼️ 画像を送信"):
                 try:
@@ -227,21 +227,17 @@ if st.session_state["page_offset"] == 0:
                         compressed_data = compress_image(img_file)
                         compressed_size = compressed_data.getbuffer().nbytes / 1024
                         
-                        # ファイル名の生成
                         ext = img_file.name.split('.')[-1]
                         file_path = f"public/{uuid.uuid4()}.{ext}"
                         
-                        # Supabase Storageへアップロード (バケット名 "images" を想定)
                         supabase.storage.from_("images").upload(
                             file_path, 
                             compressed_data.getvalue(), 
                             {"content-type": f"image/{ext}"}
                         )
                         
-                        # 公開URLの取得
                         final_url = supabase.storage.from_("images").get_public_url(file_path)
                         
-                        # DBへメッセージとしてインサート
                         supabase.table(table_name).insert({
                             "sender_name": current_user_raw, 
                             "message_body": "", 
@@ -249,7 +245,7 @@ if st.session_state["page_offset"] == 0:
                         }).execute()
                         
                         st.session_state["last_compression_info"] = f"✅ 送信完了！ {original_size:.1f}KB → {compressed_size:.1f}KB"
-                        st.session_state["uploader_key"] = str(uuid.uuid4()) # アップローダーをクリア
+                        st.session_state["uploader_key"] = str(uuid.uuid4())
                         st.rerun()
                 except Exception as e:
                     st.error(f"アップロードエラー: {e}")
@@ -294,7 +290,6 @@ try:
                 priority_emoji = "📷"
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
             else:
-                # 絵文字や特定のキーワードによる演出判定（既存ロジック）
                 emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
                 if any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
                 elif any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
@@ -334,7 +329,6 @@ try:
                     peek_html += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
                 st.markdown(peek_html + '</div>', unsafe_allow_html=True)
 
-            # 特殊演出（風船、雪など）
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             if any(word in msg_body for word in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
@@ -384,7 +378,6 @@ try:
         m_body, img_url = m.get("message_body", ""), m.get("image_url")
         img_html = f'<div><img src="{img_url}" class="chat-image"></div>' if img_url else ""
         
-        # タイピング演出
         is_new_msg = (m_id == latest_id) and (st.session_state["page_offset"] == 0) and (m_id not in st.session_state["shown_ids"])
         if is_new_msg and m_body:
             typed_html = ""
@@ -397,7 +390,6 @@ try:
         else:
             display_body = m_body.replace("\n", "<br>")
 
-        # テキストエフェクト（既存ロジック）
         effect_class = ""
         if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]): effect_class = "rainbow-active"
         elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "ちょい飲み"]): effect_class = "neon-active"
@@ -428,5 +420,11 @@ if prompt:
         st.session_state["page_offset"] = 0; st.rerun()
     except Exception as e: st.error(f"送信エラー: {e}")
 
+# 最下部へのスクロール
 if st.session_state["page_offset"] == 0:
     components.html('<script>window.parent.document.querySelector(".main").scrollTo(0, 99999);</script>', height=0)
+
+# --- 11. 自動更新（最後に実行） ---
+# 送信処理と干渉しないよう、全ての描画が終わった後にタイマーをセットします。
+if auto_update and st.session_state["page_offset"] == 0:
+    st_autorefresh(interval=8000, key="chat_ref")
