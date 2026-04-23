@@ -1,2 +1,6 @@
 [client]
 toolbarMode = "hidden"
+
+[server]
+maxUploadSize = 20
+maxMessageSize = 20
