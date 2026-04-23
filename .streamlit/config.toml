@@ -4,6 +4,10 @@ toolbarMode = "hidden"
 [server]
 maxUploadSize = 20
 maxMessageSize = 20
+# 以下の2行を「false」にして、通信のチェックを緩めます
+enableCORS = false
+enableXsrfProtection = false
 
 [browser]
 gatherUsageStats = false
+
