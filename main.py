@@ -91,7 +91,6 @@ st.markdown(f"""
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
     /* --- アニメーション定義 --- */
-    /* 修正：1文字ずつ一定速度で表示されるタイピング演出 */
     .typewriter-char {{
         display: inline-block;
         opacity: 0;
@@ -179,12 +178,11 @@ if "password_correct" not in st.session_state:
         st.rerun()
     st.stop()
 
-# --- 6. 設定 ---
+# --- 6. セッション状態の初期化 ---
 if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "uploader_key" not in st.session_state: st.session_state["uploader_key"] = str(uuid.uuid4())
 if "last_compression_info" not in st.session_state: st.session_state["last_compression_info"] = None
-# 新規追加：演出済みIDを記録するセット
 if "shown_ids" not in st.session_state: st.session_state["shown_ids"] = set()
 
 current_user_raw = st.session_state.get("username", "Hide")
@@ -197,38 +195,66 @@ if auto_update and st.session_state["page_offset"] == 0:
     st_autorefresh(interval=8000, key="chat_ref")
 st.divider()
 
-# --- 8. ナビゲーション ---
+# --- 8. ナビゲーション & アップロードエリア ---
 col_prev, col_page, col_next = st.columns([1, 2, 1])
+
 with col_prev:
     if st.button("⬅️ 前の20件"):
         st.session_state["page_offset"] += 20
         st.rerun()
-    if st.session_state["page_offset"] == 0:
-        with st.expander("📷 写真をアップロード", expanded=False):
-            if st.session_state["last_compression_info"]: st.info(st.session_state["last_compression_info"])
-            img_file = st.file_uploader("画像選択", type=['png', 'jpg', 'jpeg'], key=st.session_state["uploader_key"])
-            if img_file and st.button("🖼️ 画像を送信"):
+
+with col_page:
+    st.write(f"<div style='text-align:center; font-size:0.8rem;'>{st.session_state['page_offset']+1}〜件目</div>", unsafe_allow_html=True)
+
+with col_next:
+    if st.session_state["page_offset"] >= 20:
+        if st.button("次の20件 ➡️"):
+            st.session_state["page_offset"] -= 20
+            st.rerun()
+
+# 1枚目（最新ページ）の時だけアップローダーを表示
+if st.session_state["page_offset"] == 0:
+    with st.expander("📷 写真をアップロード", expanded=False):
+        if st.session_state["last_compression_info"]: 
+            st.info(st.session_state["last_compression_info"])
+        
+        img_file = st.file_uploader("画像選択", type=['png', 'jpg', 'jpeg'], key=st.session_state["uploader_key"])
+        if img_file:
+            if st.button("🖼️ 画像を送信"):
                 try:
                     with st.spinner("送信中..."):
                         original_size = img_file.size / 1024
                         compressed_data = compress_image(img_file)
                         compressed_size = compressed_data.getbuffer().nbytes / 1024
+                        
+                        # ファイル名の生成
                         ext = img_file.name.split('.')[-1]
                         file_path = f"public/{uuid.uuid4()}.{ext}"
-                        supabase.storage.from_("images").upload(file_path, compressed_data.getvalue(), {"content-type": f"image/{ext}"})
+                        
+                        # Supabase Storageへアップロード (バケット名 "images" を想定)
+                        supabase.storage.from_("images").upload(
+                            file_path, 
+                            compressed_data.getvalue(), 
+                            {"content-type": f"image/{ext}"}
+                        )
+                        
+                        # 公開URLの取得
                         final_url = supabase.storage.from_("images").get_public_url(file_path)
-                        supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": "", "image_url": final_url}).execute()
+                        
+                        # DBへメッセージとしてインサート
+                        supabase.table(table_name).insert({
+                            "sender_name": current_user_raw, 
+                            "message_body": "", 
+                            "image_url": final_url
+                        }).execute()
+                        
                         st.session_state["last_compression_info"] = f"✅ 送信完了！ {original_size:.1f}KB → {compressed_size:.1f}KB"
-                        st.session_state["uploader_key"] = str(uuid.uuid4()); st.rerun()
-                except Exception as e: st.error(f"Error: {e}")
+                        st.session_state["uploader_key"] = str(uuid.uuid4()) # アップローダーをクリア
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"アップロードエラー: {e}")
 
-with col_page:
-    st.write(f"<div style='text-align:center; font-size:0.8rem;'>{st.session_state['page_offset']+1}〜件目</div>", unsafe_allow_html=True)
-with col_next:
-    if st.session_state["page_offset"] >= 20:
-        if st.button("次の20件 ➡️"): st.session_state["page_offset"] -= 20; st.rerun()
-
-# --- 9. 表示 & 演出の判定 ---
+# --- 9. データ取得 & 表示ロジック ---
 try:
     start_range = st.session_state["page_offset"]
     end_range = start_range + 50
@@ -237,7 +263,7 @@ try:
     all_data = res_all.data
     messages = all_data[:20][::-1]
     
-    # --- #付きメッセージを1時間流す機能 ---
+    # #付きメッセージ（固定メッセージ）の表示
     if st.session_state["page_offset"] == 0:
         now = datetime.now(timezone.utc)
         one_hour_ago = now - timedelta(hours=1)
@@ -257,6 +283,7 @@ try:
                 fixed_marquee_html += f'<div class="fixed-marquee-text" style="top:{top_pos}vh; animation-delay:-{delay}s; color:{text_color};">{clean_text}</div>'
             st.markdown(fixed_marquee_html + '</div>', unsafe_allow_html=True)
 
+    # 演出判定
     if messages and st.session_state["page_offset"] == 0:
         latest_msg = messages[-1]
         msg_id, msg_body, img_url_latest = latest_msg.get("id"), latest_msg.get("message_body", ""), latest_msg.get("image_url")
@@ -267,6 +294,7 @@ try:
                 priority_emoji = "📷"
                 components.html('<script>window.parent.document.querySelector(".stApp").classList.add("flash-screen"); setTimeout(() => { window.parent.document.querySelector(".stApp").classList.remove("flash-screen"); }, 600);</script>', height=0)
             else:
+                # 絵文字や特定のキーワードによる演出判定（既存ロジック）
                 emoji_in_text = re.findall(r'[\U00010000-\U0010ffff]', msg_body)
                 if any(word in msg_body for word in ["大好き", "愛してる"]): priority_emoji = "💘"
                 elif any(word in msg_body for word in ["好き", "ありがとう", "感謝", "ラブラブ"]): priority_emoji = "❤️"
@@ -306,6 +334,7 @@ try:
                     peek_html += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
                 st.markdown(peek_html + '</div>', unsafe_allow_html=True)
 
+            # 特殊演出（風船、雪など）
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             if any(word in msg_body for word in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
@@ -324,14 +353,13 @@ try:
                     top_pos = random.randint(10, 80); delay = i * 0.7
                     marquee_html += f'<div class="marquee-text" style="top:{top_pos}vh; animation-delay:{delay}s;">{display_text}</div>'
                 st.markdown(marquee_html + '</div>', unsafe_allow_html=True)
+            
             st.session_state["last_effect_id"] = msg_id
 
-    # --- 9-2. チャットログ表示 ---
+    # チャットログ表示
     wd_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     now_jst = datetime.now(timezone.utc) + timedelta(hours=9)
     today_str = now_jst.strftime('%Y-%m-%d')
-
-    # 最新メッセージのIDを取得（演出判定用）
     latest_id = messages[-1].get("id") if messages else None
 
     for m in messages:
@@ -341,18 +369,14 @@ try:
         s_up = s_name.upper()
         m_id = m.get("id")
 
-        # --- 日付・曜日表示の判定 ---
         msg_date_str = jst_time.strftime('%Y-%m-%d')
         if msg_date_str == today_str:
             time_display = jst_time.strftime('%H:%M')
         else:
             w_idx = jst_time.weekday()
             w_name = wd_en[w_idx]
-            w_style = ""
-            if w_idx == 5: w_style = "color: #58a6ff;"
-            elif w_idx == 6: w_style = "color: #ff7b72;"
-            w_display = f'<span style="{w_style}">{w_name}</span>'
-            time_display = jst_time.strftime(f'%m/%d({w_display}) %H:%M')
+            w_style = "color: #58a6ff;" if w_idx == 5 else "color: #ff7b72;" if w_idx == 6 else ""
+            time_display = jst_time.strftime(f'%m/%d(<span style="{w_style}">{w_name}</span>) %H:%M')
 
         align = "align-right" if s_up == current_user_upper else "align-left"
         h_style = "flex-direction: row-reverse;" if s_up == current_user_upper else ""
@@ -360,47 +384,36 @@ try:
         m_body, img_url = m.get("message_body", ""), m.get("image_url")
         img_html = f'<div><img src="{img_url}" class="chat-image"></div>' if img_url else ""
         
-        # --- タイピング演出(最新1件のみ)判定とHTML生成 ---
+        # タイピング演出
         is_new_msg = (m_id == latest_id) and (st.session_state["page_offset"] == 0) and (m_id not in st.session_state["shown_ids"])
-        
-        if is_new_msg:
-            # 1文字ずつ分割して、0.05秒ずつ遅らせるHTMLを生成
+        if is_new_msg and m_body:
             typed_html = ""
             for i, char in enumerate(m_body):
-                delay = i * 0.05  # 一定速度（0.05秒間隔）
+                delay = i * 0.05
                 char_display = "<br>" if char == "\n" else char
                 typed_html += f'<span class="typewriter-char" style="animation-delay: {delay}s;">{char_display}</span>'
             display_body = typed_html
             st.session_state["shown_ids"].add(m_id)
         else:
-            # 過去ログや演出済みはそのまま表示
             display_body = m_body.replace("\n", "<br>")
 
-        # --- テキストエフェクト判定 ---
+        # テキストエフェクト（既存ロジック）
         effect_class = ""
-        if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]): 
-            effect_class = "rainbow-active"
-        elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "ちょい飲み"]): 
-            effect_class = "neon-active"
-        elif any(word in m_body for word in ["ドキドキ", "ワクワク", "楽しみ", "待ってる"]): 
-            effect_class = "pulse-active"
-        elif any(word in m_body for word in ["デート", "楽しみ", "また行きたい", "会いたい", "ランチ", "映画"]): 
-            effect_class = "marker-pink-active"
-        elif any(word in m_body for word in ["仕事", "会議", "確認", "了解", "OK", "出張", "資料"]): 
-            effect_class = "marker-blue-active"
-        elif any(word in m_body for word in ["予約", "集合", "待ち合わせ", "予定", "計画", "約束", "チケット", "行こう"]): 
-            effect_class = "marker-active"
-        elif any(word in m_body for word in ["海", "お風呂", "ゆらゆら", "おやすみ", "ねむい", "おはよー"]): 
-            effect_class = "wave-active"
-        elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "本当"]): 
-            effect_class = "mystery-active"
+        if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]): effect_class = "rainbow-active"
+        elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "ちょい飲み"]): effect_class = "neon-active"
+        elif any(word in m_body for word in ["ドキドキ", "ワクワク", "楽しみ", "待ってる"]): effect_class = "pulse-active"
+        elif any(word in m_body for word in ["デート", "楽しみ", "また行きたい", "会いたい", "ランチ", "映画"]): effect_class = "marker-pink-active"
+        elif any(word in m_body for word in ["仕事", "会議", "確認", "了解", "OK", "出張", "資料"]): effect_class = "marker-blue-active"
+        elif any(word in m_body for word in ["予約", "集合", "待ち合わせ", "予定", "計画", "約束", "チケット", "行こう"]): effect_class = "marker-active"
+        elif any(word in m_body for word in ["海", "お風呂", "ゆらゆら", "おやすみ", "ねむい", "おはよー"]): effect_class = "wave-active"
+        elif any(word in m_body for word in ["秘密", "実は", "わからない", "内緒", "おはよう", "本当"]): effect_class = "mystery-active"
         
         st.markdown(f"""
             <div class="chat-row {align}">
                 <div class="chat-header" style="{h_style}">
                     <span class="{n_class}">{s_name}</span><span class="timestamp">{time_display}</span>
                 </div>
-                <div class="message-text {effect_class}">{display_body}</div>
+                {"<div class='message-text " + effect_class + "'>" + display_body + "</div>" if m_body else ""}
                 {img_html}
             </div>
         """, unsafe_allow_html=True)
@@ -414,5 +427,6 @@ if prompt:
         st.session_state["last_compression_info"] = None
         st.session_state["page_offset"] = 0; st.rerun()
     except Exception as e: st.error(f"送信エラー: {e}")
+
 if st.session_state["page_offset"] == 0:
     components.html('<script>window.parent.document.querySelector(".main").scrollTo(0, 99999);</script>', height=0)
