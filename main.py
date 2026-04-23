@@ -223,36 +223,78 @@ if st.session_state["page_offset"] == 0:
         img_file = st.file_uploader("画像選択", type=['png', 'jpg', 'jpeg'], key=st.session_state["uploader_key"])
         
         if img_file:
-            if st.button("🖼️ 画像を送信"):
+            if st.button("🖼️ 画像を送信", key="upload_btn_final"):
                 try:
-                    with st.spinner("送信中..."):
-                        original_size = img_file.size / 1024
-                        compressed_data = compress_image(img_file)
-                        compressed_size = compressed_data.getbuffer().nbytes / 1024
-                        
-                        ext = img_file.name.split('.')[-1]
-                        file_path = f"public/{uuid.uuid4()}.{ext}"
-                        
-                        supabase.storage.from_("images").upload(
-                            file_path, 
-                            compressed_data.getvalue(), 
-                            {"content-type": f"image/{ext}"}
-                        )
-                        
-                        final_url = supabase.storage.from_("images").get_public_url(file_path)
-                        
-                        supabase.table(table_name).insert({
-                            "sender_name": current_user_raw, 
-                            "message_body": "", 
-                            "image_url": final_url
-                        }).execute()
-                        
-                        # 送信成功後の処理：情報を更新し、キーを変えてアップローダーをリセット
-                        st.session_state["last_compression_info"] = f"✅ 送信完了！ {original_size:.1f}KB → {compressed_size:.1f}KB"
-                        st.session_state["uploader_key"] = str(uuid.uuid4())
-                        st.rerun()
+                    # 進行状況を見える化
+                    progress_text = st.empty()
+                    progress_text.info("1/3: 画像を圧縮中...")
+                    
+                    compressed_data = compress_image(img_file)
+                    
+                    progress_text.info("2/3: Supabase Storageへ送信中...")
+                    ext = img_file.name.split('.')[-1].lower()
+                    file_path = f"public/{uuid.uuid4()}.{ext}"
+                    
+                    # ストレージへのアップロード
+                    supabase.storage.from_("images").upload(
+                        file_path, 
+                        compressed_data.getvalue(), 
+                        {"content-type": f"image/{ext}"}
+                    )
+                    
+                    progress_text.info("3/3: データベースへ記録中...")
+                    final_url = supabase.storage.from_("images").get_public_url(file_path)
+                    
+                    # データベースへの挿入
+                    supabase.table(table_name).insert({
+                        "sender_name": current_user_raw, 
+                        "message_body": "", 
+                        "image_url": final_url
+                    }).execute()
+                    
+                    st.success("送信完了！")
+                    st.session_state["uploader_key"] = str(uuid.uuid4())
+                    st.rerun()
+
                 except Exception as e:
-                    st.error(f"アップロードエラー: {e}")
+                    # Connection lostになる前に、このエラー内容を画面に出し切る
+                    st.error("⚠️ 送信中にエラーが発生しました")
+                    st.code(str(e)) # エラーの具体的な中身を表示
+                    st.exception(e) # スタックトレースを表示
+                    # ログを確認するために rerun を止める
+                    st.stop()
+
+#        if img_file:
+#            if st.button("🖼️ 画像を送信"):
+#                try:
+#                    with st.spinner("送信中..."):
+#                        original_size = img_file.size / 1024
+#                        compressed_data = compress_image(img_file)
+#                        compressed_size = compressed_data.getbuffer().nbytes / 1024
+#                        
+#                        ext = img_file.name.split('.')[-1]
+#                        file_path = f"public/{uuid.uuid4()}.{ext}"
+#                        
+#                        supabase.storage.from_("images").upload(
+#                            file_path, 
+#                            compressed_data.getvalue(), 
+#                            {"content-type": f"image/{ext}"}
+#                        )
+#                        
+#                        final_url = supabase.storage.from_("images").get_public_url(file_path)
+#                        
+#                        supabase.table(table_name).insert({
+#                            "sender_name": current_user_raw, 
+#                            "message_body": "", 
+#                            "image_url": final_url
+#                        }).execute()
+#                        
+#                        # 送信成功後の処理：情報を更新し、キーを変えてアップローダーをリセット
+#                        st.session_state["last_compression_info"] = f"✅ 送信完了！ {original_size:.1f}KB → {compressed_size:.1f}KB"
+#                        st.session_state["uploader_key"] = str(uuid.uuid4())
+#                        st.rerun()
+#                except Exception as e:
+#                    st.error(f"アップロードエラー: {e}")
 
 # --- 9. データ取得 & 表示ロジック ---
 try:
