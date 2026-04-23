@@ -4,3 +4,6 @@ toolbarMode = "hidden"
 [server]
 maxUploadSize = 20
 maxMessageSize = 20
+
+[browser]
+gatherUsageStats = false
