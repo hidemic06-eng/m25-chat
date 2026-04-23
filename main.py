@@ -189,7 +189,6 @@ current_user_upper = current_user_raw.upper()
 # --- 7. ヘッダー ---
 st.title(f"💬 M25-Chat{status_label}")
 auto_update = st.toggle("自動更新(8s)", value=True)
-# ※autorefreshは干渉を防ぐため、一番最後に移動しました
 st.divider()
 
 # --- 8. ナビゲーション & アップロードエリア ---
@@ -218,7 +217,6 @@ if st.session_state["page_offset"] == 0:
         # アップローダー本体
         img_file = st.file_uploader("画像選択", type=['png', 'jpg', 'jpeg'], key=st.session_state["uploader_key"])
         
-        # ボタン判定を分離し、過去の安定した構造を再現
         if img_file:
             if st.button("🖼️ 画像を送信"):
                 try:
@@ -244,6 +242,7 @@ if st.session_state["page_offset"] == 0:
                             "image_url": final_url
                         }).execute()
                         
+                        # 送信成功後の処理：情報を更新し、キーを変えてアップローダーをリセット
                         st.session_state["last_compression_info"] = f"✅ 送信完了！ {original_size:.1f}KB → {compressed_size:.1f}KB"
                         st.session_state["uploader_key"] = str(uuid.uuid4())
                         st.rerun()
@@ -425,6 +424,5 @@ if st.session_state["page_offset"] == 0:
     components.html('<script>window.parent.document.querySelector(".main").scrollTo(0, 99999);</script>', height=0)
 
 # --- 11. 自動更新（最後に実行） ---
-# 送信処理と干渉しないよう、全ての描画が終わった後にタイマーをセットします。
 if auto_update and st.session_state["page_offset"] == 0:
     st_autorefresh(interval=8000, key="chat_ref")
