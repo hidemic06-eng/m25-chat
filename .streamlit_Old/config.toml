@@ -1,0 +1,7 @@
+[client]
+toolbarMode = "hidden"
+
+
+
+[browser]
+gatherUsageStats = false
