@@ -5,7 +5,7 @@ import streamlit.components.v1 as components
 from datetime import datetime, timedelta, timezone
 import random
 import re
-from PIL import Image, ImageOps  # ImageOpsを追加
+from PIL import Image, ImageOps
 import io
 import uuid
 
@@ -23,9 +23,10 @@ app_bg_color = "#313338"
 text_main_color = "#dbdee1"
 sub_text_color = "#949ba4"
 
-# --- 記念日判定 ---
+# --- 記念日判定 (5/25 本番仕様) ---
 now_jst = datetime.now(timezone.utc) + timedelta(hours=9)
-is_anniversary = (now_jst.month == 4 and now_jst.day == 28)
+# テスト時はここを (now_jst.month == 4 and now_jst.day == 28) などに変更してください
+is_anniversary = (now_jst.month == 5 and now_jst.day == 25)
 
 if table_name == "messages_test":
     status_label = " 🧪 TEST"
@@ -34,18 +35,18 @@ else:
     status_label = ""
     input_placeholder = "メッセージを入力..."
 
-# --- 修正：画像不要！コードで作るリッチな星空演出 ---
+# --- リッチな星空＆お月様演出 ---
 star_styles = ""
 star_html = ""
 
 if is_anniversary:
-    app_bg_color = "#050510"  # より深い宇宙の漆黒
+    app_bg_color = "#03030a"  # 月明かりを際立たせるための深い紺黒
     
-    # 1. CSSの生成 (瞬く星・流れ星・浮遊粒子の定義)
+    # 1. CSSの生成
     star_styles = """
-    /* 背景：宇宙の深みを出すグラデーション */
+    /* 背景：右上（月の位置）から広がる月明かりのグラデーション */
     .stApp {
-        background: radial-gradient(circle at top, #1B2735 0%, #000 100%) !important;
+        background: radial-gradient(circle at 80% 20%, #1e2a44 0%, #03030a 100%) !important;
     }
 
     /* 瞬く星のベース */
@@ -55,74 +56,92 @@ if is_anniversary:
         top: 0; left: 0; width: 100%; height: 100%;
         background: transparent url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/123163/stars.png') repeat;
         z-index: -1;
-        opacity: 0.5;
+        opacity: 0.4;
         animation: stars-twinkle 4s ease-in-out infinite alternate;
     }
     @keyframes stars-twinkle {
-        from { opacity: 0.3; } to { opacity: 0.8; }
+        from { opacity: 0.2; } to { opacity: 0.6; }
+    }
+
+    /* 5/25の月：満ちていく力強い月 (🌔) */
+    .anniversary-moon {
+        position: fixed;
+        top: 40px;
+        right: 10%;
+        font-size: 100px;
+        z-index: 0;
+        pointer-events: none;
+        filter: drop-shadow(0 0 30px rgba(255, 255, 220, 0.6));
+        animation: moon-sway 6s ease-in-out infinite alternate;
+        user-select: none;
+    }
+    @keyframes moon-sway {
+        0% { transform: translateY(0px) rotate(0deg); opacity: 0.85; }
+        100% { transform: translateY(-10px) rotate(2deg); opacity: 1; }
     }
 
     /* タイトルのネオン演出 */
     h1 {
         color: #fff !important;
-        text-shadow: 0 0 10px #fff, 0 0 20px #ffd700, 0 0 30px #ff8c00 !important;
+        text-shadow: 0 0 10px #fff, 0 0 20px #ffd700 !important;
         animation: neon-glow 2s ease-in-out infinite alternate;
     }
     @keyframes neon-glow {
-        from { filter: brightness(1); } to { filter: brightness(1.3) drop-shadow(0 0 10px #ffd700); }
+        from { filter: brightness(1); } to { filter: brightness(1.2) drop-shadow(0 0 10px #ffd700); }
     }
 
-    /* 流れ星：鋭い光の筋 */
+    /* 流れ星：情緒的な速度に調整 */
     .shooting-star {
         position: fixed;
-        width: 150px; height: 1px;
-        background: linear-gradient(90deg, #fff, transparent);
-        z-index: 0;
-        opacity: 0;
+        width: 200px; height: 1px;
+        background: linear-gradient(90deg, rgba(255,255,255,0.8), transparent);
+        z-index: 0; opacity: 0;
         pointer-events: none;
-        animation: shooting-swipe 4s linear infinite;
+        animation: shooting-swipe 6s linear infinite;
     }
     @keyframes shooting-swipe {
         0% { transform: translate(100vw, -10vh) rotate(-35deg); opacity: 0; }
-        10% { opacity: 1; }
-        30% { transform: translate(-10vw, 100vh) rotate(-35deg); opacity: 0; }
+        5% { opacity: 1; }
+        25% { transform: translate(-10vw, 100vh) rotate(-35deg); opacity: 0; }
         100% { transform: translate(-10vw, 100vh) rotate(-35deg); opacity: 0; }
     }
 
-    /* 上昇する光の粒子（パーティクル） */
+    /* 上昇する光の粒子（星の欠片） */
     .particle {
         position: fixed;
         bottom: -10px;
-        background: rgba(255, 215, 0, 0.6);
+        background: rgba(255, 255, 200, 0.4);
         border-radius: 50%;
         pointer-events: none;
-        animation: float-up 10s linear infinite;
+        animation: float-up 12s linear infinite;
         z-index: 0;
     }
     @keyframes float-up {
         0% { transform: translateY(0) scale(1); opacity: 0; }
-        10% { opacity: 1; }
-        90% { opacity: 1; }
+        10% { opacity: 0.8; }
+        90% { opacity: 0.8; }
         100% { transform: translateY(-100vh) scale(0.3); opacity: 0; }
     }
     """
     
-    # 2. HTMLの生成 (流れ星と20個の粒子をランダム配置)
+    # 2. HTMLの生成 (月 + 流れ星 + 25個の粒子)
+    moon_emoji = "🌔"
+    moon_html = f'<div class="anniversary-moon">{moon_emoji}</div>'
+    
     s_stars_html = """
-    <div class="shooting-star" style="top:10vh; animation-delay:0s; animation-duration:3s;"></div>
-    <div class="shooting-star" style="top:40vh; animation-delay:5s; animation-duration:4s;"></div>
-    <div class="shooting-star" style="top:-5vh; animation-delay:8s; animation-duration:2.5s;"></div>
+    <div class="shooting-star" style="top:15vh; animation-delay:1s; animation-duration:5s;"></div>
+    <div class="shooting-star" style="top:50vh; animation-delay:7s; animation-duration:7s;"></div>
     """
     
     p_list = []
-    for _ in range(20):
+    for _ in range(25):
         left = random.randint(0, 100)
-        size = random.randint(2, 4)
-        delay = random.uniform(0, 10)
-        duration = random.uniform(8, 15)
+        size = random.randint(1, 3)
+        delay = random.uniform(0, 15)
+        duration = random.uniform(10, 18)
         p_list.append(f'<div class="particle" style="left:{left}%; width:{size}px; height:{size}px; animation-delay:{delay}s; animation-duration:{duration}s;"></div>')
     
-    star_html = s_stars_html + "".join(p_list)
+    star_html = moon_html + s_stars_html + "".join(p_list)
 
 st.markdown(f"""
     <style>
@@ -260,7 +279,7 @@ if "password_correct" not in st.session_state:
     try:
         ua = st.context.headers.get("User-Agent", "")
         query_params = st.query_params
-        url_user = query_params.get("user", None)
+        url_user = query_params.get("user", [None])[0] # query_paramsの取得方法を安定化
         os_info = "Unknown Device"; detected_user = "Unknown"
         if "Android" in ua: os_info = "Android"; detected_user = "Maki"
         elif "iPhone" in ua or "iPad" in ua: os_info = "iOS Device"; detected_user = "Hide"
