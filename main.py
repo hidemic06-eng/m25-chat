@@ -5,7 +5,7 @@ import streamlit.components.v1 as components
 from datetime import datetime, timedelta, timezone
 import random
 import re
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps  # ImageOpsを追加
 import io
 import uuid
 
@@ -23,7 +23,7 @@ app_bg_color = "#313338"
 text_main_color = "#dbdee1"
 sub_text_color = "#949ba4"
 
-# --- 記念日判定 ---
+# --- 記念日判定 (追加) ---
 now_jst = datetime.now(timezone.utc) + timedelta(hours=9)
 is_anniversary = (now_jst.month == 4 and now_jst.day == 28)
 
@@ -34,15 +34,15 @@ else:
     status_label = ""
     input_placeholder = "メッセージを入力..."
 
-# 星空・流れ星・パーティクル用CSS/HTMLの生成
+# 星空・流れ星用CSS/HTMLの生成 (追加)
 star_styles = ""
 star_html = ""
 if is_anniversary:
-    app_bg_color = "#050510"  # より深い夜空色
+    app_bg_color = "#0a0a1a"  # 記念日用の深い夜空色
     star_styles = """
-    /* 背景：宇宙の深みを出すグラデーション */
+    /* 星空背景 */
     .stApp {
-        background: radial-gradient(circle at top, #1B2735 0%, #000 100%) !important;
+        background: radial-gradient(ellipse at bottom, #1B2735 0%, #090A0F 100%) !important;
     }
     .stApp::before {
         content: "";
@@ -57,58 +57,39 @@ if is_anniversary:
         from { opacity: 0.3; } to { opacity: 0.7; }
     }
 
-    /* タイトルのネオン演出 */
-    h1 {
-        color: #fff !important;
-        text-shadow: 0 0 10px #fff, 0 0 20px #ffd700, 0 0 30px #ff8c00 !important;
-        animation: neon-glow 2s ease-in-out infinite alternate;
-    }
-    @keyframes neon-glow {
-        from { filter: brightness(1); } to { filter: brightness(1.5) drop-shadow(0 0 10px #ffd700); }
-    }
-
-    /* 流れ星：より長く、鋭い光の筋に改良 */
+    /* 流れ星の定義 */
     .shooting-star {
         position: fixed;
-        width: 150px; height: 2px;
-        background: linear-gradient(90deg, rgba(255,255,255,1), transparent);
-        animation: shooting-swipe 3s linear infinite;
-        z-index: 0;
-        opacity: 0;
-        pointer-events: none;
-    }
-    @keyframes shooting-swipe {
-        0% { transform: translate(100vw, 0) rotate(-35deg); opacity: 1; }
-        20% { transform: translate(-100vw, 100vh) rotate(-35deg); opacity: 0; }
-        100% { transform: translate(-100vw, 100vh) rotate(-35deg); opacity: 0; }
-    }
-    .s1 { top: 10%; animation-delay: 0s; }
-    .s2 { top: 30%; animation-delay: 5s; animation-duration: 4s; }
-    .s3 { top: -10%; animation-delay: 8s; animation-duration: 2.5s; }
-
-    /* 下から昇る光の粒子（パーティクル） */
-    .particle {
-        position: fixed;
-        bottom: -10px;
-        background: rgba(255, 215, 0, 0.6);
+        top: 50%; left: 50%;
+        width: 4px; height: 4px;
+        background: #fff;
         border-radius: 50%;
+        box-shadow: 0 0 0 4px rgba(255,255,255,0.1), 0 0 0 8px rgba(255,255,255,0.1), 0 0 20px rgba(255,255,255,1);
+        animation: shooting 3s linear infinite;
+        z-index: 0;
         pointer-events: none;
-        animation: float-up 10s linear infinite;
     }
-    @keyframes float-up {
-        0% { transform: translateY(0) scale(1); opacity: 0; }
-        10% { opacity: 1; }
-        90% { opacity: 1; }
-        100% { transform: translateY(-100vh) scale(0.5); opacity: 0; }
+    .shooting-star::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 100px; height: 1px;
+        background: linear-gradient(90deg, #fff, transparent);
     }
+    @keyframes shooting {
+        0% { transform: rotate(315deg) translateX(0); opacity: 1; }
+        70% { opacity: 1; }
+        100% { transform: rotate(315deg) translateX(-1000px); opacity: 0; }
+    }
+    .star-1 { top: 0; right: 0; animation-delay: 0s; animation-duration: 3s; }
+    .star-2 { top: 20%; right: 10%; animation-delay: 1s; animation-duration: 2s; }
+    .star-3 { top: 50%; right: -50px; animation-delay: 4s; animation-duration: 4s; }
     """
-    
-    # 流れ星とパーティクル（20個）を生成
-    star_html = f"""
-    <div class="shooting-star s1"></div>
-    <div class="shooting-star s2"></div>
-    <div class="shooting-star s3"></div>
-    {" ".join([f'<div class="particle" style="left:{random.randint(0,100)}%; width:{n:=random.randint(2,5)}px; height:{n}px; animation-delay:{random.randint(0,10)}s; animation-duration:{random.randint(8,15)}s;"></div>' for _ in range(20)])}
+    star_html = """
+    <div class="shooting-star star-1"></div>
+    <div class="shooting-star star-2"></div>
+    <div class="shooting-star star-3"></div>
     """
 
 st.markdown(f"""
@@ -150,6 +131,7 @@ st.markdown(f"""
         padding: 0; 
     }}
 
+    /* ポラロイド風フレームのデザイン */
     .chat-image {{
         max-width: 280px;
         border-radius: 4px;
@@ -172,6 +154,8 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
+    /* --- アニメーション定義 --- */
+    /* 修正：1文字ずつ一定速度で表示されるタイピング演出 */
     .typewriter-char {{
         display: inline-block;
         opacity: 0;
@@ -260,11 +244,12 @@ if "password_correct" not in st.session_state:
         st.rerun()
     st.stop()
 
-# --- 6. セッション状態の初期化 ---
+# --- 6. 設定 ---
 if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "uploader_key" not in st.session_state: st.session_state["uploader_key"] = str(uuid.uuid4())
 if "last_compression_info" not in st.session_state: st.session_state["last_compression_info"] = None
+# 新規追加：演出済みIDを記録するセット
 if "shown_ids" not in st.session_state: st.session_state["shown_ids"] = set()
 
 current_user_raw = st.session_state.get("username", "Hide")
@@ -277,7 +262,7 @@ if auto_update and st.session_state["page_offset"] == 0:
     st_autorefresh(interval=15000, key="chat_ref")
 st.divider()
 
-# --- 8. ナビゲーション & 画像アップロード ---
+# --- 8. ナビゲーション ---
 col_prev, col_page, col_next = st.columns([1, 2, 1])
 with col_prev:
     if st.button("⬅️ 前の20件"):
@@ -286,19 +271,19 @@ with col_prev:
     if st.session_state["page_offset"] == 0:
         with st.expander("📷 写真をアップロード", expanded=False):
             if st.session_state["last_compression_info"]: st.info(st.session_state["last_compression_info"])
-            # 複数選択対応
-            img_files = st.file_uploader("画像選択", type=['png', 'jpg', 'jpeg'], key=st.session_state["uploader_key"], accept_multiple_files=True)
-            if img_files and st.button("🖼️ 画像を送信"):
+            img_file = st.file_uploader("画像選択", type=['png', 'jpg', 'jpeg'], key=st.session_state["uploader_key"])
+            if img_file and st.button("🖼️ 画像を送信"):
                 try:
                     with st.spinner("送信中..."):
-                        for img_file in img_files:
-                            compressed_data = compress_image(img_file)
-                            ext = img_file.name.split('.')[-1]
-                            file_path = f"public/{uuid.uuid4()}.{ext}"
-                            supabase.storage.from_("images").upload(file_path, compressed_data.getvalue(), {"content-type": f"image/{ext}"})
-                            final_url = supabase.storage.from_("images").get_public_url(file_path)
-                            supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": "", "image_url": final_url}).execute()
-                        st.session_state["last_compression_info"] = f"✅ {len(img_files)}枚送信完了！"
+                        original_size = img_file.size / 1024
+                        compressed_data = compress_image(img_file)
+                        compressed_size = compressed_data.getbuffer().nbytes / 1024
+                        ext = img_file.name.split('.')[-1]
+                        file_path = f"public/{uuid.uuid4()}.{ext}"
+                        supabase.storage.from_("images").upload(file_path, compressed_data.getvalue(), {"content-type": f"image/{ext}"})
+                        final_url = supabase.storage.from_("images").get_public_url(file_path)
+                        supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": "", "image_url": final_url}).execute()
+                        st.session_state["last_compression_info"] = f"✅ 送信完了！ {original_size:.1f}KB → {compressed_size:.1f}KB"
                         st.session_state["uploader_key"] = str(uuid.uuid4()); st.rerun()
                 except Exception as e: st.error(f"Error: {e}")
 
@@ -308,7 +293,7 @@ with col_next:
     if st.session_state["page_offset"] >= 20:
         if st.button("次の20件 ➡️"): st.session_state["page_offset"] -= 20; st.rerun()
 
-# --- 9. データ取得 & 演出の判定 ---
+# --- 9. 表示 & 演出の判定 ---
 try:
     start_range = st.session_state["page_offset"]
     end_range = start_range + 50
@@ -317,7 +302,7 @@ try:
     all_data = res_all.data
     messages = all_data[:20][::-1]
     
-    # 9-1. 固定浮遊テキスト (#付きメッセージ)
+    # --- #付きメッセージを1時間流す機能 ---
     if st.session_state["page_offset"] == 0:
         now = datetime.now(timezone.utc)
         one_hour_ago = now - timedelta(hours=1)
@@ -328,8 +313,8 @@ try:
         ]
         if pinned_msgs:
             fixed_marquee_html = '<div class="fixed-marquee-wrapper">'
-            for pm in pinned_msgs:
-                icon = random.choice(["🌈", "📢", "💡", "🚀", "🎉", "📌", "🐣", "🏃", "📣"])
+            for idx, pm in enumerate(pinned_msgs):
+                icon = random.choice(["🌈", "📢", "💡", "🚀", "🎉", "💡", "📌", "🐣", "🏃", "📣"])
                 clean_text = f"{icon} {pm['message_body'].lstrip('#').strip()}"
                 text_color = "rgba(255, 182, 193, 0.5)" if "MAKI" in pm["sender_name"].upper() else "rgba(135, 206, 235, 0.5)"
                 top_pos = random.randint(5, 85) 
@@ -337,7 +322,6 @@ try:
                 fixed_marquee_html += f'<div class="fixed-marquee-text" style="top:{top_pos}vh; animation-delay:-{delay}s; color:{text_color};">{clean_text}</div>'
             st.markdown(fixed_marquee_html + '</div>', unsafe_allow_html=True)
 
-    # 9-2. 最新メッセージによるエフェクト
     if messages and st.session_state["page_offset"] == 0:
         latest_msg = messages[-1]
         msg_id, msg_body, img_url_latest = latest_msg.get("id"), latest_msg.get("message_body", ""), latest_msg.get("image_url")
@@ -387,7 +371,6 @@ try:
                     peek_html += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
                 st.markdown(peek_html + '</div>', unsafe_allow_html=True)
 
-            # 特殊キーワード演出
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             if any(word in msg_body for word in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
@@ -408,9 +391,11 @@ try:
                 st.markdown(marquee_html + '</div>', unsafe_allow_html=True)
             st.session_state["last_effect_id"] = msg_id
 
-    # 9-3. チャットログ表示
+    # --- 9-2. チャットログ表示 ---
     wd_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     today_str = now_jst.strftime('%Y-%m-%d')
+
+    # 最新メッセージのIDを取得（演出判定用）
     latest_id = messages[-1].get("id") if messages else None
 
     for m in messages:
@@ -420,13 +405,16 @@ try:
         s_up = s_name.upper()
         m_id = m.get("id")
 
+        # --- 日付・曜日表示の判定 ---
         msg_date_str = jst_time.strftime('%Y-%m-%d')
         if msg_date_str == today_str:
             time_display = jst_time.strftime('%H:%M')
         else:
             w_idx = jst_time.weekday()
             w_name = wd_en[w_idx]
-            w_style = "color: #58a6ff;" if w_idx == 5 else "color: #ff7b72;" if w_idx == 6 else ""
+            w_style = ""
+            if w_idx == 5: w_style = "color: #58a6ff;"
+            elif w_idx == 6: w_style = "color: #ff7b72;"
             w_display = f'<span style="{w_style}">{w_name}</span>'
             time_display = jst_time.strftime(f'%m/%d({w_display}) %H:%M')
 
@@ -436,20 +424,23 @@ try:
         m_body, img_url = m.get("message_body", ""), m.get("image_url")
         img_html = f'<div><img src="{img_url}" class="chat-image"></div>' if img_url else ""
         
+        # --- タイピング演出(最新1件のみ)判定とHTML生成 ---
         is_new_msg = (m_id == latest_id) and (st.session_state["page_offset"] == 0) and (m_id not in st.session_state["shown_ids"])
         
         if is_new_msg:
+            # 1文字ずつ分割して、0.05秒ずつ遅らせるHTMLを生成
             typed_html = ""
             for i, char in enumerate(m_body):
-                delay = i * 0.05
+                delay = i * 0.05  # 一定速度（0.05秒間隔）
                 char_display = "<br>" if char == "\n" else char
                 typed_html += f'<span class="typewriter-char" style="animation-delay: {delay}s;">{char_display}</span>'
             display_body = typed_html
             st.session_state["shown_ids"].add(m_id)
         else:
+            # 過去ログや演出済みはそのまま表示
             display_body = m_body.replace("\n", "<br>")
 
-        # メッセージ個別のテキスト演出判定
+        # --- テキストエフェクト判定 ---
         effect_class = ""
         if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]): 
             effect_class = "rainbow-active"
@@ -487,6 +478,5 @@ if prompt:
         st.session_state["last_compression_info"] = None
         st.session_state["page_offset"] = 0; st.rerun()
     except Exception as e: st.error(f"送信エラー: {e}")
-
 if st.session_state["page_offset"] == 0:
     components.html('<script>window.parent.document.querySelector(".main").scrollTo(0, 99999);</script>', height=0)
