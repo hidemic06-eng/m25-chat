@@ -5,7 +5,7 @@ import streamlit.components.v1 as components
 from datetime import datetime, timedelta, timezone
 import random
 import re
-from PIL import Image, ImageOps  # ImageOpsを追加
+from PIL import Image, ImageOps
 import io
 import uuid
 
@@ -260,7 +260,7 @@ if "password_correct" not in st.session_state:
         st.rerun()
     st.stop()
 
-# --- 6. 設定 ---
+# --- 6. セッション状態の初期化 ---
 if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "uploader_key" not in st.session_state: st.session_state["uploader_key"] = str(uuid.uuid4())
@@ -277,7 +277,7 @@ if auto_update and st.session_state["page_offset"] == 0:
     st_autorefresh(interval=15000, key="chat_ref")
 st.divider()
 
-# --- 8. ナビゲーション ---
+# --- 8. ナビゲーション & 画像アップロード ---
 col_prev, col_page, col_next = st.columns([1, 2, 1])
 with col_prev:
     if st.button("⬅️ 前の20件"):
@@ -286,19 +286,19 @@ with col_prev:
     if st.session_state["page_offset"] == 0:
         with st.expander("📷 写真をアップロード", expanded=False):
             if st.session_state["last_compression_info"]: st.info(st.session_state["last_compression_info"])
-            img_file = st.file_uploader("画像選択", type=['png', 'jpg', 'jpeg'], key=st.session_state["uploader_key"])
-            if img_file and st.button("🖼️ 画像を送信"):
+            # 複数選択対応
+            img_files = st.file_uploader("画像選択", type=['png', 'jpg', 'jpeg'], key=st.session_state["uploader_key"], accept_multiple_files=True)
+            if img_files and st.button("🖼️ 画像を送信"):
                 try:
                     with st.spinner("送信中..."):
-                        original_size = img_file.size / 1024
-                        compressed_data = compress_image(img_file)
-                        compressed_size = compressed_data.getbuffer().nbytes / 1024
-                        ext = img_file.name.split('.')[-1]
-                        file_path = f"public/{uuid.uuid4()}.{ext}"
-                        supabase.storage.from_("images").upload(file_path, compressed_data.getvalue(), {"content-type": f"image/{ext}"})
-                        final_url = supabase.storage.from_("images").get_public_url(file_path)
-                        supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": "", "image_url": final_url}).execute()
-                        st.session_state["last_compression_info"] = f"✅ 送信完了！ {original_size:.1f}KB → {compressed_size:.1f}KB"
+                        for img_file in img_files:
+                            compressed_data = compress_image(img_file)
+                            ext = img_file.name.split('.')[-1]
+                            file_path = f"public/{uuid.uuid4()}.{ext}"
+                            supabase.storage.from_("images").upload(file_path, compressed_data.getvalue(), {"content-type": f"image/{ext}"})
+                            final_url = supabase.storage.from_("images").get_public_url(file_path)
+                            supabase.table(table_name).insert({"sender_name": current_user_raw, "message_body": "", "image_url": final_url}).execute()
+                        st.session_state["last_compression_info"] = f"✅ {len(img_files)}枚送信完了！"
                         st.session_state["uploader_key"] = str(uuid.uuid4()); st.rerun()
                 except Exception as e: st.error(f"Error: {e}")
 
@@ -308,7 +308,7 @@ with col_next:
     if st.session_state["page_offset"] >= 20:
         if st.button("次の20件 ➡️"): st.session_state["page_offset"] -= 20; st.rerun()
 
-# --- 9. 表示 & 演出の判定 ---
+# --- 9. データ取得 & 演出の判定 ---
 try:
     start_range = st.session_state["page_offset"]
     end_range = start_range + 50
@@ -317,6 +317,7 @@ try:
     all_data = res_all.data
     messages = all_data[:20][::-1]
     
+    # 9-1. 固定浮遊テキスト (#付きメッセージ)
     if st.session_state["page_offset"] == 0:
         now = datetime.now(timezone.utc)
         one_hour_ago = now - timedelta(hours=1)
@@ -327,8 +328,8 @@ try:
         ]
         if pinned_msgs:
             fixed_marquee_html = '<div class="fixed-marquee-wrapper">'
-            for idx, pm in enumerate(pinned_msgs):
-                icon = random.choice(["🌈", "📢", "💡", "🚀", "🎉", "💡", "📌", "🐣", "🏃", "📣"])
+            for pm in pinned_msgs:
+                icon = random.choice(["🌈", "📢", "💡", "🚀", "🎉", "📌", "🐣", "🏃", "📣"])
                 clean_text = f"{icon} {pm['message_body'].lstrip('#').strip()}"
                 text_color = "rgba(255, 182, 193, 0.5)" if "MAKI" in pm["sender_name"].upper() else "rgba(135, 206, 235, 0.5)"
                 top_pos = random.randint(5, 85) 
@@ -336,6 +337,7 @@ try:
                 fixed_marquee_html += f'<div class="fixed-marquee-text" style="top:{top_pos}vh; animation-delay:-{delay}s; color:{text_color};">{clean_text}</div>'
             st.markdown(fixed_marquee_html + '</div>', unsafe_allow_html=True)
 
+    # 9-2. 最新メッセージによるエフェクト
     if messages and st.session_state["page_offset"] == 0:
         latest_msg = messages[-1]
         msg_id, msg_body, img_url_latest = latest_msg.get("id"), latest_msg.get("message_body", ""), latest_msg.get("image_url")
@@ -385,6 +387,7 @@ try:
                     peek_html += f'<div class="peek-item" style="{side}:-100px; top:{top}%; animation:{anim_name} {duration}s forwards; animation-delay:{delay}s;">{target_emoji}</div>'
                 st.markdown(peek_html + '</div>', unsafe_allow_html=True)
 
+            # 特殊キーワード演出
             if any(word in msg_body for word in ["おめでとう", "祝", "記念日", "誕生日", "やったー"]): st.balloons()
             if any(word in msg_body for word in ["雪", "寒い", "冬", "クリスマス"]): st.snow()
             if any(word in msg_body for word in ["こら", "起きて", "え！", "びっくり", "地震", "怒"]):
@@ -405,7 +408,7 @@ try:
                 st.markdown(marquee_html + '</div>', unsafe_allow_html=True)
             st.session_state["last_effect_id"] = msg_id
 
-    # --- 9-2. チャットログ表示 ---
+    # 9-3. チャットログ表示
     wd_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     today_str = now_jst.strftime('%Y-%m-%d')
     latest_id = messages[-1].get("id") if messages else None
@@ -423,9 +426,7 @@ try:
         else:
             w_idx = jst_time.weekday()
             w_name = wd_en[w_idx]
-            w_style = ""
-            if w_idx == 5: w_style = "color: #58a6ff;"
-            elif w_idx == 6: w_style = "color: #ff7b72;"
+            w_style = "color: #58a6ff;" if w_idx == 5 else "color: #ff7b72;" if w_idx == 6 else ""
             w_display = f'<span style="{w_style}">{w_name}</span>'
             time_display = jst_time.strftime(f'%m/%d({w_display}) %H:%M')
 
@@ -448,6 +449,7 @@ try:
         else:
             display_body = m_body.replace("\n", "<br>")
 
+        # メッセージ個別のテキスト演出判定
         effect_class = ""
         if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]): 
             effect_class = "rainbow-active"
@@ -485,5 +487,6 @@ if prompt:
         st.session_state["last_compression_info"] = None
         st.session_state["page_offset"] = 0; st.rerun()
     except Exception as e: st.error(f"送信エラー: {e}")
+
 if st.session_state["page_offset"] == 0:
     components.html('<script>window.parent.document.querySelector(".main").scrollTo(0, 99999);</script>', height=0)
