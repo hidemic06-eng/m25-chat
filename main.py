@@ -23,6 +23,10 @@ app_bg_color = "#313338"
 text_main_color = "#dbdee1"
 sub_text_color = "#949ba4"
 
+# --- 記念日判定 (追加) ---
+now_jst = datetime.now(timezone.utc) + timedelta(hours=9)
+is_anniversary = (now_jst.month == 4 and now_jst.day == 28)
+
 if table_name == "messages_test":
     status_label = " 🧪 TEST"
     input_placeholder = "テストメッセージを入力..."
@@ -30,9 +34,69 @@ else:
     status_label = ""
     input_placeholder = "メッセージを入力..."
 
+# 星空・流れ星用CSS/HTMLの生成 (追加)
+star_styles = ""
+star_html = ""
+if is_anniversary:
+    app_bg_color = "#0a0a1a"  # 記念日用の深い夜空色
+    star_styles = """
+    /* 星空背景 */
+    .stApp {
+        background: radial-gradient(ellipse at bottom, #1B2735 0%, #090A0F 100%) !important;
+    }
+    .stApp::before {
+        content: "";
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: transparent url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/123163/stars.png') repeat;
+        z-index: -1;
+        opacity: 0.4;
+        animation: stars-twinkle 4s ease-in-out infinite alternate;
+    }
+    @keyframes stars-twinkle {
+        from { opacity: 0.3; } to { opacity: 0.7; }
+    }
+
+    /* 流れ星の定義 */
+    .shooting-star {
+        position: fixed;
+        top: 50%; left: 50%;
+        width: 4px; height: 4px;
+        background: #fff;
+        border-radius: 50%;
+        box-shadow: 0 0 0 4px rgba(255,255,255,0.1), 0 0 0 8px rgba(255,255,255,0.1), 0 0 20px rgba(255,255,255,1);
+        animation: shooting 3s linear infinite;
+        z-index: 0;
+        pointer-events: none;
+    }
+    .shooting-star::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 100px; height: 1px;
+        background: linear-gradient(90deg, #fff, transparent);
+    }
+    @keyframes shooting {
+        0% { transform: rotate(315deg) translateX(0); opacity: 1; }
+        70% { opacity: 1; }
+        100% { transform: rotate(315deg) translateX(-1000px); opacity: 0; }
+    }
+    .star-1 { top: 0; right: 0; animation-delay: 0s; animation-duration: 3s; }
+    .star-2 { top: 20%; right: 10%; animation-delay: 1s; animation-duration: 2s; }
+    .star-3 { top: 50%; right: -50px; animation-delay: 4s; animation-duration: 4s; }
+    """
+    star_html = """
+    <div class="shooting-star star-1"></div>
+    <div class="shooting-star star-2"></div>
+    <div class="shooting-star star-3"></div>
+    """
+
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
+
+    {star_styles}
 
     .stApp {{ 
         background-color: {app_bg_color}; 
@@ -143,6 +207,7 @@ st.markdown(f"""
     @keyframes pulse-text {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.2); }} 100% {{ transform: scale(1); }} }}
     .pulse-active {{ display: inline-block; animation: pulse-text 1.5s infinite ease-in-out !important; font-weight: 700 !important; }}
     </style>
+    {star_html}
 """, unsafe_allow_html=True)
 
 # --- 4. 画像圧縮用関数 ---
@@ -328,7 +393,6 @@ try:
 
     # --- 9-2. チャットログ表示 ---
     wd_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-    now_jst = datetime.now(timezone.utc) + timedelta(hours=9)
     today_str = now_jst.strftime('%Y-%m-%d')
 
     # 最新メッセージのIDを取得（演出判定用）
