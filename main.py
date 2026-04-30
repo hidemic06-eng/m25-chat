@@ -90,21 +90,45 @@ if is_anniversary:
         from { filter: brightness(1); } to { filter: brightness(1.2) drop-shadow(0 0 10px #ffd700); }
     }
 
-    /* 流れ星：情緒的な速度に調整 */
+    /* 流れ星の本体 */
     .shooting-star {
         position: fixed;
-        width: 200px; height: 1px;
-        background: linear-gradient(90deg, rgba(255,255,255,0.8), transparent);
-        z-index: 0; opacity: 0;
+        /* 開始位置を画面の上端よりさらに上、かつ右側に寄せる */
+        top: -100px;
+        width: 180px; /* 尾を少し長くしてスピード感を出す */
+        height: 2px;
+        background: linear-gradient(90deg, rgba(255,255,255,0.9), transparent);
+        z-index: 0;
+        opacity: 0;
         pointer-events: none;
-        animation: shooting-swipe 6s linear infinite;
+        /* 角度を固定。35度くらいが最も「流れている」ように見えます */
+        transform: rotate(-35deg);
+        animation: shooting-swipe 5s linear infinite;
     }
+
     @keyframes shooting-swipe {
-        0% { transform: translate(100vw, -10vh) rotate(-35deg); opacity: 0; }
-        5% { opacity: 1; }
-        25% { transform: translate(-10vw, 100vh) rotate(-35deg); opacity: 0; }
-        100% { transform: translate(-10vw, 100vh) rotate(-35deg); opacity: 0; }
+        0% {
+            /* 画面右上の「外側」からスタート */
+            transform: translateX(100vw) translateY(0) rotate(-35deg);
+            opacity: 0;
+        }
+        10% {
+            /* 流れ始めた瞬間にパッと光る */
+            opacity: 1;
+        }
+        30% {
+            /* 画面左下へ大きく突き抜ける（ここで横の移動量を稼ぐ） */
+            transform: translateX(-30vw) translateY(70vh) rotate(-35deg);
+            opacity: 0;
+        }
+        100% {
+            /* 残りの時間は消えたままループを待つ（連続発生を防ぐ） */
+            transform: translateX(-30vw) translateY(70vh) rotate(-35deg);
+            opacity: 0;
+        }
     }
+    
+    
 
     /* 上昇する光の粒子（星の欠片） */
     .particle {
@@ -129,8 +153,10 @@ if is_anniversary:
     moon_html = f'<div class="anniversary-moon">{moon_emoji}</div>'
     
     s_stars_html = """
-    <div class="shooting-star" style="top:15vh; animation-delay:1s; animation-duration:5s;"></div>
-    <div class="shooting-star" style="top:50vh; animation-delay:7s; animation-duration:7s;"></div>
+    <!-- 各星の出現位置とタイミングをバラバラにする -->
+    <div class="shooting-star" style="left: 10vw; animation-delay: 0s; animation-duration: 4s;"></div>
+    <div class="shooting-star" style="left: 40vw; animation-delay: 7s; animation-duration: 5s;"></div>
+    <div class="shooting-star" style="left: 70vw; animation-delay: 13s; animation-duration: 4.5s;"></div>
     """
     
     p_list = []
