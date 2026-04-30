@@ -93,42 +93,40 @@ if is_anniversary:
     /* 流れ星の本体 */
     .shooting-star {
         position: fixed;
-        /* 開始位置を画面の上端よりさらに上、かつ右側に寄せる */
         top: -100px;
-        width: 180px; /* 尾を少し長くしてスピード感を出す */
+        width: 250px; /* 長めにして残像感を強調 */
         height: 2px;
         background: linear-gradient(90deg, rgba(255,255,255,0.9), transparent);
         z-index: 0;
         opacity: 0;
         pointer-events: none;
-        /* 角度を固定。35度くらいが最も「流れている」ように見えます */
-        transform: rotate(-35deg);
-        animation: shooting-swipe 5s linear infinite;
+        /* 見た目の角度：右肩上がり30度 */
+        transform: rotate(-30deg);
+        animation: shooting-swipe 4s linear infinite;
     }
 
     @keyframes shooting-swipe {
         0% {
-            /* 画面右上の「外側」からスタート */
-            transform: translateX(100vw) translateY(0) rotate(-35deg);
+            /* スタート：画面右上の外側 */
+            /* X（横）とY（縦）を√3 : 1 の比率にすると30度の角度で進みます */
+            transform: translateX(100vw) translateY(0) rotate(-30deg);
             opacity: 0;
         }
-        10% {
-            /* 流れ始めた瞬間にパッと光る */
+        5% {
             opacity: 1;
         }
         30% {
-            /* 画面左下へ大きく突き抜ける（ここで横の移動量を稼ぐ） */
-            transform: translateX(-30vw) translateY(70vh) rotate(-35deg);
+            /* ゴール：左下へ。角度に合わせた移動距離を設定 */
+            /* 横に100進むなら、縦に約58進むのが30度の法則です */
+            transform: translateX(20vw) translateY(46vh) rotate(-30deg);
             opacity: 0;
         }
         100% {
-            /* 残りの時間は消えたままループを待つ（連続発生を防ぐ） */
-            transform: translateX(-30vw) translateY(70vh) rotate(-35deg);
+            transform: translateX(20vw) translateY(46vh) rotate(-30deg);
             opacity: 0;
         }
     }
-    
-    
+
 
     /* 上昇する光の粒子（星の欠片） */
     .particle {
@@ -153,10 +151,8 @@ if is_anniversary:
     moon_html = f'<div class="anniversary-moon">{moon_emoji}</div>'
     
     s_stars_html = """
-    <!-- 各星の出現位置とタイミングをバラバラにする -->
-    <div class="shooting-star" style="left: 10vw; animation-delay: 0s; animation-duration: 4s;"></div>
-    <div class="shooting-star" style="left: 40vw; animation-delay: 7s; animation-duration: 5s;"></div>
-    <div class="shooting-star" style="left: 70vw; animation-delay: 13s; animation-duration: 4.5s;"></div>
+    <div class="shooting-star" style="left: 0vw; animation-delay: 0s;"></div>
+    <div class="shooting-star" style="left: 30vw; animation-delay: 5s;"></div>
     """
     
     p_list = []
