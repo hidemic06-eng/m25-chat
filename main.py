@@ -5,7 +5,7 @@ import streamlit.components.v1 as components
 from datetime import datetime, timedelta, timezone
 import random
 import re
-from PIL import Image, ImageOps  # ImageOpsを追加
+from PIL import Image, ImageOps
 import io
 import uuid
 
@@ -23,9 +23,10 @@ app_bg_color = "#313338"
 text_main_color = "#dbdee1"
 sub_text_color = "#949ba4"
 
-# --- 記念日判定 (追加) ---
+# --- 記念日判定 (5/25 本番仕様) ---
 now_jst = datetime.now(timezone.utc) + timedelta(hours=9)
-is_anniversary = (now_jst.month == 4 and now_jst.day == 28)
+# テスト時はここを (now_jst.month == 4 and now_jst.day == 28) などに変更してください
+is_anniversary = (now_jst.month == 4 and now_jst.day == 30)
 
 if table_name == "messages_test":
     status_label = " 🧪 TEST"
@@ -34,16 +35,21 @@ else:
     status_label = ""
     input_placeholder = "メッセージを入力..."
 
-# 星空・流れ星用CSS/HTMLの生成 (追加)
+# --- リッチな星空＆お月様演出 ---
 star_styles = ""
 star_html = ""
+
 if is_anniversary:
-    app_bg_color = "#0a0a1a"  # 記念日用の深い夜空色
+    app_bg_color = "#03030a"  # 月明かりを際立たせるための深い紺黒
+    
+    # 1. CSSの生成
     star_styles = """
-    /* 星空背景 */
+    /* 背景：右上（月の位置）から広がる月明かりのグラデーション */
     .stApp {
-        background: radial-gradient(ellipse at bottom, #1B2735 0%, #090A0F 100%) !important;
+        background: radial-gradient(circle at 80% 20%, #1e2a44 0%, #03030a 100%) !important;
     }
+
+    /* 瞬く星のベース */
     .stApp::before {
         content: "";
         position: fixed;
@@ -54,43 +60,88 @@ if is_anniversary:
         animation: stars-twinkle 4s ease-in-out infinite alternate;
     }
     @keyframes stars-twinkle {
-        from { opacity: 0.3; } to { opacity: 0.7; }
+        from { opacity: 0.2; } to { opacity: 0.6; }
     }
 
-    /* 流れ星の定義 */
-    .shooting-star {
+    /* 5/25の月：満ちていく力強い月 (🌔) */
+    .anniversary-moon {
         position: fixed;
-        top: 50%; left: 50%;
-        width: 4px; height: 4px;
-        background: #fff;
-        border-radius: 50%;
-        box-shadow: 0 0 0 4px rgba(255,255,255,0.1), 0 0 0 8px rgba(255,255,255,0.1), 0 0 20px rgba(255,255,255,1);
-        animation: shooting 3s linear infinite;
+        top: 40px;
+        right: 10%;
+        font-size: 100px;
         z-index: 0;
         pointer-events: none;
+        filter: drop-shadow(0 0 30px rgba(255, 255, 220, 0.6));
+        animation: moon-sway 6s ease-in-out infinite alternate;
+        user-select: none;
     }
-    .shooting-star::before {
-        content: "";
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 100px; height: 1px;
-        background: linear-gradient(90deg, #fff, transparent);
+    @keyframes moon-sway {
+        0% { transform: translateY(0px) rotate(0deg); opacity: 0.85; }
+        100% { transform: translateY(-10px) rotate(2deg); opacity: 1; }
     }
-    @keyframes shooting {
-        0% { transform: rotate(315deg) translateX(0); opacity: 1; }
-        70% { opacity: 1; }
-        100% { transform: rotate(315deg) translateX(-1000px); opacity: 0; }
+
+    /* タイトルのネオン演出 */
+    h1 {
+        color: #fff !important;
+        text-shadow: 0 0 10px #fff, 0 0 20px #ffd700 !important;
+        animation: neon-glow 2s ease-in-out infinite alternate;
     }
-    .star-1 { top: 0; right: 0; animation-delay: 0s; animation-duration: 3s; }
-    .star-2 { top: 20%; right: 10%; animation-delay: 1s; animation-duration: 2s; }
-    .star-3 { top: 50%; right: -50px; animation-delay: 4s; animation-duration: 4s; }
+    @keyframes neon-glow {
+        from { filter: brightness(1); } to { filter: brightness(1.2) drop-shadow(0 0 10px #ffd700); }
+    }
+
+    /* 流れ星：情緒的な速度に調整 */
+    .shooting-star {
+        position: fixed;
+        width: 200px; height: 1px;
+        background: linear-gradient(90deg, rgba(255,255,255,0.8), transparent);
+        z-index: 0; opacity: 0;
+        pointer-events: none;
+        animation: shooting-swipe 6s linear infinite;
+    }
+    @keyframes shooting-swipe {
+        0% { transform: translate(100vw, -10vh) rotate(-35deg); opacity: 0; }
+        5% { opacity: 1; }
+        25% { transform: translate(-10vw, 100vh) rotate(-35deg); opacity: 0; }
+        100% { transform: translate(-10vw, 100vh) rotate(-35deg); opacity: 0; }
+    }
+
+    /* 上昇する光の粒子（星の欠片） */
+    .particle {
+        position: fixed;
+        bottom: -10px;
+        background: rgba(255, 255, 200, 0.4);
+        border-radius: 50%;
+        pointer-events: none;
+        animation: float-up 12s linear infinite;
+        z-index: 0;
+    }
+    @keyframes float-up {
+        0% { transform: translateY(0) scale(1); opacity: 0; }
+        10% { opacity: 0.8; }
+        90% { opacity: 0.8; }
+        100% { transform: translateY(-100vh) scale(0.3); opacity: 0; }
+    }
     """
-    star_html = """
-    <div class="shooting-star star-1"></div>
-    <div class="shooting-star star-2"></div>
-    <div class="shooting-star star-3"></div>
+    
+    # 2. HTMLの生成 (月 + 流れ星 + 25個の粒子)
+    moon_emoji = "🌔"
+    moon_html = f'<div class="anniversary-moon">{moon_emoji}</div>'
+    
+    s_stars_html = """
+    <div class="shooting-star" style="top:15vh; animation-delay:1s; animation-duration:5s;"></div>
+    <div class="shooting-star" style="top:50vh; animation-delay:7s; animation-duration:7s;"></div>
     """
+    
+    p_list = []
+    for _ in range(25):
+        left = random.randint(0, 100)
+        size = random.randint(1, 3)
+        delay = random.uniform(0, 15)
+        duration = random.uniform(10, 18)
+        p_list.append(f'<div class="particle" style="left:{left}%; width:{size}px; height:{size}px; animation-delay:{delay}s; animation-duration:{duration}s;"></div>')
+    
+    star_html = moon_html + s_stars_html + "".join(p_list)
 
 st.markdown(f"""
     <style>
@@ -131,7 +182,6 @@ st.markdown(f"""
         padding: 0; 
     }}
 
-    /* ポラロイド風フレームのデザイン */
     .chat-image {{
         max-width: 280px;
         border-radius: 4px;
@@ -155,7 +205,6 @@ st.markdown(f"""
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
     /* --- アニメーション定義 --- */
-    /* 修正：1文字ずつ一定速度で表示されるタイピング演出 */
     .typewriter-char {{
         display: inline-block;
         opacity: 0;
@@ -230,7 +279,7 @@ if "password_correct" not in st.session_state:
     try:
         ua = st.context.headers.get("User-Agent", "")
         query_params = st.query_params
-        url_user = query_params.get("user", None)
+        url_user = query_params.get("user", [None])[0] # query_paramsの取得方法を安定化
         os_info = "Unknown Device"; detected_user = "Unknown"
         if "Android" in ua: os_info = "Android"; detected_user = "Maki"
         elif "iPhone" in ua or "iPad" in ua: os_info = "iOS Device"; detected_user = "Hide"
@@ -249,7 +298,6 @@ if "page_offset" not in st.session_state: st.session_state["page_offset"] = 0
 if "last_effect_id" not in st.session_state: st.session_state["last_effect_id"] = None
 if "uploader_key" not in st.session_state: st.session_state["uploader_key"] = str(uuid.uuid4())
 if "last_compression_info" not in st.session_state: st.session_state["last_compression_info"] = None
-# 新規追加：演出済みIDを記録するセット
 if "shown_ids" not in st.session_state: st.session_state["shown_ids"] = set()
 
 current_user_raw = st.session_state.get("username", "Hide")
@@ -302,7 +350,6 @@ try:
     all_data = res_all.data
     messages = all_data[:20][::-1]
     
-    # --- #付きメッセージを1時間流す機能 ---
     if st.session_state["page_offset"] == 0:
         now = datetime.now(timezone.utc)
         one_hour_ago = now - timedelta(hours=1)
@@ -394,8 +441,6 @@ try:
     # --- 9-2. チャットログ表示 ---
     wd_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     today_str = now_jst.strftime('%Y-%m-%d')
-
-    # 最新メッセージのIDを取得（演出判定用）
     latest_id = messages[-1].get("id") if messages else None
 
     for m in messages:
@@ -405,7 +450,6 @@ try:
         s_up = s_name.upper()
         m_id = m.get("id")
 
-        # --- 日付・曜日表示の判定 ---
         msg_date_str = jst_time.strftime('%Y-%m-%d')
         if msg_date_str == today_str:
             time_display = jst_time.strftime('%H:%M')
@@ -424,23 +468,19 @@ try:
         m_body, img_url = m.get("message_body", ""), m.get("image_url")
         img_html = f'<div><img src="{img_url}" class="chat-image"></div>' if img_url else ""
         
-        # --- タイピング演出(最新1件のみ)判定とHTML生成 ---
         is_new_msg = (m_id == latest_id) and (st.session_state["page_offset"] == 0) and (m_id not in st.session_state["shown_ids"])
         
         if is_new_msg:
-            # 1文字ずつ分割して、0.05秒ずつ遅らせるHTMLを生成
             typed_html = ""
             for i, char in enumerate(m_body):
-                delay = i * 0.05  # 一定速度（0.05秒間隔）
+                delay = i * 0.05
                 char_display = "<br>" if char == "\n" else char
                 typed_html += f'<span class="typewriter-char" style="animation-delay: {delay}s;">{char_display}</span>'
             display_body = typed_html
             st.session_state["shown_ids"].add(m_id)
         else:
-            # 過去ログや演出済みはそのまま表示
             display_body = m_body.replace("\n", "<br>")
 
-        # --- テキストエフェクト判定 ---
         effect_class = ""
         if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]): 
             effect_class = "rainbow-active"
