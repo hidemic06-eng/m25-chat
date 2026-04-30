@@ -90,43 +90,21 @@ if is_anniversary:
         from { filter: brightness(1); } to { filter: brightness(1.2) drop-shadow(0 0 10px #ffd700); }
     }
 
-    /* 流れ星の本体 */
+    /* 流れ星：情緒的な速度に調整 */
     .shooting-star {
         position: fixed;
-        top: -100px;
-        width: 250px; /* 長めにして残像感を強調 */
-        height: 2px;
-        background: linear-gradient(90deg, rgba(255,255,255,0.9), transparent);
-        z-index: 0;
-        opacity: 0;
+        width: 200px; height: 1px;
+        background: linear-gradient(90deg, rgba(255,255,255,0.8), transparent);
+        z-index: 0; opacity: 0;
         pointer-events: none;
-        /* 見た目の角度：右肩上がり30度 */
-        transform: rotate(-30deg);
-        animation: shooting-swipe 4s linear infinite;
+        animation: shooting-swipe 6s linear infinite;
     }
-
     @keyframes shooting-swipe {
-        0% {
-            /* スタート：画面右上の外側 */
-            /* X（横）とY（縦）を√3 : 1 の比率にすると30度の角度で進みます */
-            transform: translateX(100vw) translateY(0) rotate(-30deg);
-            opacity: 0;
-        }
-        5% {
-            opacity: 1;
-        }
-        30% {
-            /* ゴール：左下へ。角度に合わせた移動距離を設定 */
-            /* 横に100進むなら、縦に約58進むのが30度の法則です */
-            transform: translateX(20vw) translateY(46vh) rotate(-30deg);
-            opacity: 0;
-        }
-        100% {
-            transform: translateX(20vw) translateY(46vh) rotate(-30deg);
-            opacity: 0;
-        }
+        0% { transform: translate(100vw, -10vh) rotate(-35deg); opacity: 0; }
+        5% { opacity: 1; }
+        25% { transform: translate(-10vw, 100vh) rotate(-35deg); opacity: 0; }
+        100% { transform: translate(-10vw, 100vh) rotate(-35deg); opacity: 0; }
     }
-
 
     /* 上昇する光の粒子（星の欠片） */
     .particle {
@@ -151,8 +129,8 @@ if is_anniversary:
     moon_html = f'<div class="anniversary-moon">{moon_emoji}</div>'
     
     s_stars_html = """
-    <div class="shooting-star" style="left: 0vw; animation-delay: 0s;"></div>
-    <div class="shooting-star" style="left: 30vw; animation-delay: 5s;"></div>
+    <div class="shooting-star" style="top:15vh; animation-delay:1s; animation-duration:5s;"></div>
+    <div class="shooting-star" style="top:50vh; animation-delay:7s; animation-duration:7s;"></div>
     """
     
     p_list = []
@@ -301,7 +279,7 @@ if "password_correct" not in st.session_state:
     try:
         ua = st.context.headers.get("User-Agent", "")
         query_params = st.query_params
-        url_user = query_params.get("user", None)
+        url_user = query_params.get("user", [None])[0] # query_paramsの取得方法を安定化
         os_info = "Unknown Device"; detected_user = "Unknown"
         if "Android" in ua: os_info = "Android"; detected_user = "Maki"
         elif "iPhone" in ua or "iPad" in ua: os_info = "iOS Device"; detected_user = "Hide"
