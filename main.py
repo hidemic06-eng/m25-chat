@@ -25,7 +25,7 @@ sub_text_color = "#949ba4"
 
 # --- 記念日判定 (追加) ---
 now_jst = datetime.now(timezone.utc) + timedelta(hours=9)
-is_anniversary = (now_jst.month == 4 and now_jst.day == 28)
+is_anniversary = (now_jst.month == 5 and now_jst.day == 18)
 
 if table_name == "messages_test":
     status_label = " 🧪 TEST"
