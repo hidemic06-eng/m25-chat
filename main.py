@@ -99,26 +99,11 @@ if is_anniversary:
         pointer-events: none;
         animation: shooting-swipe 6s linear infinite;
     }
-
-    /* 流れ星：画面サイズに依存せず、常に綺麗な斜め35度を保つ */
     @keyframes shooting-swipe {
-        0% { 
-            transform: translate(0, 0) rotate(-35deg); 
-            opacity: 0; 
-        }
-        5% { 
-            opacity: 1; 
-        }
-        30% { 
-            /* X方向（左へ）とY方向（下へ）の移動比率を固定して角度を維持 */
-            /* 1000px左に動くなら、35度だと下に約700px動かします */
-            transform: translate(-1000px, 700px) rotate(-35deg); 
-            opacity: 0; 
-        }
-        100% { 
-            transform: translate(-1000px, 700px) rotate(-35deg); 
-            opacity: 0; 
-        }
+        0% { transform: translate(100vw, -10vh) rotate(-35deg); opacity: 0; }
+        5% { opacity: 1; }
+        25% { transform: translate(-10vw, 100vh) rotate(-35deg); opacity: 0; }
+        100% { transform: translate(-10vw, 100vh) rotate(-35deg); opacity: 0; }
     }
 
     /* 上昇する光の粒子（星の欠片） */
