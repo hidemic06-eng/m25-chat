@@ -99,9 +99,10 @@ if is_anniversary:
         pointer-events: none;
         animation: shooting-swipe 6s linear infinite;
     }
+    /* 流れ星：すべてのキーフレームで角度を固定して歪みを防ぐ */
     @keyframes shooting-swipe {
         0% { transform: translate(100vw, -10vh) rotate(-35deg); opacity: 0; }
-        5% { opacity: 1; }
+        5% { transform: translate(95vw, -5vh) rotate(-35deg); opacity: 1; }
         25% { transform: translate(-10vw, 100vh) rotate(-35deg); opacity: 0; }
         100% { transform: translate(-10vw, 100vh) rotate(-35deg); opacity: 0; }
     }
