@@ -39,6 +39,7 @@ else:
 # --- リッチな星空＆お月様演出 ---
 star_styles = ""
 star_html = ""
+moon_html = ""  # 💡 通常時に文字漏れが起きないよう、ここで空に初期化します
 
 # 5/25 または 6/4 のいずれかであれば特別演出を発動
 if is_anniversary or is_june_4th:
