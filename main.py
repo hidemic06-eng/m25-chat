@@ -26,7 +26,8 @@ sub_text_color = "#949ba4"
 # --- 記念日判定 (5/25 本番仕様) ---
 now_jst = datetime.now(timezone.utc) + timedelta(hours=9)
 # テスト時はここを (now_jst.month == 4 and now_jst.day == 28) などに変更してください
-is_anniversary = (now_jst.month == 5 and now_jst.day == 25)
+# is_anniversary = (now_jst.month == 5 and now_jst.day == 25)
+is_anniversary = (now_jst.month == 6 and now_jst.day == 4)
 
 if table_name == "messages_test":
     status_label = " 🧪 TEST"
@@ -125,7 +126,8 @@ if is_anniversary:
     """
     
     # 2. HTMLの生成 (月 + 流れ星 + 25個の粒子)
-    moon_emoji = "🌔"
+    # moon_emoji = "🌔"
+    moon_emoji = "📻"
     moon_html = f'<div class="anniversary-moon">{moon_emoji}</div>'
     
     s_stars_html = """
