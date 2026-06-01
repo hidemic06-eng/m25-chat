@@ -23,10 +23,11 @@ app_bg_color = "#313338"
 text_main_color = "#dbdee1"
 sub_text_color = "#949ba4"
 
-# --- 記念日判定 (5/25 本番仕様) ---
+# --- 記念日判定 (5/25 & 6/4 本番仕様) ---
 now_jst = datetime.now(timezone.utc) + timedelta(hours=9)
 # テスト時はここを (now_jst.month == 4 and now_jst.day == 28) などに変更してください
 is_anniversary = (now_jst.month == 5 and now_jst.day == 25)
+is_june_4th = (now_jst.month == 6 and now_jst.day == 1)
 
 if table_name == "messages_test":
     status_label = " 🧪 TEST"
@@ -39,8 +40,22 @@ else:
 star_styles = ""
 star_html = ""
 
-if is_anniversary:
+# 5/25 または 6/4 のいずれかであれば特別演出を発動
+if is_anniversary or is_june_4th:
     app_bg_color = "#03030a"  # 月明かりを際立たせるための深い紺黒
+    
+    # 日付によって表示するHTML（月・ラジカセ）を分岐
+    if is_june_4th:
+        moon_emoji = "🌕"  # 6/4の満月
+        moon_html = f"""
+        <div class="anniversary-moon">
+            <span style="font-size: 75px; margin-right: 15px; filter: drop-shadow(0 0 20px rgba(255,255,255,0.4));">📻</span>
+            <span>{moon_emoji}</span>
+        </div>
+        """
+    else:
+        moon_emoji = "🌔"  # 5/25の月
+        moon_html = f'<div class="anniversary-moon">{moon_emoji}</div>'
     
     # 1. CSSの生成
     star_styles = """
@@ -63,17 +78,19 @@ if is_anniversary:
         from { opacity: 0.2; } to { opacity: 0.6; }
     }
 
-    /* 5/25の月：満ちていく力強い月 (🌔) */
+    /* 特別な日のオブジェクト（月・ラジカセ）共通枠 */
     .anniversary-moon {
         position: fixed;
         top: 40px;
-        right: 10%;
+        right: 8%;
         font-size: 100px;
         z-index: 0;
         pointer-events: none;
         filter: drop-shadow(0 0 30px rgba(255, 255, 220, 0.6));
         animation: moon-sway 6s ease-in-out infinite alternate;
         user-select: none;
+        display: flex;
+        align-items: center;
     }
     @keyframes moon-sway {
         0% { transform: translateY(0px) rotate(0deg); opacity: 0.85; }
@@ -124,10 +141,7 @@ if is_anniversary:
     }
     """
     
-    # 2. HTMLの生成 (月 + 流れ星 + 25個の粒子)
-    moon_emoji = "🌔"
-    moon_html = f'<div class="anniversary-moon">{moon_emoji}</div>'
-    
+    # 2. HTMLの生成 (月・オブジェクト + 流れ星 + 25個の粒子)
     s_stars_html = """
     <div class="shooting-star" style="top:15vh; animation-delay:1s; animation-duration:5s;"></div>
     <div class="shooting-star" style="top:50vh; animation-delay:7s; animation-duration:7s;"></div>
@@ -400,6 +414,8 @@ try:
                 elif any(word in msg_body for word in ["おやつ", "プリン"]): priority_emoji = "🍮"
                 elif any(word in msg_body for word in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
                 elif any(word in msg_body for word in ["キノコ", "きのこ"]): priority_emoji = "🍄"
+                # ラジカセ・音楽系のキーワードで 📻 の上昇エフェクトを発動
+                elif any(word in msg_body for word in ["ラジカセ", "音楽", "カセット", "曲", "BGM", "ラジオ"]): priority_emoji = "📻"
 
             if priority_emoji:
                 effect_html = '<div class="rising-emoji">'
@@ -484,7 +500,8 @@ try:
         effect_class = ""
         if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]): 
             effect_class = "rainbow-active"
-        elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "ちょい飲み"]): 
+        # 居酒屋ワードに加えて、「ラジカセ」や「音楽」系ワードでもネオン風に光るように統合
+        elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "ちょい飲み", "ラジカセ", "音楽", "カセット", "BGM", "曲"]): 
             effect_class = "neon-active"
         elif any(word in m_body for word in ["ドキドキ", "ワクワク", "楽しみ", "待ってる"]): 
             effect_class = "pulse-active"
