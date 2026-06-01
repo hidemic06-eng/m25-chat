@@ -126,8 +126,8 @@ if is_anniversary:
     """
     
     # 2. HTMLの生成 (月 + 流れ星 + 25個の粒子)
-    # moon_emoji = "📻"
-    moon_emoji = ""
+    # moon_emoji = "🌔"
+    moon_emoji = "📻"
     moon_html = f'<div class="anniversary-moon">{moon_emoji}</div>'
     
     s_stars_html = """
