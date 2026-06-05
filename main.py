@@ -23,11 +23,14 @@ app_bg_color = "#313338"
 text_main_color = "#dbdee1"
 sub_text_color = "#949ba4"
 
-# --- 記念日判定 (5/25 本番仕様) ---
+# 🖼️ 【お二人の思い出の画像URL】をここに設定してください！
+# （空のままにすると、通常通りの背景色になります）
+bg_image_url = "https://kvqbwknrsdasoipttkpr.supabase.co/storage/v1/object/public/images/public/6f8e7c65-94dc-4a5b-8f08-881f91167546.jpeg" 
+
+# --- 記念日判定 (5/25 & 6/4 本番仕様) ---
 now_jst = datetime.now(timezone.utc) + timedelta(hours=9)
-# テスト時はここを (now_jst.month == 4 and now_jst.day == 28) などに変更してください
-# is_anniversary = (now_jst.month == 5 and now_jst.day == 25)
-is_anniversary = (now_jst.month == 6 and now_jst.day == 4)
+is_anniversary = (now_jst.month == 5 and now_jst.day == 25)
+is_june_4th = (now_jst.month == 6 and now_jst.day == 4)
 
 if table_name == "messages_test":
     status_label = " 🧪 TEST"
@@ -39,11 +42,23 @@ else:
 # --- リッチな星空＆お月様演出 ---
 star_styles = ""
 star_html = ""
+moon_html = ""
 
-if is_anniversary:
+if is_anniversary or is_june_4th:
     app_bg_color = "#03030a"  # 月明かりを際立たせるための深い紺黒
     
-    # 1. CSSの生成
+    if is_june_4th:
+        moon_emoji = "🌕"
+        moon_html = f"""
+        <div class="anniversary-moon">
+            <span style="font-size: 75px; margin-right: 15px; filter: drop-shadow(0 0 20px rgba(255,255,255,0.4));">📻</span>
+            <span>{moon_emoji}</span>
+        </div>
+        """
+    else:
+        moon_emoji = "🌔"
+        moon_html = f'<div class="anniversary-moon">{moon_emoji}</div>'
+    
     star_styles = """
     /* 背景：右上（月の位置）から広がる月明かりのグラデーション */
     .stApp {
@@ -64,7 +79,7 @@ if is_anniversary:
         from { opacity: 0.2; } to { opacity: 0.6; }
     }
 
-    /* 5/25の月：満ちていく力強い月 (🌔) */
+    /* 月の揺らめき演出 */
     .anniversary-moon {
         position: fixed;
         top: 40px;
@@ -75,6 +90,8 @@ if is_anniversary:
         filter: drop-shadow(0 0 30px rgba(255, 255, 220, 0.6));
         animation: moon-sway 6s ease-in-out infinite alternate;
         user-select: none;
+        display: flex;
+        align-items: center;
     }
     @keyframes moon-sway {
         0% { transform: translateY(0px) rotate(0deg); opacity: 0.85; }
@@ -125,11 +142,6 @@ if is_anniversary:
     }
     """
     
-    # 2. HTMLの生成 (月 + 流れ星 + 25個の粒子)
-    # moon_emoji = "🌔"
-    moon_emoji = "📻"
-    moon_html = f'<div class="anniversary-moon">{moon_emoji}</div>'
-    
     s_stars_html = """
     <div class="shooting-star" style="top:15vh; animation-delay:1s; animation-duration:5s;"></div>
     <div class="shooting-star" style="top:50vh; animation-delay:7s; animation-duration:7s;"></div>
@@ -145,11 +157,29 @@ if is_anniversary:
     
     star_html = moon_html + s_stars_html + "".join(p_list)
 
+# 💡 背景写真用のCSS定義（記念日・特別日以外かつURL指定がある場合のみ発動）
+custom_bg_styles = ""
+if bg_image_url and not (is_anniversary or is_june_4th):
+    custom_bg_styles = f"""
+    .stApp::after {{
+        content: "";
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background-image: url('{bg_image_url}');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        z-index: -2;
+        opacity: 0.15; /* 写真をうっすら15%の薄さに透過して文字を読みやすく */
+    }}
+    """
+
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
 
     {star_styles}
+    {custom_bg_styles}
 
     .stApp {{ 
         background-color: {app_bg_color}; 
@@ -206,7 +236,7 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* --- アニメーション定義 --- */
+    /* --- アニメーション定義（全保持） --- */
     .typewriter-char {{
         display: inline-block;
         opacity: 0;
@@ -281,7 +311,7 @@ if "password_correct" not in st.session_state:
     try:
         ua = st.context.headers.get("User-Agent", "")
         query_params = st.query_params
-        url_user = query_params.get("user", [None])[0] # query_paramsの取得方法を安定化
+        url_user = query_params.get("user", [None])[0]
         os_info = "Unknown Device"; detected_user = "Unknown"
         if "Android" in ua: os_info = "Android"; detected_user = "Maki"
         elif "iPhone" in ua or "iPad" in ua: os_info = "iOS Device"; detected_user = "Hide"
@@ -402,6 +432,7 @@ try:
                 elif any(word in msg_body for word in ["おやつ", "プリン"]): priority_emoji = "🍮"
                 elif any(word in msg_body for word in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
                 elif any(word in msg_body for word in ["キノコ", "きのこ"]): priority_emoji = "🍄"
+                elif any(word in msg_body for word in ["ラジカセ", "音楽", "カセット", "曲", "BGM", "ラジオ"]): priority_emoji = "📻"
 
             if priority_emoji:
                 effect_html = '<div class="rising-emoji">'
@@ -486,7 +517,7 @@ try:
         effect_class = ""
         if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]): 
             effect_class = "rainbow-active"
-        elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "ちょい飲み"]): 
+        elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "ちょい飲み", "ラジカセ", "音楽", "カセット", "BGM", "曲"]): 
             effect_class = "neon-active"
         elif any(word in m_body for word in ["ドキドキ", "ワクワク", "楽しみ", "待ってる"]): 
             effect_class = "pulse-active"
