@@ -5,7 +5,7 @@ import streamlit.components.v1 as components
 from datetime import datetime, timedelta, timezone
 import random
 import re
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps  # ImageOpsを追加
 import io
 import uuid
 
@@ -23,14 +23,8 @@ app_bg_color = "#313338"
 text_main_color = "#dbdee1"
 sub_text_color = "#949ba4"
 
-# 🖼️ 【お二人の思い出の画像URL】をここに設定してください！
-# （空のままにすると、通常通りの背景色になります）
+# 🌟 背景画像の設定（お好きな画像のURLに変更してください）
 bg_image_url = "https://kvqbwknrsdasoipttkpr.supabase.co/storage/v1/object/public/images/public/6f8e7c65-94dc-4a5b-8f08-881f91167546.jpeg" 
-
-# --- 記念日判定 (5/25 & 6/4 本番仕様) ---
-now_jst = datetime.now(timezone.utc) + timedelta(hours=9)
-is_anniversary = (now_jst.month == 5 and now_jst.day == 25)
-is_june_4th = (now_jst.month == 6 and now_jst.day == 4)
 
 if table_name == "messages_test":
     status_label = " 🧪 TEST"
@@ -39,150 +33,17 @@ else:
     status_label = ""
     input_placeholder = "メッセージを入力..."
 
-# --- リッチな星空＆お月様演出 ---
-star_styles = ""
-star_html = ""
-moon_html = ""
-
-if is_anniversary or is_june_4th:
-    app_bg_color = "#03030a"  # 月明かりを際立たせるための深い紺黒
-    
-    if is_june_4th:
-        moon_emoji = "🌕"
-        moon_html = f"""
-        <div class="anniversary-moon">
-            <span style="font-size: 75px; margin-right: 15px; filter: drop-shadow(0 0 20px rgba(255,255,255,0.4));">📻</span>
-            <span>{moon_emoji}</span>
-        </div>
-        """
-    else:
-        moon_emoji = "🌔"
-        moon_html = f'<div class="anniversary-moon">{moon_emoji}</div>'
-    
-    star_styles = """
-    /* 背景：右上（月の位置）から広がる月明かりのグラデーション */
-    .stApp {
-        background: radial-gradient(circle at 80% 20%, #1e2a44 0%, #03030a 100%) !important;
-    }
-
-    /* 瞬く星のベース */
-    .stApp::before {
-        content: "";
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: transparent url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/123163/stars.png') repeat;
-        z-index: -1;
-        opacity: 0.4;
-        animation: stars-twinkle 4s ease-in-out infinite alternate;
-    }
-    @keyframes stars-twinkle {
-        from { opacity: 0.2; } to { opacity: 0.6; }
-    }
-
-    /* 月の揺らめき演出 */
-    .anniversary-moon {
-        position: fixed;
-        top: 40px;
-        right: 10%;
-        font-size: 100px;
-        z-index: 0;
-        pointer-events: none;
-        filter: drop-shadow(0 0 30px rgba(255, 255, 220, 0.6));
-        animation: moon-sway 6s ease-in-out infinite alternate;
-        user-select: none;
-        display: flex;
-        align-items: center;
-    }
-    @keyframes moon-sway {
-        0% { transform: translateY(0px) rotate(0deg); opacity: 0.85; }
-        100% { transform: translateY(-10px) rotate(2deg); opacity: 1; }
-    }
-
-    /* タイトルのネオン演出 */
-    h1 {
-        color: #fff !important;
-        text-shadow: 0 0 10px #fff, 0 0 20px #ffd700 !important;
-        animation: neon-glow 2s ease-in-out infinite alternate;
-    }
-    @keyframes neon-glow {
-        from { filter: brightness(1); } to { filter: brightness(1.2) drop-shadow(0 0 10px #ffd700); }
-    }
-
-    /* 流れ星：情緒的な速度に調整 */
-    .shooting-star {
-        position: fixed;
-        width: 200px; height: 1px;
-        background: linear-gradient(90deg, rgba(255,255,255,0.8), transparent);
-        z-index: 0; opacity: 0;
-        pointer-events: none;
-        animation: shooting-swipe 6s linear infinite;
-    }
-    @keyframes shooting-swipe {
-        0% { transform: translate(100vw, -10vh) rotate(-35deg); opacity: 0; }
-        5% { opacity: 1; }
-        25% { transform: translate(-10vw, 100vh) rotate(-35deg); opacity: 0; }
-        100% { transform: translate(-10vw, 100vh) rotate(-35deg); opacity: 0; }
-    }
-
-    /* 上昇する光の粒子（星の欠片） */
-    .particle {
-        position: fixed;
-        bottom: -10px;
-        background: rgba(255, 255, 200, 0.4);
-        border-radius: 50%;
-        pointer-events: none;
-        animation: float-up 12s linear infinite;
-        z-index: 0;
-    }
-    @keyframes float-up {
-        0% { transform: translateY(0) scale(1); opacity: 0; }
-        10% { opacity: 0.8; }
-        90% { opacity: 0.8; }
-        100% { transform: translateY(-100vh) scale(0.3); opacity: 0; }
-    }
-    """
-    
-    s_stars_html = """
-    <div class="shooting-star" style="top:15vh; animation-delay:1s; animation-duration:5s;"></div>
-    <div class="shooting-star" style="top:50vh; animation-delay:7s; animation-duration:7s;"></div>
-    """
-    
-    p_list = []
-    for _ in range(25):
-        left = random.randint(0, 100)
-        size = random.randint(1, 3)
-        delay = random.uniform(0, 15)
-        duration = random.uniform(10, 18)
-        p_list.append(f'<div class="particle" style="left:{left}%; width:{size}px; height:{size}px; animation-delay:{delay}s; animation-duration:{duration}s;"></div>')
-    
-    star_html = moon_html + s_stars_html + "".join(p_list)
-
-# 💡 背景写真用のCSS定義（記念日・特別日以外かつURL指定がある場合のみ発動）
-custom_bg_styles = ""
-if bg_image_url and not (is_anniversary or is_june_4th):
-    custom_bg_styles = f"""
-    .stApp::after {{
-        content: "";
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background-image: url('{bg_image_url}');
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-        z-index: -2;
-        opacity: 0.15; /* 写真をうっすら15%の薄さに透過して文字を読みやすく */
-    }}
-    """
-
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
 
-    {star_styles}
-    {custom_bg_styles}
-
+    /* 🌟 背景画像の設定（透過ブラックを重ねて文字の視認性を確保） */
     .stApp {{ 
-        background-color: {app_bg_color}; 
+        background: linear-gradient(rgba(49, 51, 56, 0.75), rgba(49, 51, 56, 0.75)), url("{bg_image_url}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
         color: {text_main_color}; 
         font-family: 'M PLUS Rounded 1c', sans-serif !important; 
     }}
@@ -214,6 +75,7 @@ st.markdown(f"""
         padding: 0; 
     }}
 
+    /* ポラロイド風フレームのデザイン */
     .chat-image {{
         max-width: 280px;
         border-radius: 4px;
@@ -236,7 +98,7 @@ st.markdown(f"""
     .name-hide {{ color: #58a6ff !important; font-weight: 700; }}
     .timestamp {{ color: {sub_text_color}; font-size: 0.75rem; }}
     
-    /* --- アニメーション定義（全保持） --- */
+    /* --- アニメーション定義 --- */
     .typewriter-char {{
         display: inline-block;
         opacity: 0;
@@ -288,7 +150,6 @@ st.markdown(f"""
     @keyframes pulse-text {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.2); }} 100% {{ transform: scale(1); }} }}
     .pulse-active {{ display: inline-block; animation: pulse-text 1.5s infinite ease-in-out !important; font-weight: 700 !important; }}
     </style>
-    {star_html}
 """, unsafe_allow_html=True)
 
 # --- 4. 画像圧縮用関数 ---
@@ -311,7 +172,7 @@ if "password_correct" not in st.session_state:
     try:
         ua = st.context.headers.get("User-Agent", "")
         query_params = st.query_params
-        url_user = query_params.get("user", [None])[0]
+        url_user = query_params.get("user", None)
         os_info = "Unknown Device"; detected_user = "Unknown"
         if "Android" in ua: os_info = "Android"; detected_user = "Maki"
         elif "iPhone" in ua or "iPad" in ua: os_info = "iOS Device"; detected_user = "Hide"
@@ -382,6 +243,7 @@ try:
     all_data = res_all.data
     messages = all_data[:20][::-1]
     
+    # --- #付きメッセージを1時間流す機能 ---
     if st.session_state["page_offset"] == 0:
         now = datetime.now(timezone.utc)
         one_hour_ago = now - timedelta(hours=1)
@@ -432,7 +294,6 @@ try:
                 elif any(word in msg_body for word in ["おやつ", "プリン"]): priority_emoji = "🍮"
                 elif any(word in msg_body for word in ["バーガー", "マクド", "朝マック"]): priority_emoji = "🍔"
                 elif any(word in msg_body for word in ["キノコ", "きのこ"]): priority_emoji = "🍄"
-                elif any(word in msg_body for word in ["ラジカセ", "音楽", "カセット", "曲", "BGM", "ラジオ"]): priority_emoji = "📻"
 
             if priority_emoji:
                 effect_html = '<div class="rising-emoji">'
@@ -473,7 +334,9 @@ try:
 
     # --- 9-2. チャットログ表示 ---
     wd_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    now_jst = datetime.now(timezone.utc) + timedelta(hours=9)
     today_str = now_jst.strftime('%Y-%m-%d')
+
     latest_id = messages[-1].get("id") if messages else None
 
     for m in messages:
@@ -483,6 +346,7 @@ try:
         s_up = s_name.upper()
         m_id = m.get("id")
 
+        # --- 日付・曜日表示の判定 ---
         msg_date_str = jst_time.strftime('%Y-%m-%d')
         if msg_date_str == today_str:
             time_display = jst_time.strftime('%H:%M')
@@ -501,6 +365,7 @@ try:
         m_body, img_url = m.get("message_body", ""), m.get("image_url")
         img_html = f'<div><img src="{img_url}" class="chat-image"></div>' if img_url else ""
         
+        # --- タイピング演出(最新1件のみ)判定とHTML生成 ---
         is_new_msg = (m_id == latest_id) and (st.session_state["page_offset"] == 0) and (m_id not in st.session_state["shown_ids"])
         
         if is_new_msg:
@@ -514,10 +379,11 @@ try:
         else:
             display_body = m_body.replace("\n", "<br>")
 
+        # --- テキストエフェクト判定 ---
         effect_class = ""
         if any(word in m_body for word in ["大好き", "くっつ", "最高", "優勝", "指輪"]): 
             effect_class = "rainbow-active"
-        elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "ちょい飲み", "ラジカセ", "音楽", "カセット", "BGM", "曲"]): 
+        elif any(word in m_body for word in ["駅ビル", "福島", "京橋", "居酒屋", "呑み", "打ち上げ", "呑みすぎ", "ビール", "ちょい飲み"]): 
             effect_class = "neon-active"
         elif any(word in m_body for word in ["ドキドキ", "ワクワク", "楽しみ", "待ってる"]): 
             effect_class = "pulse-active"
