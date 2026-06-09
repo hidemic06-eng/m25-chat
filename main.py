@@ -24,7 +24,7 @@ text_main_color = "#dbdee1"
 sub_text_color = "#949ba4"
 
 # 🌟 背景画像の設定（お好きな画像のURLに変更してください）
-bg_image_url = "https://kvqbwknrsdasoipttkpr.supabase.co/storage/v1/object/public/images/public/6f8e7c65-94dc-4a5b-8f08-881f91167546.jpeg" 
+bg_image_url = "https://kvqbwknrsdasoipttkpr.supabase.co/storage/v1/object/public/images/public/background.jpeg" 
 
 if table_name == "messages_test":
     status_label = " 🧪 TEST"
