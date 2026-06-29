@@ -33,13 +33,23 @@ else:
     status_label = ""
     input_placeholder = "メッセージを入力..."
 
+# 🌟 ログイン状態に応じて背景CSSを動的に切り替える
+is_logged_in = "password_correct" in st.session_state
+
+if is_logged_in:
+    # ログイン後：背景画像を表示
+    bg_style = f'background: linear-gradient(rgba(49, 51, 56, 0.75), rgba(49, 51, 56, 0.75)), url("{bg_image_url}");'
+else:
+    # ログイン前：背景画像なし（通常の背景色）
+    bg_style = f'background-color: {app_bg_color};'
+
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700&display=swap');
 
-    /* 🌟 背景画像の設定（透過ブラックを重ねて文字の視認性を確保） */
+    /* 🌟 動的に決定した背景スタイルを適用 */
     .stApp {{ 
-        background: linear-gradient(rgba(49, 51, 56, 0.75), rgba(49, 51, 56, 0.75)), url("{bg_image_url}");
+        {bg_style}
         background-size: cover;
         background-position: center;
         background-repeat: no-repeat;
