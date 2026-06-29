@@ -23,8 +23,11 @@ app_bg_color = "#313338"
 text_main_color = "#dbdee1"
 sub_text_color = "#949ba4"
 
-# 🌟 背景画像の設定（お好きな画像のURLに変更してください）
-bg_image_url = "https://kvqbwknrsdasoipttkpr.supabase.co/storage/v1/object/public/images/public/background.jpeg" 
+# 🌟 ログイン「後」の背景画像の設定
+bg_image_url = "https://kvqbwknrsdasoipttkpr.supabase.co/storage/v1/object/public/images/public/background01.jpeg" 
+
+# 🌟 ログイン「前」（パスワード画面）の背景画像の設定（お好きな画像URLに変更してください）
+bg_image_url_login = "https://kvqbwknrsdasoipttkpr.supabase.co/storage/v1/object/public/images/public/background00.jpeg"
 
 if table_name == "messages_test":
     status_label = " 🧪 TEST"
@@ -40,8 +43,8 @@ if is_logged_in:
     # ログイン後：背景画像を表示
     bg_style = f'background: linear-gradient(rgba(49, 51, 56, 0.75), rgba(49, 51, 56, 0.75)), url("{bg_image_url}");'
 else:
-    # ログイン前：背景画像なし（通常の背景色）
-    bg_style = f'background-color: {app_bg_color};'
+    # ログイン前：ログイン画面専用の背景画像を表示（文字を見やすくするため少し暗めのマスクをかけています）
+    bg_style = f'background: linear-gradient(rgba(49, 51, 56, 0.6), rgba(49, 51, 56, 0.6)), url("{bg_image_url_login}");'
 
 st.markdown(f"""
     <style>
